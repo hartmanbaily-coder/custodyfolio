@@ -1,6 +1,6 @@
 {
-  "name": "My Custody Case",
-  "short_name": "My Custody Case",
+  "name": "Custody Folio",
+  "short_name": "Custody Folio",
   "description": "Privately organize custody records, evidence, timelines, expenses, and reports.",
   "id": "/records",
   "start_url": "/records",

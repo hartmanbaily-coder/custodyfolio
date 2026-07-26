@@ -45,11 +45,11 @@ import { POST } from "@/app/api/records/attorney/accept/session/route";
 
 function request(overrides: { token?: string; accessToken?: string; refreshToken?: string } = {}) {
   const csrf = "invite-session-csrf";
-  return new NextRequest("https://losttofound.org/api/records/attorney/accept/session", {
+  return new NextRequest("https://custodyfolio.com/api/records/attorney/accept/session", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Origin: "https://losttofound.org",
+      Origin: "https://custodyfolio.com",
       Cookie: `${recordsCsrfCookieName}=${csrf}`,
       "X-L2F-CSRF": csrf,
     },
@@ -173,7 +173,7 @@ describe("mailbox-verified attorney session", () => {
     expect(setAttorneyPasswordSetupCookie).not.toHaveBeenCalled();
     expect(setRecordsSessionCookies).toHaveBeenCalled();
     expect(setAttorneyMailboxProofCookie).toHaveBeenCalled();
-    expect(enroll).toHaveBeenCalledWith({ factorType: "totp", issuer: "My Custody Case" });
+    expect(enroll).toHaveBeenCalledWith({ factorType: "totp", issuer: "Custody Folio" });
   });
 
   it("resumes interrupted password setup even after the records profile exists", async () => {

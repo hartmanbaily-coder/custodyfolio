@@ -25,7 +25,7 @@ jobs:
 
       - name: Verify two-user isolation against live app
         env:
-          RECORDS_APP_BASE_URL: https://losttofound.org
+          RECORDS_APP_BASE_URL: https://custodyfolio.com
           NEXT_PUBLIC_SUPABASE_URL: https://cieuilbpnwuvnrxrlczj.supabase.co
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RECORDS_EVIDENCE_BUCKET: records-evidence

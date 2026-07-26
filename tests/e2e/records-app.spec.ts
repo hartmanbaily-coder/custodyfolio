@@ -1038,7 +1038,7 @@ test("records account recovery and deletion paths are reachable", async ({ page 
         ok: true,
         clearLocalSession: true,
         deletedAt: "2026-07-22T12:00:00.000Z",
-        message: "Your account and active My Custody Case records were permanently deleted.",
+        message: "Your account and active Custody Folio records were permanently deleted.",
       }),
     });
   });
@@ -1050,11 +1050,11 @@ test("records account recovery and deletion paths are reachable", async ({ page 
   await expect(page.getByText("Signed in as synthetic-reviewer@example.test.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Email support instead" })).toHaveAttribute(
     "href",
-    "mailto:support@lendori.io?subject=My%20Custody%20Case%20account%20deletion%20request"
+    "mailto:support@lendori.io?subject=Custody%20Folio%20account%20deletion%20request"
   );
   await expect(page.getByRole("link", { name: "Email deletion support" })).toHaveAttribute(
     "href",
-    "mailto:support@lendori.io?subject=My%20Custody%20Case%20account%20deletion%20request"
+    "mailto:support@lendori.io?subject=Custody%20Folio%20account%20deletion%20request"
   );
   await expect(page.getByText("What happens when you confirm")).toBeVisible();
   const permanentDelete = page.getByRole("button", { name: "Permanently delete my account" });
@@ -1063,7 +1063,7 @@ test("records account recovery and deletion paths are reachable", async ({ page 
   await expect(permanentDelete).toBeEnabled();
   await permanentDelete.click();
   await expect(page.getByRole("heading", { name: "Account deleted" })).toBeVisible();
-  await expect(page.getByText("Your account and active My Custody Case records were permanently deleted.")).toBeVisible();
+  await expect(page.getByText("Your account and active Custody Folio records were permanently deleted.")).toBeVisible();
   expect(deletionRequest).toEqual({ confirmation: "DELETE" });
   expect(deletionCsrfHeader).toBe(deletionCsrf);
 

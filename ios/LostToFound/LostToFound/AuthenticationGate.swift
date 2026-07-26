@@ -96,7 +96,7 @@ struct AuthenticationGate: View {
         do {
             let success = try await context.evaluatePolicy(
                 .deviceOwnerAuthentication,
-                localizedReason: "Unlock My Custody Case on this device."
+                localizedReason: "Unlock Custody Folio on this device."
             )
             if success {
                 onUnlock()

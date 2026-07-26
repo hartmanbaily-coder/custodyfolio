@@ -41,11 +41,11 @@ const grant = {
 
 function request(accessHandle: string, evidenceHandle: string) {
   const csrf = "attorney-evidence-csrf";
-  return new NextRequest("https://losttofound.org/api/records/attorney/evidence/download", {
+  return new NextRequest("https://custodyfolio.com/api/records/attorney/evidence/download", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Origin: "https://losttofound.org",
+      Origin: "https://custodyfolio.com",
       Cookie: `${recordsCsrfCookieName}=${csrf}`,
       "X-L2F-CSRF": csrf,
     },

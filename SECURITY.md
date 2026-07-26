@@ -2,7 +2,7 @@
 
 ## Security Model
 
-My Custody Case is designed for private parent-owned records scoped by authenticated `userId` and selected `caseId`.
+Custody Folio is designed for private parent-owned records scoped by authenticated `userId` and selected `caseId`.
 
 The current MVP can run in local demo mode or Supabase-backed mode. It must not be used for real sensitive records until the remaining production gates are complete. Production must enforce authorization server-side on every record read, write, export, and evidence access request.
 
@@ -27,7 +27,7 @@ Only the current `main` branch MVP is supported during initial development.
 - Bearer-token fallback is disabled in production and must only be used for explicit non-production diagnostics.
 - Authentication, dataset, and evidence routes have an app-level rate-limit fallback; production must still use edge/WAF rate limiting.
 - Supabase Auth must require MFA, leaked-password protection, strong password minimums, and password-change reauthentication before production use.
-- Cookies must be host-only for `losttofound.org`.
+- Cookies must be host-only for `custodyfolio.com`.
 - Secure, HttpOnly, SameSite=Lax or SameSite=Strict cookies are required in production.
 - Server-side authorization must check both `userId` and `caseId`.
 - Evidence metadata and files in Supabase mode require authenticated server routes.

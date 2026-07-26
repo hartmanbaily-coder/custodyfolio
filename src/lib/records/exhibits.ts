@@ -349,7 +349,7 @@ export async function generateScreenshotExhibit(
     title: "Compiled screenshot exhibit",
     subject: "User-compiled screenshots",
     author: "",
-    creator: "My Custody Case",
+    creator: "Custody Folio",
     keywords: "",
   });
 
@@ -367,7 +367,7 @@ export async function generateScreenshotExhibit(
 
     addWrappedText(
       document,
-      `Compiled from ${sources.length} user selected screenshot${sources.length === 1 ? "" : "s"}. My Custody Case organizes user provided information and does not authenticate, verify, or determine the admissibility of these materials. Preserve original files separately.`,
+      `Compiled from ${sources.length} user selected screenshot${sources.length === 1 ? "" : "s"}. Custody Folio organizes user provided information and does not authenticate, verify, or determine the admissibility of these materials. Preserve original files separately.`,
       Math.max(y + 28, 360),
       { size: 10 }
     );

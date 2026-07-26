@@ -44,7 +44,7 @@ vi.mock("@/lib/security/pwnedPasswords", () => ({
 vi.mock("@/lib/security/securityEvents", () => ({ recordSecurityEvent }));
 
 function request(password = "Replacement-Password!42", attorneyToken = "") {
-  return new NextRequest("https://losttofound.org/api/records/auth/password/update", {
+  return new NextRequest("https://custodyfolio.com/api/records/auth/password/update", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

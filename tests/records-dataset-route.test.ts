@@ -35,7 +35,7 @@ vi.mock("@/lib/security/securityEvents", () => ({
 import { GET, PUT } from "@/app/api/records/dataset/route";
 
 function request(dataset: unknown) {
-  return new NextRequest("https://losttofound.org/api/records/dataset?caseId=default", {
+  return new NextRequest("https://custodyfolio.com/api/records/dataset?caseId=default", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ dataset }),
@@ -72,7 +72,7 @@ describe("records dataset route account isolation", () => {
       error: null,
     });
     const response = await GET(
-      new NextRequest("https://losttofound.org/api/records/dataset?caseId=default")
+      new NextRequest("https://custodyfolio.com/api/records/dataset?caseId=default")
     );
     expect(response).toBeDefined();
     if (!response) throw new Error("Dataset route did not return a response.");

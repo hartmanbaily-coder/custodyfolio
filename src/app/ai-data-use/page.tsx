@@ -5,7 +5,7 @@ const sections: PolicySection[] = [
     title: "Current status",
     body: [
       "AI assisted import is not currently enabled for customer records.",
-      "My Custody Case does not send custody records to an AI provider for import processing while this feature is off.",
+      "Custody Folio does not send custody records to an AI provider for import processing while this feature is off.",
     ],
   },
   {
@@ -21,7 +21,7 @@ export default function AiDataUsePage() {
   return (
     <PolicyPage
       title="AI Data Use"
-      description="The current status of AI assisted import in My Custody Case."
+      description="The current status of AI assisted import in Custody Folio."
       sections={sections}
     />
   );

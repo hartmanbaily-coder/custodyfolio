@@ -221,7 +221,7 @@ export function evaluateProductionReadiness(
       "Production app URL is HTTPS",
       isHttpsUrl(env.NEXT_PUBLIC_APP_URL),
       "blocker",
-      "Set NEXT_PUBLIC_APP_URL to the final https:// URL for losttofound.org."
+      "Set NEXT_PUBLIC_APP_URL to the final https:// URL for custodyfolio.com."
     ),
     check(
       "records-host",
@@ -350,7 +350,7 @@ export function evaluateProductionReadiness(
       "Supabase Auth redirect URLs were verified recently",
       isRecentDate(env.SUPABASE_AUTH_REDIRECTS_VERIFIED_AT, generatedAt, 30),
       "blocker",
-      "Verify losttofound.org auth redirects, /auth/confirm, and password reset recovery links, then set SUPABASE_AUTH_REDIRECTS_VERIFIED_AT."
+      "Verify custodyfolio.com auth redirects, /auth/confirm, and password reset recovery links, then set SUPABASE_AUTH_REDIRECTS_VERIFIED_AT."
     ),
     check(
       "supabase-leaked-passwords",

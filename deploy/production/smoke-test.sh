@@ -10,7 +10,7 @@ export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/${runtime_uid}}"
 export DOCKER_HOST="${DOCKER_HOST:-unix://${XDG_RUNTIME_DIR}/docker.sock}"
 export COMPOSE_PROJECT_NAME=losttofound
 export LOSTTOFOUND_ENV_FILE="${env_file}"
-public_url="${LOSTTOFOUND_PUBLIC_URL:-https://losttofound.org}"
+public_url="${LOSTTOFOUND_PUBLIC_URL:-https://custodyfolio.com}"
 
 for attempt in $(seq 1 30); do
   if curl --fail --silent --show-error http://127.0.0.1:8080/caddy-health >/dev/null && \

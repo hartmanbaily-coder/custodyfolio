@@ -26,11 +26,11 @@ const secret = "route-test-secret-that-is-at-least-thirty-two-characters";
 
 function request(path: string, body: unknown) {
   const csrf = "csrf-token-for-route-test";
-  return new NextRequest(`https://losttofound.org${path}`, {
+  return new NextRequest(`https://custodyfolio.com${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Origin: "https://losttofound.org",
+      Origin: "https://custodyfolio.com",
       Cookie: `${recordsCsrfCookieName}=${csrf}`,
       "X-L2F-CSRF": csrf,
     },
@@ -200,7 +200,7 @@ describe("attorney invitation owner routes", () => {
   });
 
   it("rate-limits repeated invitation creation attempts before authentication", async () => {
-    const unauthenticated = () => new NextRequest("https://losttofound.org/api/records/attorney/invitations", {
+    const unauthenticated = () => new NextRequest("https://custodyfolio.com/api/records/attorney/invitations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: "{}",
@@ -217,7 +217,7 @@ describe("attorney invitation owner routes", () => {
 
   it("does not let invalid pre-auth requests consume the attorney action quota", async () => {
     const invalidRequest = () => new NextRequest(
-      "https://losttofound.org/api/records/attorney/invitations/action",
+      "https://custodyfolio.com/api/records/attorney/invitations/action",
       {
         method: "POST",
         headers: { "Content-Type": "text/plain" },

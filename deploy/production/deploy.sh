@@ -85,8 +85,8 @@ printf '%s\n' "${release_tag}" >"${state_dir}/current-release"
 docker image prune --force >/dev/null
 if [[ ${smoke_status} -eq 2 ]]; then
   printf '%s\n' "blocked" >"${state_dir}/current-readiness"
-  echo "My Custody Case release ${release_tag} is running, but customer readiness remains BLOCKED." >&2
+  echo "Custody Folio release ${release_tag} is running, but customer readiness remains BLOCKED." >&2
 else
   printf '%s\n' "ready" >"${state_dir}/current-readiness"
-  echo "My Custody Case release ${release_tag} deployed successfully and is customer-ready."
+  echo "Custody Folio release ${release_tag} deployed successfully and is customer-ready."
 fi

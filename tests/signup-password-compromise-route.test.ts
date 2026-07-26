@@ -15,7 +15,7 @@ vi.mock("@/lib/records/authServer", () => ({
   isRecordsSignupEnabled: () => true,
   isStrongRecordsPassword: (password: string) => password.length >= 12,
   isSupabaseRecordsMode: () => true,
-  recordsAppBaseUrl: () => "https://losttofound.org",
+  recordsAppBaseUrl: () => "https://custodyfolio.com",
   recordsPasswordMinimumLength: () => 12,
 }));
 
@@ -27,7 +27,7 @@ vi.mock("@/lib/security/pwnedPasswords", () => ({
 vi.mock("@/lib/security/securityEvents", () => ({ recordSecurityEvent }));
 
 function request(password = "Long-Password!42") {
-  return new NextRequest("https://losttofound.org/api/records/auth/signup", {
+  return new NextRequest("https://custodyfolio.com/api/records/auth/signup", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

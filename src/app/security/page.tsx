@@ -5,7 +5,7 @@ const sections: PolicySection[] = [
   {
     title: "Protecting your account",
     body: [
-      "My Custody Case uses verified accounts and additional sign in verification to protect access to records.",
+      "Custody Folio uses verified accounts and additional sign in verification to protect access to records.",
       "Use a unique password, protect your email and authenticator, and sign out on devices you do not control.",
       "Account recovery may require identity verification.",
     ],

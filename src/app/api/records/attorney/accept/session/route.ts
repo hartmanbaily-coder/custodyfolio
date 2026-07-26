@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
         }
         const started = await authClient.auth.mfa.enroll({
           factorType: "totp",
-          issuer: "My Custody Case",
+          issuer: "Custody Folio",
         });
         if (started.error) throw started.error;
         enrollment = {

@@ -63,7 +63,7 @@ export default function PrivacyPage() {
   return (
     <PolicyPage
       title="Privacy Policy"
-      description="How My Custody Case collects, uses, shares, retains, and deletes information."
+      description="How Custody Folio collects, uses, shares, retains, and deletes information."
       sections={sections}
     >
       <section className="rounded-lg border border-slate-200 bg-white p-6 text-sm leading-6 text-slate-600">

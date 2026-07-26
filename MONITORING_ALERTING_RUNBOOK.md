@@ -1,6 +1,6 @@
 # Monitoring and Alerting Runbook
 
-My Custody Case must be monitored as a high-sensitivity records system. Alerts should detect unauthorized access attempts, evidence access anomalies, failed storage/security controls, and production readiness regressions without logging sensitive record contents.
+Custody Folio must be monitored as a high-sensitivity records system. Alerts should detect unauthorized access attempts, evidence access anomalies, failed storage/security controls, and production readiness regressions without logging sensitive record contents.
 
 ## Monitoring Goals
 
@@ -45,7 +45,7 @@ For webhook sinks, the script requires a successful HTTPS response. For platform
 
 `.github/workflows/live-monitor.yml` runs every 30 minutes and can also be started manually. It checks:
 
-- `https://losttofound.org/records` responds successfully.
+- `https://custodyfolio.com/records` responds successfully.
 - Required security headers are present.
 - `/api/records/readiness` responds with JSON.
 - Any readiness blockers are limited to the known unresolved launch gates.

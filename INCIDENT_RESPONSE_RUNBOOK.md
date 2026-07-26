@@ -1,6 +1,6 @@
 # Incident Response Runbook
 
-This runbook covers security and privacy incidents involving My Custody Case. It follows the practical structure of NIST SP 800-61 Rev. 3 and FTC breach-response guidance: prepare, detect, analyze, contain, eradicate, recover, communicate, and learn.
+This runbook covers security and privacy incidents involving Custody Folio. It follows the practical structure of NIST SP 800-61 Rev. 3 and FTC breach-response guidance: prepare, detect, analyze, contain, eradicate, recover, communicate, and learn.
 
 This is an operational runbook, not legal advice. Involve qualified counsel for breach notification, law enforcement, court-related records, subpoenas, and state-law analysis.
 

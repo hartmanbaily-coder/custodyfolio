@@ -34,7 +34,7 @@ vi.mock("@/lib/supabaseClient", () => ({
 
 vi.mock("@/lib/records/authServer", () => ({
   isSupabaseRecordsMode: () => true,
-  recordsAppBaseUrl: () => "https://losttofound.org",
+  recordsAppBaseUrl: () => "https://custodyfolio.com",
 }));
 
 vi.mock("@/lib/records/attorneyServer", () => ({
@@ -56,11 +56,11 @@ function request(input: {
 } = {}) {
   const csrf = input.csrf || "attorney-signup-csrf";
   const token = input.token || "invite-token";
-  return new NextRequest("https://losttofound.org/api/records/attorney/accept/signup", {
+  return new NextRequest("https://custodyfolio.com/api/records/attorney/accept/signup", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Origin: "https://losttofound.org",
+      Origin: "https://custodyfolio.com",
       Cookie: `l2f-attorney-invite=${token}; ${recordsCsrfCookieName}=${csrf}`,
       "X-L2F-CSRF": csrf,
     },
@@ -98,7 +98,7 @@ describe("mailbox-verified attorney onboarding request", () => {
       "counsel@example.test",
       {
         redirectTo: expect.stringMatching(
-          /^https:\/\/losttofound\.org\/records\?auth=attorney-invite&next=%2Fattorney%2Faccept&invite=1&attorney_token=[A-Za-z0-9_-]+$/
+          /^https:\/\/custodyfolio\.com\/records\?auth=attorney-invite&next=%2Fattorney%2Faccept&invite=1&attorney_token=[A-Za-z0-9_-]+$/
         ),
       }
     );
@@ -121,7 +121,7 @@ describe("mailbox-verified attorney onboarding request", () => {
       email: "counsel@example.test",
       options: {
         emailRedirectTo: expect.stringContaining(
-          "https://losttofound.org/records?auth=attorney-invite&next=%2Fattorney%2Faccept&invite=1&attorney_token="
+          "https://custodyfolio.com/records?auth=attorney-invite&next=%2Fattorney%2Faccept&invite=1&attorney_token="
         ),
         shouldCreateUser: false,
       },

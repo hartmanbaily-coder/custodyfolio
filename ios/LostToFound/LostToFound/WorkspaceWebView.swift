@@ -62,10 +62,10 @@ final class WebViewModel {
             case NSURLErrorTimedOut:
                 loadErrorMessage = "The connection timed out before the records workspace responded."
             case NSURLErrorCannotFindHost, NSURLErrorCannotConnectToHost, NSURLErrorNetworkConnectionLost:
-                loadErrorMessage = "My Custody Case could not reach the records service. Check your connection and try again."
+                loadErrorMessage = "Custody Folio could not reach the records service. Check your connection and try again."
             case NSURLErrorSecureConnectionFailed, NSURLErrorServerCertificateUntrusted,
                  NSURLErrorServerCertificateHasBadDate, NSURLErrorServerCertificateHasUnknownRoot:
-                loadErrorMessage = "A secure connection to My Custody Case could not be established."
+                loadErrorMessage = "A secure connection to Custody Folio could not be established."
             default:
                 loadErrorMessage = "The records workspace could not be loaded. Please try again."
             }
@@ -96,7 +96,7 @@ final class WebViewModel {
 }
 
 struct WorkspaceScreen: View {
-    private let workspaceURL = URL(string: "https://losttofound.org/records")!
+    private let workspaceURL = URL(string: "https://custodyfolio.com/records")!
 
     var body: some View {
         SecureWebScreen(

@@ -1,6 +1,6 @@
 # Production Preparedness
 
-My Custody Case can run against either the local demo store or the Supabase-backed dataset snapshot API. This document tracks the remaining work required before accepting real custody, parenting-time, support, and evidence records.
+Custody Folio can run against either the local demo store or the Supabase-backed dataset snapshot API. This document tracks the remaining work required before accepting real custody, parenting-time, support, and evidence records.
 
 ## Current Production-Prep Additions
 
@@ -40,7 +40,7 @@ My Custody Case can run against either the local demo store or the Supabase-back
 - `LEGAL_REVIEW_PACKET.md` packages the documents and decisions needed for legal review.
 - `/launch-readiness` renders a production launch cockpit from the same readiness engine as `/api/records/readiness`.
 - `/launch-wizard` separates pre-Supabase work from the final Supabase live-data step.
-- `.github/workflows/live-isolation.yml` verifies two-user isolation against `https://losttofound.org` with synthetic users.
+- `.github/workflows/live-isolation.yml` verifies two-user isolation against `https://custodyfolio.com` with synthetic users.
 - `.github/workflows/retired-artifact-cleanup.yml` runs the guarded retired Storage bucket cleanup using the repository service-role secret.
 - `SUPABASE_LIVE_VERIFICATION.md` records the current live Supabase project verification state and open advisor findings.
 - `PRODUCTION_LAUNCH_REHEARSAL.md` records the latest go/no-go rehearsal, current Supabase evidence, and remaining live launch gates.
@@ -100,7 +100,7 @@ Verified:
 13. Run a restore drill, save `ops/backup-restore-evidence.json`, and run `npm run verify:backup-restore`.
 14. Seed staging with synthetic data only and run end-to-end tests against staging.
 15. Set verified readiness values directly in the host environment file; do not duplicate them into Listhaus or GitHub repository secrets.
-16. Keep `losttofound.org` on the current records build only after `npm run verify:headers` passes; accept real records only after readiness API returns `ready` and `npm run check:live` passes.
+16. Keep `custodyfolio.com` on the current records build only after `npm run verify:headers` passes; accept real records only after readiness API returns `ready` and `npm run check:live` passes.
 
 ## Verification Commands
 

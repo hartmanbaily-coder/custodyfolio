@@ -2,7 +2,7 @@
 
 ## Scope
 
-My Custody Case stores private family-court documentation records for adult users. The highest-risk assets are account access, evidence files, note bodies, payment records, child-related details, generated reports, backups, and staff access pathways.
+Custody Folio stores private family-court documentation records for adult users. The highest-risk assets are account access, evidence files, note bodies, payment records, child-related details, generated reports, backups, and staff access pathways.
 
 ## Threats and Controls
 
@@ -68,7 +68,7 @@ Controls: encryption at rest, encrypted backups, least-privilege backup access, 
 
 ### DNS or Subdomain Takeover
 
-Risk: stale DNS records for `losttofound.org` or future subdomains point to an unclaimed host.
+Risk: stale DNS records for `custodyfolio.com`, the transitional `losttofound.org` fallback, or future subdomains point to an unclaimed host.
 
 Controls: remove stale CNAME/DNS records immediately when changing providers, verify hosting ownership, and monitor DNS.
 

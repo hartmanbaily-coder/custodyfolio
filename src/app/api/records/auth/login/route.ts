@@ -169,7 +169,7 @@ async function mfaResponse(input: {
 
   const enrollment = await input.authClient.auth.mfa.enroll({
     factorType: "totp",
-    issuer: "My Custody Case",
+    issuer: "Custody Folio",
   });
 
   if (enrollment.error) {
@@ -273,7 +273,7 @@ async function handleLoginPost(request: NextRequest) {
       detail: "Supabase identity has no approved records profile.",
     });
     return NextResponse.json(
-      { error: "This account is not enabled for My Custody Case." },
+      { error: "This account is not enabled for Custody Folio." },
       { status: 403, headers: { "Cache-Control": "no-store" } }
     );
   }

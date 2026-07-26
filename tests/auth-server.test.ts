@@ -82,7 +82,7 @@ describe("records auth server helpers", () => {
       expect(recoveryCookie).toBeTruthy();
       expect(recoveryCookie).not.toBe("1");
 
-      const request = new NextRequest("https://losttofound.org/records", {
+      const request = new NextRequest("https://custodyfolio.com/records", {
         headers: { Cookie: `${recordsPasswordRecoveryCookieName}=${recoveryCookie}` },
       });
       expect(

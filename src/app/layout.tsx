@@ -10,11 +10,11 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   applicationName: siteName,
   title: {
-    default: "My Custody Case | Custody Logs and Evidence",
-    template: "%s | My Custody Case",
+    default: "Custody Folio | Custody Logs and Evidence",
+    template: "%s | Custody Folio",
   },
   description: siteDescription,
-  metadataBase: new URL("https://losttofound.org"),
+  metadataBase: new URL("https://custodyfolio.com"),
   alternates: {
     canonical: "/",
   },
@@ -30,13 +30,13 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "My Custody Case",
+    title: "Custody Folio",
   },
   openGraph: {
     type: "website",
-    url: "https://losttofound.org",
+    url: "https://custodyfolio.com",
     siteName,
-    title: "My Custody Case",
+    title: "Custody Folio",
     description: siteDescription,
   },
   formatDetection: {
@@ -58,7 +58,7 @@ export default function RootLayout({
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: siteName,
-    url: "https://losttofound.org/",
+    url: "https://custodyfolio.com/",
   };
 
   return (

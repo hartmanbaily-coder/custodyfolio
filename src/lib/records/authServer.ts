@@ -88,7 +88,7 @@ export function safeRecordsAuthNextPath(value: string | null | undefined) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) return "/records";
 
   try {
-    const parsed = new URL(value, "https://losttofound.org");
+    const parsed = new URL(value, "https://custodyfolio.com");
     if (!parsed.pathname.startsWith("/records")) return "/records";
     return `${parsed.pathname}${parsed.search}`;
   } catch {
@@ -278,7 +278,7 @@ function unapprovedRecordsProfileResponse(profileApproved: boolean | null) {
   }
 
   return NextResponse.json(
-    { error: "This account is not enabled for My Custody Case." },
+    { error: "This account is not enabled for Custody Folio." },
     { status: 403, headers: { "Cache-Control": "no-store" } }
   );
 }

@@ -1,6 +1,6 @@
 # Data Retention and Deletion Runbook
 
-My Custody Case should keep sensitive records only as long as users need them and as long as legitimate operational, security, legal, or backup constraints require. This runbook defines the production deletion and retention model to finalize with counsel before launch.
+Custody Folio should keep sensitive records only as long as users need them and as long as legitimate operational, security, legal, or backup constraints require. This runbook defines the production deletion and retention model to finalize with counsel before launch.
 
 This is product and operations guidance, not legal advice.
 

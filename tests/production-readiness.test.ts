@@ -7,8 +7,8 @@ import {
 
 const readyEnv = {
   STARTER_RESOURCE_PROFILE: "false",
-  NEXT_PUBLIC_APP_URL: "https://losttofound.org",
-  NEXT_PUBLIC_RECORDS_HOST: "losttofound.org",
+  NEXT_PUBLIC_APP_URL: "https://custodyfolio.com",
+  NEXT_PUBLIC_RECORDS_HOST: "custodyfolio.com",
   RECORDS_STORAGE_MODE: "supabase",
   NEXT_PUBLIC_RECORDS_STORAGE_MODE: "supabase",
   RECORDS_SIGNUPS_ENABLED: "false",
@@ -35,8 +35,8 @@ const readyEnv = {
   RECORDS_EVIDENCE_BUCKET: "records-evidence",
   MALWARE_SCAN_PROVIDER: "clamav",
   MALWARE_SCANNER_TESTED_AT: "2026-06-10",
-  SECURITY_CONTACT_EMAIL: "security@losttofound.org",
-  PRIVACY_POLICY_URL: "https://losttofound.org/privacy",
+  SECURITY_CONTACT_EMAIL: "security@custodyfolio.com",
+  PRIVACY_POLICY_URL: "https://custodyfolio.com/privacy",
   SECURITY_EVENT_SINK: "platform",
   EVIDENCE_MAX_FILE_BYTES: "10485760",
   EDGE_RATE_LIMITING_ENABLED: "true",
@@ -328,7 +328,7 @@ describe("production readiness", () => {
         DATA_RETENTION_POLICY_APPROVED: "false",
         INCIDENT_RESPONSE_PLAN_APPROVED: "false",
         LEGAL_REVIEW_APPROVED: "false",
-        PRIVACY_POLICY_URL: "http://losttofound.org/privacy",
+        PRIVACY_POLICY_URL: "http://custodyfolio.com/privacy",
       },
       "2026-06-15T00:00:00.000Z"
     );

@@ -15,7 +15,7 @@ install -d -m 0700 "${unit_dir}"
 
 cat >"${unit_dir}/losttofound-health-watchdog.service" <<EOF
 [Unit]
-Description=Recover and verify the My Custody Case malware scanner
+Description=Recover and verify the Custody Folio malware scanner
 After=docker.service
 Requires=docker.service
 
@@ -34,7 +34,7 @@ EOF
 
 cat >"${unit_dir}/losttofound-health-watchdog.timer" <<'EOF'
 [Unit]
-Description=Check the My Custody Case malware scanner every minute
+Description=Check the Custody Folio malware scanner every minute
 
 [Timer]
 OnBootSec=2min
@@ -51,4 +51,4 @@ chmod 0600 \
   "${unit_dir}/losttofound-health-watchdog.timer"
 "${systemctl_bin}" --user daemon-reload
 "${systemctl_bin}" --user enable --now losttofound-health-watchdog.timer
-echo "My Custody Case scanner watchdog installed."
+echo "Custody Folio scanner watchdog installed."

@@ -32,11 +32,11 @@ function makeRequest(
   body: unknown,
   input: { origin?: string; csrfHeader?: string; csrfCookie?: string } = {}
 ) {
-  return new NextRequest("https://losttofound.org/api/records/account/deletion-request", {
+  return new NextRequest("https://custodyfolio.com/api/records/account/deletion-request", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Origin: input.origin || "https://losttofound.org",
+      Origin: input.origin || "https://custodyfolio.com",
       Cookie: `l2f-records-access=test-access-token; ${recordsCsrfCookieName}=${input.csrfCookie || csrf}`,
       "X-L2F-CSRF": input.csrfHeader || csrf,
     },

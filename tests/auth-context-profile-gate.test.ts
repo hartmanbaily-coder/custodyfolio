@@ -25,7 +25,7 @@ import {
 } from "@/lib/records/authServer";
 
 function requestWithCookies(cookie: string) {
-  return new NextRequest("https://losttofound.org/api/records/dataset", {
+  return new NextRequest("https://custodyfolio.com/api/records/dataset", {
     headers: { Cookie: cookie },
   });
 }

@@ -18,7 +18,7 @@ vi.mock("@/lib/supabaseClient", () => ({
 vi.mock("@/lib/records/authServer", () => ({
   isSupabaseRecordsMode: () => true,
   isRecordsSignupEnabled,
-  recordsAppBaseUrl: () => "https://losttofound.org",
+  recordsAppBaseUrl: () => "https://custodyfolio.com",
   setRecordsPasswordRecoveryCookie,
   setRecordsSessionCookies,
 }));
@@ -56,11 +56,11 @@ describe("Supabase email callback", () => {
 
   it("confirms signup without creating a signed-in app session", async () => {
     const response = await GET(
-      new NextRequest("https://losttofound.org/auth/confirm?token_hash=hash&type=email")
+      new NextRequest("https://custodyfolio.com/auth/confirm?token_hash=hash&type=email")
     );
 
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("https://losttofound.org/records?auth=confirmed");
+    expect(response.headers.get("location")).toBe("https://custodyfolio.com/records?auth=confirmed");
     expect(verifyOtp).toHaveBeenCalledWith({ token_hash: "hash", type: "email" });
     expect(upsertRecordsProfile).toHaveBeenCalledWith({
       userId: user.id,
@@ -75,11 +75,11 @@ describe("Supabase email callback", () => {
 
   it("creates a short-lived recovery session only for recovery links", async () => {
     const response = await GET(
-      new NextRequest("https://losttofound.org/auth/confirm?token_hash=hash&type=recovery")
+      new NextRequest("https://custodyfolio.com/auth/confirm?token_hash=hash&type=recovery")
     );
 
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("https://losttofound.org/records?auth=recovery");
+    expect(response.headers.get("location")).toBe("https://custodyfolio.com/records?auth=recovery");
     expect(setRecordsSessionCookies).toHaveBeenCalledWith(
       response,
       session,
@@ -96,11 +96,11 @@ describe("Supabase email callback", () => {
 
   it("rejects unsupported email actions", async () => {
     const response = await GET(
-      new NextRequest("https://losttofound.org/auth/confirm?token_hash=hash&type=magiclink")
+      new NextRequest("https://custodyfolio.com/auth/confirm?token_hash=hash&type=magiclink")
     );
 
     expect(response.headers.get("location")).toBe(
-      "https://losttofound.org/records?auth=confirm-error"
+      "https://custodyfolio.com/records?auth=confirm-error"
     );
     expect(verifyOtp).not.toHaveBeenCalled();
   });
@@ -110,11 +110,11 @@ describe("Supabase email callback", () => {
     recordsProfileExists.mockResolvedValue(false);
 
     const response = await GET(
-      new NextRequest("https://losttofound.org/auth/confirm?token_hash=hash&type=signup")
+      new NextRequest("https://custodyfolio.com/auth/confirm?token_hash=hash&type=signup")
     );
 
     expect(response.headers.get("location")).toBe(
-      "https://losttofound.org/records?auth=confirm-error"
+      "https://custodyfolio.com/records?auth=confirm-error"
     );
     expect(verifyOtp).toHaveBeenCalled();
     expect(upsertRecordsProfile).not.toHaveBeenCalled();
@@ -130,11 +130,11 @@ describe("Supabase email callback", () => {
     });
 
     const response = await GET(
-      new NextRequest("https://losttofound.org/auth/confirm?token_hash=hash&type=recovery")
+      new NextRequest("https://custodyfolio.com/auth/confirm?token_hash=hash&type=recovery")
     );
 
     expect(response.headers.get("location")).toBe(
-      "https://losttofound.org/records?auth=confirm-error"
+      "https://custodyfolio.com/records?auth=confirm-error"
     );
     expect(setRecordsSessionCookies).not.toHaveBeenCalled();
     expect(setRecordsPasswordRecoveryCookie).not.toHaveBeenCalled();
@@ -148,11 +148,11 @@ describe("Supabase email callback", () => {
     recordsProfileExists.mockResolvedValue(false);
 
     const response = await GET(
-      new NextRequest("https://losttofound.org/auth/confirm?token_hash=hash&type=recovery")
+      new NextRequest("https://custodyfolio.com/auth/confirm?token_hash=hash&type=recovery")
     );
 
     expect(response.headers.get("location")).toBe(
-      "https://losttofound.org/records?auth=confirm-error"
+      "https://custodyfolio.com/records?auth=confirm-error"
     );
     expect(recordsProfileExists).toHaveBeenCalledWith(user.id, session.access_token);
     expect(setRecordsSessionCookies).not.toHaveBeenCalled();
@@ -172,11 +172,11 @@ describe("Supabase email callback", () => {
     });
 
     const response = await GET(
-      new NextRequest("https://losttofound.org/auth/confirm?token_hash=hash&type=recovery")
+      new NextRequest("https://custodyfolio.com/auth/confirm?token_hash=hash&type=recovery")
     );
 
     expect(response.headers.get("location")).toBe(
-      "https://losttofound.org/records?auth=confirm-error"
+      "https://custodyfolio.com/records?auth=confirm-error"
     );
     expect(setRecordsSessionCookies).not.toHaveBeenCalled();
     expect(setRecordsPasswordRecoveryCookie).not.toHaveBeenCalled();

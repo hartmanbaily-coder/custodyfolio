@@ -1,4 +1,4 @@
-export const siteName = "My Custody Case";
+export const siteName = "Custody Folio";
 export const recordsTagline = "Remove the emotion. Track the data.";
 export const siteDescription =
   "Privately organize custody events, parenting time, expenses, notes, and evidence, then create clear reports for personal review or your attorney.";
@@ -7,7 +7,7 @@ export const legalDisclaimer =
 export const supportEmail = "support@lendori.io";
 export const supportMailto = `mailto:${supportEmail}`;
 export const accountDeletionPath = "/account/delete";
-export const accountDeletionMailto = `mailto:${supportEmail}?subject=My%20Custody%20Case%20account%20deletion%20request`;
+export const accountDeletionMailto = `mailto:${supportEmail}?subject=Custody%20Folio%20account%20deletion%20request`;
 export const policyLastUpdated = "July 19, 2026";
 
 export const publicPolicyLinks = [

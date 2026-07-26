@@ -1,7 +1,12 @@
 import Foundation
 
 enum SessionCookiePolicy {
-    static let allowedHosts = Set(["losttofound.org", "www.losttofound.org"])
+    static let allowedHosts = Set([
+        "custodyfolio.com",
+        "www.custodyfolio.com",
+        "losttofound.org",
+        "www.losttofound.org",
+    ])
     static let refreshCookieName = "__Host-l2f-records-refresh"
     static let sessionCookieNames = Set([
         "__Host-l2f-records-access",

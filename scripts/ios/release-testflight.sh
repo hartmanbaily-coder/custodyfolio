@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Archive and upload the native My Custody Case shell to App Store Connect.
+# Archive and upload the native Custody Folio shell to App Store Connect.
 # Xcode chooses an unused build number during upload, so a completed TestFlight
 # build is never accidentally re-uploaded with the same version/build string.
 
@@ -108,5 +108,5 @@ xcodebuild \
 
 echo
 echo "Upload submitted. App Store Connect must finish processing before the build appears in TestFlight."
-echo "Open Apps > My Custody Case: Organizer > TestFlight > iOS > Build Uploads and wait for Complete."
+echo "Open Apps > Custody Folio: Organizer > TestFlight > iOS > Build Uploads and wait for Complete."
 echo "The Internal Testing group will receive it automatically only after Automatic distribution is enabled in App Store Connect."

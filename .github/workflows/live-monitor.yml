@@ -1,4 +1,4 @@
-name: My Custody Case Live Monitor
+name: Custody Folio Live Monitor
 
 on:
   schedule:
@@ -13,7 +13,7 @@ jobs:
   monitor:
     runs-on: ubuntu-latest
     env:
-      RECORDS_APP_BASE_URL: https://losttofound.org
+      RECORDS_APP_BASE_URL: https://custodyfolio.com
     steps:
       - name: Check live records app
         run: |
@@ -159,6 +159,6 @@ jobs:
           fi
 
           gh issue create \
-            --title "My Custody Case live monitor failed" \
+            --title "Custody Folio live monitor failed" \
             --label "live-monitor" \
             --body "The scheduled live monitor failed. Review the workflow run: ${RUN_URL}"

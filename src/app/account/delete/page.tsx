@@ -32,7 +32,7 @@ export default function AccountDeletePage() {
   return (
     <PolicyPage
       title="Delete Account"
-      description="Permanently delete your My Custody Case account and associated records."
+      description="Permanently delete your Custody Folio account and associated records."
       sections={sections}
     >
       <AccountDeletionRequest />
@@ -42,7 +42,7 @@ export default function AccountDeletePage() {
         <p className="mt-3">
           Self-service deletion requires a verified sign-in. If you cannot sign in, contact support from the email address connected to the account.
           Use a short message such as
-          <span className="font-medium text-slate-800"> Please delete my account for My Custody Case.</span>{" "}
+          <span className="font-medium text-slate-800"> Please delete my account for Custody Folio.</span>{" "}
           Support will help restore access or verify an assisted deletion.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">

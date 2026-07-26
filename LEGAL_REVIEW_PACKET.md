@@ -6,7 +6,7 @@ This packet is not legal advice. It packages the current product materials for q
 
 ## Product Scope To Review
 
-My Custody Case is a privacy-first records workspace for parents or guardians to organize:
+Custody Folio is a privacy-first records workspace for parents or guardians to organize:
 
 - custody and parenting-time schedules
 - exchange logs and issues

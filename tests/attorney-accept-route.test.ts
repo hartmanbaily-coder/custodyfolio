@@ -21,10 +21,10 @@ import { POST } from "@/app/api/records/attorney/accept/route";
 
 function request(token: string) {
   const csrf = "csrf-token-for-accept-test";
-  return new NextRequest("https://losttofound.org/api/records/attorney/accept", {
+  return new NextRequest("https://custodyfolio.com/api/records/attorney/accept", {
     method: "POST",
     headers: {
-      Origin: "https://losttofound.org",
+      Origin: "https://custodyfolio.com",
       Cookie: `l2f-attorney-invite=${token}; ${recordsCsrfCookieName}=${csrf}`,
       "X-L2F-CSRF": csrf,
     },
