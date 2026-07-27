@@ -13,6 +13,7 @@
     "test:unit": "vitest run",
     "test:deploy": "bash deploy/production/test-health-recovery.sh",
     "test:e2e": "playwright test",
+    "test:e2e:webkit": "playwright test --config=playwright.webkit.config.ts",
     "security:audit": "npm audit --omit=dev --audit-level=high",
     "security:secrets": "node scripts/check-secrets.mjs",
     "security:scan": "npm run security:secrets && npm run security:audit",

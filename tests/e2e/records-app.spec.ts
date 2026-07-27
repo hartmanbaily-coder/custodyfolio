@@ -910,12 +910,65 @@ test("iPhone record tabs keep every tile and data-entry control inside the works
       });
 
       expect(layoutOverflow, `${tab} has a tile or control outside its panel at ${width}px`).toEqual([]);
+
+      const dateControlOverflow = await workspace.locator('input[type="date"]:visible').evaluateAll((inputs) =>
+        inputs.flatMap((input) => {
+          const element = input as HTMLInputElement;
+          const rect = element.getBoundingClientRect();
+          const container = element.closest("label") || element.closest("section");
+          const bounds = container?.getBoundingClientRect();
+          const style = window.getComputedStyle(element);
+          const outsideContainer = Boolean(
+            bounds && (rect.left < bounds.left - 1 || rect.right > bounds.right + 1)
+          );
+          const clipsNativeContents = ["hidden", "clip"].includes(style.overflowX);
+          const hasShrinkableInlineSize = Number.parseFloat(style.minInlineSize || style.minWidth) === 0;
+
+          if (!outsideContainer && clipsNativeContents && hasShrinkableInlineSize) return [];
+
+          return [{
+            name: element.name || element.getAttribute("aria-label") || "date",
+            elementLeft: rect.left,
+            elementRight: rect.right,
+            containerLeft: bounds?.left,
+            containerRight: bounds?.right,
+            minInlineSize: style.minInlineSize,
+            overflowX: style.overflowX,
+          }];
+        })
+      );
+      expect(
+        dateControlOverflow,
+        `${tab} has a native date control that can escape its field at ${width}px`
+      ).toEqual([]);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth),
         `${tab} widens the page at ${width}px`
       ).toBe(width);
     }
   }
+
+  await page.getByRole("button", { name: "Options", exact: true }).click();
+  const dateOptionsOverflow = await page
+    .locator('#mobile-workspace-options input[type="date"]:visible')
+    .evaluateAll((inputs) =>
+      inputs.flatMap((input) => {
+        const element = input as HTMLInputElement;
+        const rect = element.getBoundingClientRect();
+        const panel = element.closest("#mobile-workspace-options");
+        const bounds = panel?.getBoundingClientRect();
+        if (bounds && rect.left >= bounds.left - 1 && rect.right <= bounds.right + 1) return [];
+        return [{
+          name: element.getAttribute("aria-label") || "date",
+          elementLeft: rect.left,
+          elementRight: rect.right,
+          panelLeft: bounds?.left,
+          panelRight: bounds?.right,
+        }];
+      })
+    );
+  expect(dateOptionsOverflow, "mobile date-range controls escape the options panel").toEqual([]);
+  await page.getByRole("button", { name: "Done", exact: true }).click();
 
   await nav.getByRole("button").filter({ hasText: "Notes" }).click();
   const noteCard = page.locator("section").filter({
@@ -1050,11 +1103,11 @@ test("records account recovery and deletion paths are reachable", async ({ page 
   await expect(page.getByText("Signed in as synthetic-reviewer@example.test.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Email support instead" })).toHaveAttribute(
     "href",
-    "mailto:support@lendori.io?subject=Custody%20Folio%20account%20deletion%20request"
+    "mailto:support@custodyfolio.com?subject=Custody%20Folio%20account%20deletion%20request"
   );
   await expect(page.getByRole("link", { name: "Email deletion support" })).toHaveAttribute(
     "href",
-    "mailto:support@lendori.io?subject=Custody%20Folio%20account%20deletion%20request"
+    "mailto:support@custodyfolio.com?subject=Custody%20Folio%20account%20deletion%20request"
   );
   await expect(page.getByText("What happens when you confirm")).toBeVisible();
   const permanentDelete = page.getByRole("button", { name: "Permanently delete my account" });

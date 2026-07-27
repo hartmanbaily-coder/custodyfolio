@@ -3,7 +3,9 @@ import SwiftUI
 enum AppBrand {
     static let name = "Custody Folio"
     static let tagline = "Remove the emotion. Track the data."
-    static let supportEmail = "support@lendori.io"
+    static let supportEmail = "support@custodyfolio.com"
+    static let privacyEmail = "privacy@custodyfolio.com"
+    static let securityEmail = "security@custodyfolio.com"
     static let accountDeletionRequestURL = URL(
         string: "https://custodyfolio.com/account/delete"
     )!
@@ -81,7 +83,7 @@ struct SupportView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Need account, privacy, deletion, accessibility, or product help?")
                         .font(.headline)
-                    Text("Email support without putting sensitive case details in the subject line.")
+                    Text("Choose the appropriate inbox without putting sensitive case details in the subject line.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -90,7 +92,15 @@ struct SupportView: View {
 
             Section("Contact") {
                 Link(destination: URL(string: "mailto:\(AppBrand.supportEmail)")!) {
-                    Label(AppBrand.supportEmail, systemImage: "envelope")
+                    Label("Support — \(AppBrand.supportEmail)", systemImage: "envelope")
+                }
+
+                Link(destination: URL(string: "mailto:\(AppBrand.privacyEmail)")!) {
+                    Label("Privacy — \(AppBrand.privacyEmail)", systemImage: "hand.raised")
+                }
+
+                Link(destination: URL(string: "mailto:\(AppBrand.securityEmail)")!) {
+                    Label("Security — \(AppBrand.securityEmail)", systemImage: "lock.shield")
                 }
 
                 Link(destination: URL(string: "https://custodyfolio.com/contact")!) {

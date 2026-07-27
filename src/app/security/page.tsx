@@ -1,5 +1,5 @@
 import { PolicyPage, type PolicySection } from "@/components/PolicyPage";
-import { supportEmail, supportMailto } from "@/lib/site";
+import { securityEmail, securityMailto } from "@/lib/site";
 
 const sections: PolicySection[] = [
   {
@@ -46,8 +46,8 @@ export default function SecurityPage() {
         <h2 className="text-base font-semibold text-slate-950">Report a Security Issue</h2>
         <p className="mt-2">
           Email security reports to{" "}
-          <a href={supportMailto} className="font-mono font-semibold text-emerald-700 underline underline-offset-2">
-            {supportEmail}
+          <a href={securityMailto} className="font-mono font-semibold text-emerald-700 underline underline-offset-2">
+            {securityEmail}
           </a>
           . Do not include sensitive case details unless we ask for them.
         </p>

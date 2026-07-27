@@ -8,7 +8,7 @@ The current MVP can run in local demo mode or Supabase-backed mode. It must not 
 
 ## Vulnerability Reporting
 
-Responsible disclosure email placeholder: `security@example.invalid`
+Responsible disclosure email: `security@custodyfolio.com`
 
 Please include affected route, impact, reproduction steps, and whether sensitive data may be involved. Do not include real custody, child, court, payment, or evidence content in reports.
 

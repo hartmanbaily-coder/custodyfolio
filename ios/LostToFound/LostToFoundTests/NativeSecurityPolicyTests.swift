@@ -102,7 +102,7 @@ final class NativeSecurityPolicyTests: XCTestCase {
             .openExternally
         )
         XCTAssertEqual(
-            WorkspaceNavigationPolicy.decision(for: try XCTUnwrap(URL(string: "mailto:support@lendori.io"))),
+            WorkspaceNavigationPolicy.decision(for: try XCTUnwrap(URL(string: "mailto:support@custodyfolio.com"))),
             .openExternally
         )
         XCTAssertEqual(

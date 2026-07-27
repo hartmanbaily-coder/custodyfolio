@@ -51,7 +51,9 @@ describe("web and iOS personal-data scrub", () => {
       for (const email of emails) {
         const normalized = email.toLowerCase();
         const approved =
-          normalized === "support@lendori.io" ||
+          normalized === "support@custodyfolio.com" ||
+          normalized === "privacy@custodyfolio.com" ||
+          normalized === "security@custodyfolio.com" ||
           normalized.endsWith("@example.test") ||
           normalized.endsWith("@example.invalid");
         if (!approved) findings.push(`${label}: unapproved email domain`);

@@ -52,10 +52,10 @@ For webhook sinks, the script requires a successful HTTPS response. For platform
 
 If the workflow fails, it opens or comments on a GitHub issue labeled `live-monitor`. This provides a basic live drift alert, but it does not replace the required production monitoring channels above. Keep `SECURITY_MONITORING_ENABLED=false` until the owner has confirmed the alert channel is watched and the platform/SIEM/webhook event sink is visible in production logs.
 
-Current verified routing as of 2026-07-16:
+Current verified routing as of 2026-07-26:
 
-- `security@losttofound.org` forwards through Cloudflare Email Routing to the verified operator Gmail mailbox.
-- The required Cloudflare MX, SPF, and DKIM records are managed in the `losttofound.org` zone.
+- `security@custodyfolio.com` is hosted through the iCloud+ Custom Email Domain and opens in the Custody Folio iCloud mailbox.
+- The required iCloud Mail MX, SPF, DKIM, and ownership-verification records are managed in the `custodyfolio.com` Cloudflare zone.
 - The scheduled GitHub `live-monitor` workflow is active and its recent runs are passing.
 - A synthetic failed login produced a sanitized `auth_login_failed` event in the production Docker platform logs.
 

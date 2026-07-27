@@ -1,7 +1,15 @@
 import Link from "next/link";
 
 import { PolicyPage, type PolicySection } from "@/components/PolicyPage";
-import { accountDeletionPath, supportEmail, supportMailto } from "@/lib/site";
+import {
+  accountDeletionPath,
+  privacyEmail,
+  privacyMailto,
+  securityEmail,
+  securityMailto,
+  supportEmail,
+  supportMailto,
+} from "@/lib/site";
 
 const sections: PolicySection[] = [
   {
@@ -14,14 +22,14 @@ const sections: PolicySection[] = [
   {
     title: "Privacy and deletion",
     body: [
-      "Use the Account Deletion page to delete your account. Contact support for access, correction, export, or privacy questions.",
+      "Use the Account Deletion page to delete your account. Contact the privacy inbox for access, correction, export, or privacy questions.",
       "We may verify your identity before acting on an account or privacy request.",
     ],
   },
   {
     title: "Security",
     body: [
-      "Contact support promptly if you suspect unauthorized access or discover a security vulnerability.",
+      "Contact the security inbox promptly if you suspect unauthorized access or discover a security vulnerability.",
       "Include the affected page, approximate time, and device without sending private records.",
     ],
   },
@@ -44,11 +52,25 @@ export default function ContactPage() {
       sections={sections}
     >
       <section className="rounded-lg border border-slate-200 bg-white p-6 text-sm leading-6 text-slate-600">
-        <h2 className="text-base font-semibold text-slate-950">Support Email</h2>
+        <h2 className="text-base font-semibold text-slate-950">Contact Emails</h2>
         <p className="mt-2">
-          Email{" "}
+          Product and account support:{" "}
           <a href={supportMailto} className="font-mono font-semibold text-emerald-700 underline underline-offset-2">
             {supportEmail}
+          </a>
+          .
+        </p>
+        <p className="mt-2">
+          Privacy and data requests:{" "}
+          <a href={privacyMailto} className="font-mono font-semibold text-emerald-700 underline underline-offset-2">
+            {privacyEmail}
+          </a>
+          .
+        </p>
+        <p className="mt-2">
+          Security reports:{" "}
+          <a href={securityMailto} className="font-mono font-semibold text-emerald-700 underline underline-offset-2">
+            {securityEmail}
           </a>
           .
         </p>

@@ -18,8 +18,15 @@ const sections: PolicySection[] = [
   {
     title: "Cloudflare",
     body: [
-      "Provides website traffic protection, domain services, and email routing.",
-      "May process IP addresses, web request information, security events, and email routing information.",
+      "Provides website traffic protection, DNS, and domain services.",
+      "May process IP addresses, web request information, and security events.",
+    ],
+  },
+  {
+    title: "Apple iCloud Mail",
+    body: [
+      "Provides the Custody Folio support, privacy, and security mailboxes.",
+      "May process the sender address, message content, attachments, and delivery information when someone contacts those mailboxes.",
     ],
   },
   {
