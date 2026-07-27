@@ -298,7 +298,7 @@ export default function AttorneyAccessPanel({
       </div>
 
       <div className="mt-5">
-        <h3 className="text-sm font-semibold text-slate-900">Privacy-safe access history</h3>
+        <h3 className="text-sm font-semibold text-slate-900">Privacy safe access history</h3>
         <ul className="mt-2 space-y-2 text-xs text-slate-600">
           {state?.events.length ? state.events.map((event, index) => (
             <li key={`${event.createdAt}-${index}`} className="rounded border border-slate-200 px-3 py-2">
