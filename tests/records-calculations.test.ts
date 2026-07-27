@@ -442,6 +442,16 @@ describe("privacy and safety helpers", () => {
     expect(packet.summaries.join(" ")).not.toContain("marked for review");
   });
 
+  it("uses simple caregiver day counters instead of calendar graphs", () => {
+    const dataset = createRecordsSeed();
+    const packet = buildSectionExportPacket(dataset, demoUserId, demoCaseId, range, "calendar");
+    const metrics = new Map(packet.metrics.map((metric) => [metric.label, metric.value]));
+
+    expect(metrics.get("Parent A days")).toBeGreaterThan(0);
+    expect(metrics.get("Parent B days")).toBeGreaterThan(0);
+    expect(packet.charts).toEqual([]);
+  });
+
   it("exports incident timeline rows from timeline-visible dated record sources", () => {
     const dataset = createRecordsSeed();
     const preview = buildReportPreview(dataset, demoUserId, demoCaseId, range, "incident_timeline");

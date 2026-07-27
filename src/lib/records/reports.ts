@@ -523,6 +523,7 @@ export function buildSectionExportPacket(
   const supportStats = calculateChildSupportStats(payments, range);
   const expenseStats = calculateExpenseStats(expenses, range);
   const attentionEvents = events.filter((event) => event.severity === "attention" || event.severity === "critical");
+  const custodyDayCounts = countBy(custodyAssignments, (item) => item.caregiverLabel);
 
   const base = {
     id,
@@ -541,24 +542,15 @@ export function buildSectionExportPacket(
         `${attentionEvents.length} dated event${attentionEvents.length === 1 ? "" : "s"} in this range are classified as recorded issues based on status/category.`,
       ],
       metrics: [
-        { label: "Custody days", value: custodyAssignments.length, detail: "Color coded calendar entries" },
+        ...custodyDayCounts.map((item) => ({
+          label: `${item.label} days`,
+          value: item.value,
+          detail: "Calendar days in the selected range",
+        })),
         { label: "Dated records", value: events.length, detail: "Timeline visible sources" },
         { label: "Recorded issues", value: attentionEvents.length, detail: "Attention or critical severity" },
       ],
-      charts: [
-        {
-          title: "Custody days by caregiver label",
-          description: "Count of color coded custody calendar days in the selected range.",
-          unit: "days",
-          rows: countBy(custodyAssignments, (item) => item.caregiverLabel),
-        },
-        {
-          title: "Calendar records by source",
-          description: "Dated exchange, note, file, support, and expense records shown on the calendar.",
-          unit: "records",
-          rows: countBy(events, (event) => labelEventType(event.type)),
-        },
-      ],
+      charts: [],
       tables: [
         {
           title: "Custody day assignments",

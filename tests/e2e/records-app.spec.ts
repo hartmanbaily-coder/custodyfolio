@@ -82,6 +82,9 @@ test("records login and report workflow", async ({ page }) => {
   await page.getByLabel("Exchange time").fill("17:00");
   await page.getByRole("button", { name: "Save color" }).click();
   await expect(page.getByRole("status")).toContainText("Custody day color saved successfully");
+  await expect(page.getByText("Parent C days", { exact: true })).toBeVisible();
+  await expect(page.getByText("Custody days by caregiver label", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Calendar records by source", { exact: true })).toHaveCount(0);
   const paintedDay = page.getByRole("button", { name: `Edit calendar day ${currentCalendar.today}` });
   await expect(paintedDay).toBeVisible();
   await expect(paintedDay.getByText("Parent C", { exact: true })).toBeVisible();
@@ -130,23 +133,24 @@ test("records login and report workflow", async ({ page }) => {
   const scheduleSetup = page.locator("details").filter({ hasText: "Optional calendar schedule setup" });
   await expect(scheduleSetup).not.toHaveAttribute("open", "");
 
-  const messageImportForm = page.getByTestId("message-archive-upload-form");
-  await messageImportForm.locator("input[name=archive]").setInputFiles({
+  const fileImportForm = page.getByTestId("file-upload-form");
+  await fileImportForm.getByLabel("File category").selectOption("message_archive");
+  await fileImportForm.locator("input[name=files]").setInputFiles({
     name: "message-archive.html",
     mimeType: "text/html",
     buffer: Buffer.from("<html><body>Synthetic reviewed message archive</body></html>"),
   });
-  await messageImportForm.getByRole("button", { name: "Save message file" }).click();
-  await expect(page.getByText("1 message file record saved to Files.")).toBeVisible();
+  await fileImportForm.getByRole("button", { name: "Save files to Files" }).click();
+  await expect(page.getByText("1 file record saved to Files.")).toBeVisible();
 
-  const documentImportForm = page.getByTestId("document-upload-form");
-  await documentImportForm.locator("input[name=files]").setInputFiles({
+  await fileImportForm.getByLabel("File category").selectOption("document");
+  await fileImportForm.locator("input[name=files]").setInputFiles({
     name: "imported-document.txt",
     mimeType: "text/plain",
     buffer: Buffer.from("Synthetic imported document"),
   });
-  await documentImportForm.locator("textarea[name=description]").fill("Imported through Document intake");
-  await documentImportForm.getByRole("button", { name: "Save files to Files" }).click();
+  await fileImportForm.locator("textarea[name=description]").fill("Imported through Document intake");
+  await fileImportForm.getByRole("button", { name: "Save files to Files" }).click();
   await expect(page.getByText("1 file record saved to Files.")).toBeVisible();
 
   await page.locator("nav").getByRole("button", { name: /^Files/ }).click();
@@ -911,7 +915,9 @@ test("iPhone record tabs keep every tile and data-entry control inside the works
 
       expect(layoutOverflow, `${tab} has a tile or control outside its panel at ${width}px`).toEqual([]);
 
-      const dateControlOverflow = await workspace.locator('input[type="date"]:visible').evaluateAll((inputs) =>
+      const dateControlOverflow = await workspace
+        .locator('input[type="date"]:visible, input[type="time"]:visible, input[type="datetime-local"]:visible')
+        .evaluateAll((inputs) =>
         inputs.flatMap((input) => {
           const element = input as HTMLInputElement;
           const rect = element.getBoundingClientRect();
@@ -927,7 +933,7 @@ test("iPhone record tabs keep every tile and data-entry control inside the works
           if (!outsideContainer && clipsNativeContents && hasShrinkableInlineSize) return [];
 
           return [{
-            name: element.name || element.getAttribute("aria-label") || "date",
+            name: element.name || element.getAttribute("aria-label") || element.type,
             elementLeft: rect.left,
             elementRight: rect.right,
             containerLeft: bounds?.left,
@@ -939,7 +945,7 @@ test("iPhone record tabs keep every tile and data-entry control inside the works
       );
       expect(
         dateControlOverflow,
-        `${tab} has a native date control that can escape its field at ${width}px`
+        `${tab} has a native date or time control that can escape its field at ${width}px`
       ).toEqual([]);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth),

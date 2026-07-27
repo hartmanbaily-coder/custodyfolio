@@ -135,6 +135,7 @@ import {
   assertEvidenceItemAccess,
   isEvidenceStoragePathOwnedByUser,
 } from "@/lib/records/evidenceStorage";
+import { getRecordsCsrfToken } from "@/lib/records/attorneyClient";
 
 const recordsPrivacyNote =
   "Records are private by default. Use labels such as Child 1 and Parent B instead of real names.";
@@ -4003,9 +4004,9 @@ function ImportView({
   recordsStorageMode: "local" | "supabase";
   flash: (message: string) => void;
 }) {
-  const [messageSaving, setMessageSaving] = useState(false);
   const [quickIssueSaving, setQuickIssueSaving] = useState(false);
-  const [documentSaving, setDocumentSaving] = useState(false);
+  const [fileSaving, setFileSaving] = useState(false);
+  const [fileCategory, setFileCategory] = useState<"document" | "message_archive">("document");
   const [setupSchedulePreset, setSetupSchedulePreset] =
     useState<ParentingSchedulePresetId>("three_four_four_three_flip");
   const selectedSetupPreset =
@@ -4078,40 +4079,6 @@ function ImportView({
     }
   }
 
-  async function saveMessageArchive(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const file = formData.get("archive");
-    if (!(file instanceof File) || file.size === 0) {
-      flash("Choose a CSV, TXT, or HTML message file.");
-      return;
-    }
-
-    setMessageSaving(true);
-    try {
-      const saved = await saveImportedEvidenceFiles({
-        files: [file],
-        evidenceDate: text(formData, "evidenceDate") || setupToday,
-        description:
-          text(formData, "description") || `Imported message archive: ${file.name}`,
-        tags: ["message archive"],
-        includeInReports: formData.get("includeInReports") === "on",
-        auditSummary: "Message archive uploaded directly into the private file index.",
-      });
-      form.reset();
-      flash(
-        recordsStorageMode === "supabase"
-          ? `${saved} message file${saved === 1 ? "" : "s"} uploaded to Files.`
-          : `${saved} message file record${saved === 1 ? "" : "s"} saved to Files.`
-      );
-    } catch (error) {
-      flash(error instanceof Error ? error.message : "Message upload failed.");
-    } finally {
-      setMessageSaving(false);
-    }
-  }
-
   async function verifyCloudEvidenceRecords(records: RecordsDataset["evidenceItems"]) {
     if (recordsStorageMode !== "supabase") return;
 
@@ -4148,71 +4115,93 @@ function ImportView({
     auditSummary: string;
   }) {
     const evidenceRecords: RecordsDataset["evidenceItems"] = [];
+    const temporaryUploads: Array<{ file: File; evidenceId: string }> = [];
     const now = nowIso();
+    let metadataConfirmed = false;
 
-    for (const file of input.files) {
-      const normalizedFileType = normalizeEvidenceFileType({
-        originalFileName: file.name,
-        fileType: file.type,
-      });
-      const validation = validateEvidenceFile({
-        originalFileName: file.name,
-        fileType: normalizedFileType,
-        fileSize: file.size,
-      });
-      if (!validation.ok) throw new Error(`${file.name}: ${validation.error}`);
+    try {
+      for (const file of input.files) {
+        const normalizedFileType = normalizeEvidenceFileType({
+          originalFileName: file.name,
+          fileType: file.type,
+        });
+        const validation = validateEvidenceFile({
+          originalFileName: file.name,
+          fileType: normalizedFileType,
+          fileSize: file.size,
+        });
+        if (!validation.ok) throw new Error(`${file.name}: ${validation.error}`);
 
-      const id = createId("evidence");
-      const uploaded =
-        recordsStorageMode === "supabase" ? await uploadImportEvidenceFile(file, id) : undefined;
+        const id = createId("evidence");
+        const uploaded =
+          recordsStorageMode === "supabase" ? await uploadImportEvidenceFile(file, id) : undefined;
+        if (uploaded) temporaryUploads.push({ file, evidenceId: id });
 
-      evidenceRecords.push({
-        id,
-        userId,
-        caseId,
-        originalFileName: file.name,
-        storedFileName:
-          uploaded?.storedFileName || buildStoredEvidenceName({ id, originalFileName: file.name }),
-        fileType: uploaded?.fileType || normalizedFileType,
-        fileSize: file.size,
-        storageBucket: uploaded?.storageBucket,
-        storagePath: uploaded?.storagePath,
-        storageUploadedAt: uploaded?.storageUploadedAt,
-        storageSha256: uploaded?.storageSha256,
-        uploadedAt: now,
-        evidenceDate: input.evidenceDate || now.slice(0, 10),
-        description: input.description || `Imported file: ${file.name}`,
-        tags: input.tags,
-        includeInReports: input.includeInReports,
-        reviewStatus: "reviewed",
-        reviewedAt: now,
-        malwareScanStatus: uploaded?.malwareScanStatus || "pending",
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-
-    await updateDataset((current) =>
-      withAudit(
-        {
-          ...current,
-          evidenceItems: [...evidenceRecords, ...current.evidenceItems],
-        },
-        {
+        evidenceRecords.push({
+          id,
           userId,
           caseId,
-          action: "uploaded",
-          entityType: "evidenceItem",
-          entityId: evidenceRecords.length === 1 ? evidenceRecords[0].id : createId("evidence-batch"),
-          metadataSummary: input.auditSummary,
+          originalFileName: file.name,
+          storedFileName:
+            uploaded?.storedFileName || buildStoredEvidenceName({ id, originalFileName: file.name }),
+          fileType: uploaded?.fileType || normalizedFileType,
+          fileSize: file.size,
+          storageBucket: uploaded?.storageBucket,
+          storagePath: uploaded?.storagePath,
+          storageUploadedAt: uploaded?.storageUploadedAt,
+          storageSha256: uploaded?.storageSha256,
+          uploadedAt: now,
+          evidenceDate: input.evidenceDate || now.slice(0, 10),
+          description: input.description || `Imported file: ${file.name}`,
+          tags: input.tags,
+          includeInReports: input.includeInReports,
+          reviewStatus: "reviewed",
+          reviewedAt: now,
+          malwareScanStatus: uploaded?.malwareScanStatus || "pending",
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      await updateDataset((current) =>
+        withAudit(
+          {
+            ...current,
+            evidenceItems: [...evidenceRecords, ...current.evidenceItems],
+          },
+          {
+            userId,
+            caseId,
+            action: "uploaded",
+            entityType: "evidenceItem",
+            entityId: evidenceRecords.length === 1 ? evidenceRecords[0].id : createId("evidence-batch"),
+            metadataSummary: input.auditSummary,
+          }
+        )
+      );
+      await verifyCloudEvidenceRecords(evidenceRecords);
+      metadataConfirmed = true;
+      return evidenceRecords.length;
+    } finally {
+      if (!metadataConfirmed && temporaryUploads.length > 0) {
+        const csrf = await getRecordsCsrfToken().catch(() => "");
+        if (csrf) {
+          await Promise.all(
+            temporaryUploads.map(({ file, evidenceId }) =>
+              fetch("/api/records/evidence/cleanup-upload", {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "Content-Type": "application/json", "X-L2F-CSRF": csrf },
+                body: JSON.stringify({ caseId, evidenceId, originalFileName: file.name }),
+              }).catch(() => undefined)
+            )
+          );
         }
-      )
-    );
-    await verifyCloudEvidenceRecords(evidenceRecords);
-    return evidenceRecords.length;
+      }
+    }
   }
 
-  async function saveDocumentFiles(event: FormEvent<HTMLFormElement>) {
+  async function saveFiles(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -4224,29 +4213,38 @@ function ImportView({
       return;
     }
 
-    setDocumentSaving(true);
+    const categoryLabel = fileCategory === "message_archive" ? "message archive" : "document or photo";
+    const categoryTag = fileCategory === "message_archive" ? "message archive" : "document";
+    setFileSaving(true);
     try {
       const saved = await saveImportedEvidenceFiles({
         files,
         evidenceDate: text(formData, "evidenceDate") || setupToday,
-        description: text(formData, "description"),
-        tags: parseTags(text(formData, "tags") || "document"),
+        description:
+          text(formData, "description") ||
+          (fileCategory === "message_archive" && files.length === 1
+            ? `Imported message archive: ${files[0].name}`
+            : ""),
+        tags: Array.from(
+          new Set([categoryTag, ...parseTags(text(formData, "tags"))])
+        ),
         includeInReports: formData.get("includeInReports") === "on",
         auditSummary:
           files.length === 1
-            ? "Document uploaded directly into the private file index."
-            : `${files.length} documents uploaded directly into the private file index.`,
+            ? `${categoryLabel} uploaded directly into the private file index.`
+            : `${files.length} ${categoryLabel} files uploaded directly into the private file index.`,
       });
       form.reset();
+      setFileCategory("document");
       flash(
         recordsStorageMode === "supabase"
           ? `${saved} file${saved === 1 ? "" : "s"} uploaded to Files and confirmed.`
           : `${saved} file record${saved === 1 ? "" : "s"} saved to Files.`
       );
     } catch (error) {
-      flash(error instanceof Error ? error.message : "Document import failed.");
+      flash(error instanceof Error ? error.message : "File upload failed.");
     } finally {
-      setDocumentSaving(false);
+      setFileSaving(false);
     }
   }
 
@@ -4511,69 +4509,60 @@ function ImportView({
           </form>
         </Panel>
 
-        <Panel title="Upload message archive" action="CSV, TXT, or HTML">
+        <Panel title="Upload files" action={recordsStorageMode === "supabase" ? "Private storage" : "Metadata only"}>
           <p className="mb-3 text-xs leading-5 text-slate-500">
-            Store the original message file directly in Files without parsing or rewriting it.
+            Add documents, photos, or message archives here. Choose the category first so the file is labeled correctly in Files.
           </p>
-          <form data-testid="message-archive-upload-form" onSubmit={saveMessageArchive} className="grid gap-3">
-            <Field label="Message file">
-              <input name="archive" type="file" className="input" accept=".csv,.txt,.html,text/csv,text/plain,text/html" />
+          <form data-testid="file-upload-form" onSubmit={saveFiles} className="grid gap-3">
+            <Field label="File category">
+              <select
+                name="fileCategory"
+                className="input"
+                value={fileCategory}
+                onChange={(event) =>
+                  setFileCategory(event.target.value as "document" | "message_archive")
+                }
+              >
+                <option value="document">Document or photo</option>
+                <option value="message_archive">Message archive</option>
+              </select>
             </Field>
-            <Field label="Record date">
-              <input name="evidenceDate" type="date" className="input" defaultValue={setupToday} />
-            </Field>
-            <Field label="Description (optional)">
-              <textarea
-                name="description"
-                className="input min-h-20"
-              />
-            </Field>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input name="includeInReports" type="checkbox" defaultChecked />
-              Include in report file index
-            </label>
-            <button className="btn-primary" type="submit" disabled={messageSaving}>
-              {messageSaving
-                ? "Uploading message file..."
-                : recordsStorageMode === "supabase"
-                  ? "Upload message file"
-                  : "Save message file"}
-            </button>
-          </form>
-        </Panel>
-
-        <Panel title="Upload documents" action={recordsStorageMode === "supabase" ? "Private storage" : "Metadata only"}>
-          <p className="mb-3 text-xs leading-5 text-slate-500">
-            Upload reviewed documents directly to Files. Supported types: DOCX, PDF, PNG, JPEG, HEIC/HEIF, TXT, and CSV.
-          </p>
-          <form data-testid="document-upload-form" onSubmit={saveDocumentFiles} className="grid gap-3">
             <Field label="Files">
               <input
                 name="files"
                 type="file"
                 multiple
                 className="input"
-                accept=".docx,.pdf,.png,.jpg,.jpeg,.heic,.heif,.txt,.csv"
+                accept={
+                  fileCategory === "message_archive"
+                    ? ".csv,.txt,.html,text/csv,text/plain,text/html"
+                    : ".docx,.pdf,.png,.jpg,.jpeg,.heic,.heif,.txt,.csv"
+                }
               />
             </Field>
+            <p className="-mt-1 text-xs leading-5 text-slate-500">
+              {fileCategory === "message_archive"
+                ? "Supported message archives: CSV, TXT, and HTML."
+                : "Supported documents and photos: DOCX, PDF, PNG, JPEG, HEIC/HEIF, TXT, and CSV."}
+            </p>
             <Field label="Record date">
               <input name="evidenceDate" type="date" className="input" defaultValue={formatLocalDate(new Date(), timezone)} />
             </Field>
-            <Field label="Description">
+            <Field label="Description (optional)">
               <textarea name="description" className="input min-h-20" />
             </Field>
-            <Field label="Tags">
-              <input name="tags" className="input" defaultValue="document" />
+            <Field label="Additional tags (optional)">
+              <input name="tags" className="input" />
             </Field>
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input name="includeInReports" type="checkbox" defaultChecked />
               Include in report file index
             </label>
-            <button className="btn-primary" type="submit" disabled={documentSaving}>
-              {documentSaving
+            <button className="btn-primary" type="submit" disabled={fileSaving}>
+              {fileSaving
                 ? "Uploading files..."
                 : recordsStorageMode === "supabase"
-                  ? "Upload documents"
+                  ? "Upload files"
                   : "Save files to Files"}
             </button>
           </form>

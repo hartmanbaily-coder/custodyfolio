@@ -40,30 +40,35 @@ body {
   max-width: 100%;
 }
 
-.records-workspace input[type="date"] {
+.records-workspace :where(input[type="date"], input[type="time"], input[type="datetime-local"]) {
+  -webkit-appearance: none;
+  appearance: none;
   box-sizing: border-box;
   display: block;
+  inline-size: 100%;
+  width: 100%;
   max-inline-size: 100%;
   min-inline-size: 0 !important;
   overflow: hidden;
 }
 
-.records-workspace input[type="date"]::-webkit-date-and-time-value {
+.records-workspace :where(input[type="date"], input[type="time"], input[type="datetime-local"])::-webkit-date-and-time-value {
   inline-size: 100%;
   min-inline-size: 0;
   overflow: hidden;
   text-align: left;
 }
 
-@supports (-webkit-touch-callout: none) {
-  .records-workspace input[type="date"] {
-    -webkit-appearance: none;
-    appearance: none;
-  }
+.records-workspace :where(input[type="date"], input[type="time"], input[type="datetime-local"])::-webkit-datetime-edit {
+  box-sizing: border-box;
+  display: block;
+  inline-size: 100%;
+  min-inline-size: 0;
+  overflow: hidden;
 }
 
 @media (max-width: 639px) {
-  .records-workspace input[type="date"] {
+  .records-workspace :where(input[type="date"], input[type="time"], input[type="datetime-local"]) {
     inline-size: 100%;
     width: 100%;
   }
