@@ -503,9 +503,9 @@ export function buildSectionExportPacket(
   const exchangeLogs = ownedCaseRecords(dataset.exchangeLogs, userId, caseId).filter((log) =>
     isWithinDateRange(getIsoDateFromDateTime(log.orderedExchangeAt), range)
   );
-  const custodyAssignments = ownedCaseRecords(dataset.custodyDayAssignments, userId, caseId).filter((item) =>
-    isWithinDateRange(item.date, range)
-  );
+  const custodyAssignments = ownedCaseRecords(dataset.custodyDayAssignments, userId, caseId)
+    .filter((item) => isWithinDateRange(item.date, range))
+    .sort((first, second) => first.date.localeCompare(second.date));
   const notes = ownedCaseRecords(dataset.dateNotes, userId, caseId).filter((note) =>
     note.includeInReports && isWithinDateRange(note.noteDate, range)
   );
@@ -554,13 +554,18 @@ export function buildSectionExportPacket(
       tables: [
         {
           title: "Custody day assignments",
-          headers: ["Date", "Caregiver", "Start", "End", "Exchange", "Location", "Notes"],
+          headers: ["Date", "Caregiver", "Exchange time", "Direction", "Location", "Notes"],
           rows: toTableRows(custodyAssignments, (item) => [
             item.date,
             item.caregiverLabel,
-            item.startsAt || "",
-            item.endsAt || "",
             item.exchangeTime || "",
+            item.exchangeDirection
+              ? labelExchangeDirectionWithParties(
+                  item.exchangeDirection,
+                  userRoleLabel,
+                  otherParentLabel
+                )
+              : "",
             item.exchangeLocation || "",
             item.notes || "",
           ]),
@@ -1462,14 +1467,18 @@ export function buildReportPreview(
   const isCourtPacket = reportType === "combined_court_packet";
   const custodyScheduleTable: SectionExportTable = {
     title: "Custody schedule context",
-    headers: ["Date", "Caregiver", "Start", "End", "Exchange", "Direction", "Location", "Notes"],
+    headers: ["Date", "Caregiver", "Exchange time", "Direction", "Location", "Notes"],
     rows: toTableRows(custodyAssignments, (assignment) => [
       assignment.date,
       assignment.caregiverLabel,
-      assignment.startsAt || "",
-      assignment.endsAt || "",
       assignment.exchangeTime || "",
-      assignment.exchangeDirection?.replaceAll("_", " ") || "",
+      assignment.exchangeDirection
+        ? labelExchangeDirectionWithParties(
+            assignment.exchangeDirection,
+            userRoleLabel,
+            otherParentLabel
+          )
+        : "",
       assignment.exchangeLocation || "",
       assignment.notes || "",
     ]),

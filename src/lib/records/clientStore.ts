@@ -77,6 +77,7 @@ function normalizeDataset(dataset: Partial<RecordsDataset>, fallback: RecordsDat
     childSupportOrders: dataset.childSupportOrders || fallback.childSupportOrders,
     childSupportPayments: dataset.childSupportPayments || fallback.childSupportPayments,
     expenseItems: dataset.expenseItems || fallback.expenseItems,
+    timelineDesignations: dataset.timelineDesignations || fallback.timelineDesignations,
     auditLogs: dataset.auditLogs || fallback.auditLogs,
   };
 }
@@ -261,6 +262,7 @@ export function useRecordsStore() {
           childSupportOrders: [],
           childSupportPayments: [],
           expenseItems: [],
+          timelineDesignations: [],
           auditLogs: [],
         });
       } else {

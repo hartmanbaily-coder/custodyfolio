@@ -163,6 +163,34 @@ describe("records calculations", () => {
     expect(supportDue).toMatchObject({ type: "child_support_due", severity: "attention" });
     expect(expense).toMatchObject({ type: "expense_item", severity: "attention" });
   });
+
+  it("uses an account owner's editable timeline designation over the automatic suggestion", () => {
+    const dataset = createRecordsSeed();
+    dataset.timelineDesignations.push({
+      id: "designation-school-note",
+      userId: demoUserId,
+      caseId: demoCaseId,
+      eventId: "note-note-school-2026-05-05",
+      severity: "critical",
+      createdAt: "2026-06-15T12:00:00.000Z",
+      updatedAt: "2026-06-15T12:00:00.000Z",
+    });
+
+    const events = buildCalendarEvents(dataset, demoUserId, demoCaseId, range);
+    const schoolNote = events.find((event) => event.id === "note-note-school-2026-05-05");
+    const automaticLateExchange = events.find(
+      (event) => event.id === "log-exchange-2026-05-08"
+    );
+
+    expect(schoolNote).toMatchObject({
+      severity: "critical",
+      severitySource: "user",
+    });
+    expect(automaticLateExchange).toMatchObject({
+      severity: "attention",
+      severitySource: "automatic",
+    });
+  });
 });
 
 describe("privacy and safety helpers", () => {
@@ -286,7 +314,7 @@ describe("privacy and safety helpers", () => {
       "Combined issue rows",
     ]);
     expect(csv.split("\n")[0]).toBe("Custody schedule context");
-    expect(csv).toContain("Date,Caregiver,Start,End,Exchange,Direction,Location,Notes");
+    expect(csv).toContain("Date,Caregiver,Exchange time,Direction,Location,Notes");
     expect(csv).toContain("Date,Scheduled time,Actual time,Scheduled source");
     expect(csv).toContain("Date,Time,Issue,Source,Title,Detail,Summary,Notes,Tags");
     expect(csv).not.toContain("caregiver_label");
@@ -446,10 +474,25 @@ describe("privacy and safety helpers", () => {
     const dataset = createRecordsSeed();
     const packet = buildSectionExportPacket(dataset, demoUserId, demoCaseId, range, "calendar");
     const metrics = new Map(packet.metrics.map((metric) => [metric.label, metric.value]));
+    const custodySchedule = packet.tables.find(
+      (table) => table.title === "Custody day assignments"
+    );
 
     expect(metrics.get("Parent A days")).toBeGreaterThan(0);
     expect(metrics.get("Parent B days")).toBeGreaterThan(0);
     expect(packet.charts).toEqual([]);
+    expect(custodySchedule?.headers).toEqual([
+      "Date",
+      "Caregiver",
+      "Exchange time",
+      "Direction",
+      "Location",
+      "Notes",
+    ]);
+    expect(custodySchedule?.headers).not.toContain("Start");
+    expect(custodySchedule?.headers).not.toContain("End");
+    expect(custodySchedule?.rows[0]?.[0]).toBe("2026-05-01");
+    expect(custodySchedule?.rows.flat()).toContain("Parent B to Parent A");
   });
 
   it("exports incident timeline rows from timeline-visible dated record sources", () => {

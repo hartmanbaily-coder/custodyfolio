@@ -96,6 +96,7 @@ import type {
   PaymentStatus,
   RecordsDataset,
   ReportType,
+  TimelineSeverity,
 } from "@/lib/records/types";
 import {
   buildStoredEvidenceName,
@@ -309,6 +310,15 @@ const timelineFilterOptions: Array<{ value: TimelineFilter; label: string }> = [
   { value: "child_support_due", label: "Support due" },
   { value: "child_support_paid", label: "Support paid" },
   { value: "expense_item", label: "Expenses" },
+];
+
+type TimelineDesignationChoice = TimelineSeverity | "automatic";
+
+const timelineDesignationOptions: Array<{ value: TimelineSeverity; label: string }> = [
+  { value: "neutral", label: "Neutral" },
+  { value: "positive", label: "Recorded" },
+  { value: "attention", label: "Recorded issue" },
+  { value: "critical", label: "Critical" },
 ];
 
 const directTimelineDeleteTypes = new Set<CalendarEvent["type"]>([
@@ -681,7 +691,7 @@ export default function RecordsApp() {
   }
 
   return (
-    <div className="records-app-shell min-h-screen bg-gradient-to-br from-[#f8fbfa] via-[#eef5f2] to-[#f5f7f6] text-slate-950">
+    <div className="records-app-shell min-h-screen bg-gradient-to-br from-[#f8faff] via-[#edf4fc] to-[#f4f7fc] text-slate-950">
       <div className="records-app-grid grid min-h-screen lg:grid-cols-[288px_minmax(0,1fr)]">
         <aside className="overflow-hidden border-b border-slate-200 bg-white/95 lg:overflow-visible lg:border-b-0 lg:border-r lg:border-slate-200">
           <div className="flex flex-col p-4 lg:sticky lg:top-0 lg:h-screen">
@@ -776,6 +786,8 @@ export default function RecordsApp() {
                 calendarMonthKey={calendarMonthKey}
                 setCalendarMonthKey={setCalendarMonthKey}
                 timezone={caseTimezone}
+                userRoleLabel={selected.matter?.userRoleLabel || "Parent A"}
+                otherParentLabel={selected.matter?.otherParentLabel || "Parent B"}
                 sectionExport={sectionExportPackets.calendar}
                 onExportSection={exportSectionPacket}
                 flash={flash}
@@ -913,7 +925,7 @@ function RecordsSessionLoadingScreen() {
   return (
     <main
       data-testid="records-session-loading"
-      className="grid min-h-screen place-items-center bg-[#f4f7f6] px-6 text-slate-950"
+      className="grid min-h-screen place-items-center bg-[#f4f7fc] px-6 text-slate-950"
     >
       <div className="grid justify-items-center gap-4 text-center">
         <Image
@@ -947,7 +959,7 @@ function RecordsLoadFailureScreen({
   onLogout: () => void;
 }) {
   return (
-    <main className="flex min-h-screen flex-col bg-[#f6f8f7] text-slate-950">
+    <main className="flex min-h-screen flex-col bg-[#f4f7fc] text-slate-950">
       <section className="mx-auto flex w-full max-w-xl flex-1 items-center px-4 py-10 sm:px-6">
         <div role="alert" className="w-full rounded-lg border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">
@@ -1366,7 +1378,7 @@ function LoginScreen({
           : "Sign in";
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#f6f8f7] text-slate-950">
+    <main className="min-h-screen overflow-hidden bg-[#f4f7fc] text-slate-950">
       <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between gap-4">
           <Link href="/" className="flex min-w-0 items-center gap-3">
@@ -1875,6 +1887,8 @@ function CalendarView({
   calendarMonthKey,
   setCalendarMonthKey,
   timezone,
+  userRoleLabel,
+  otherParentLabel,
   sectionExport,
   onExportSection,
   flash,
@@ -1891,6 +1905,8 @@ function CalendarView({
   calendarMonthKey: string;
   setCalendarMonthKey: (monthKey: string) => void;
   timezone: string;
+  userRoleLabel: string;
+  otherParentLabel: string;
   sectionExport: SectionExportPacket;
   onExportSection: (packet: SectionExportPacket, format: SectionExportFormat) => void;
   flash: (message: string) => void;
@@ -1899,10 +1915,23 @@ function CalendarView({
   const monthRange = getMonthBounds(monthKey, timezone);
   const monthDays = buildMonthDays(monthKey);
   const today = formatLocalDate(new Date(), timezone);
-  const [paintCaregiverLabel, setPaintCaregiverLabel] = useState("Parent A");
+  const [paintCaregiverLabel, setPaintCaregiverLabel] = useState(userRoleLabel);
   const [paintColor, setPaintColor] = useState<(typeof custodyDayColors)[number] | string>(
     custodyDayColors[0]
   );
+  const [rangeDraftState, setRangeDraftState] = useState<{
+    sourceDay: string;
+    startDate: string;
+    endDate: string;
+    caregiverLabel: string;
+    exchangeBoundary: "none" | "start" | "end" | "both";
+  }>(() => ({
+    sourceDay: "",
+    startDate: selectedDay,
+    endDate: selectedDay,
+    caregiverLabel: userRoleLabel,
+    exchangeBoundary: "none",
+  }));
   const [multiDayPaintEnabled, setMultiDayPaintEnabled] = useState(false);
   const [isPainting, setIsPainting] = useState(false);
   const [paintDraftDates, setPaintDraftDates] = useState<Set<string>>(() => new Set());
@@ -1924,6 +1953,39 @@ function CalendarView({
   const optimisticCustodyDayMap = buildCustodyDayMap(optimisticPaintAssignments, monthRange);
   const selectedAssignment = optimisticCustodyDayMap.get(selectedDay) || custodyDayMap.get(selectedDay);
   const dayEvents = eventsByDate.get(selectedDay) || [];
+  const caregiverOptions = Array.from(
+    new Set([
+      userRoleLabel,
+      otherParentLabel,
+      "Alternate caregiver",
+      ...custodyDayAssignments.map((item) => item.caregiverLabel),
+    ])
+  ).filter(Boolean);
+  const rangeDraft =
+    rangeDraftState.sourceDay === selectedDay
+      ? rangeDraftState
+      : {
+          sourceDay: selectedDay,
+          startDate: selectedDay,
+          endDate: selectedDay,
+          caregiverLabel: selectedAssignment?.caregiverLabel || userRoleLabel,
+          exchangeBoundary:
+            selectedAssignment?.exchangeTime || selectedAssignment?.exchangeDirection
+              ? ("start" as const)
+              : ("none" as const),
+        };
+  const {
+    startDate: rangeStartDate,
+    endDate: rangeEndDate,
+    caregiverLabel: rangeCaregiverLabel,
+    exchangeBoundary,
+  } = rangeDraft;
+  const rangeColor = calendarColorForCaregiver(
+    rangeCaregiverLabel,
+    userRoleLabel,
+    otherParentLabel,
+    custodyDayAssignments
+  );
 
   function showCalendarMonth(nextMonthKey: string) {
     const nextRange = getMonthBounds(nextMonthKey, timezone);
@@ -1961,7 +2023,7 @@ function CalendarView({
       const uniqueDates = Array.from(new Set(dates)).sort();
       if (uniqueDates.length === 0) return;
 
-      const caregiverLabel = paintCaregiverLabel.trim() || "Parent A";
+      const caregiverLabel = paintCaregiverLabel.trim() || userRoleLabel;
       const parsedPaint = custodyDayAssignmentSchema.safeParse({
         date: uniqueDates[0],
         caregiverLabel,
@@ -2070,7 +2132,7 @@ function CalendarView({
       setSelectedDay(uniqueDates[uniqueDates.length - 1]);
       flash(uniqueDates.length === 1 ? "Custody day color saved." : `${uniqueDates.length} custody days colored.`);
     },
-    [caseId, flash, paintCaregiverLabel, paintColor, setSelectedDay, updateDataset, userId]
+    [caseId, flash, paintCaregiverLabel, paintColor, setSelectedDay, updateDataset, userId, userRoleLabel]
   );
 
   const extendPaint = useCallback(
@@ -2198,66 +2260,132 @@ function CalendarView({
   async function saveCustodyDay(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    const startDate = text(formData, "startDate");
+    const endDate = text(formData, "endDate");
+    const selectedExchangeBoundary = text(formData, "exchangeBoundary") as
+      | "none"
+      | "start"
+      | "end"
+      | "both";
+    const hasExchange = selectedExchangeBoundary !== "none";
+    const exchangeTime = hasExchange ? text(formData, "exchangeTime") : "";
+    const exchangeDirection = hasExchange ? text(formData, "exchangeDirection") : "";
+    const exchangeLocation = hasExchange ? text(formData, "exchangeLocation") : "";
+    const caregiverLabel = text(formData, "caregiverLabel");
+    const color = calendarColorForCaregiver(
+      caregiverLabel,
+      userRoleLabel,
+      otherParentLabel,
+      custodyDayAssignments
+    );
     const parsed = custodyDayAssignmentSchema.safeParse({
-      date: text(formData, "date"),
-      caregiverLabel: text(formData, "caregiverLabel"),
-      color: text(formData, "color"),
-      startsAt: text(formData, "startsAt"),
-      endsAt: text(formData, "endsAt"),
-      exchangeTime: text(formData, "exchangeTime"),
-      exchangeDirection: text(formData, "exchangeDirection"),
-      exchangeLocation: text(formData, "exchangeLocation"),
+      date: startDate,
+      caregiverLabel,
+      color,
+      startsAt: "00:00",
+      endsAt: "23:59",
+      exchangeTime,
+      exchangeDirection,
+      exchangeLocation,
       notes: text(formData, "notes"),
     });
     if (!parsed.success) return flash(parsed.error.issues[0]?.message || "Check the custody day form.");
+    const parsedEndDate = custodyDayAssignmentSchema.safeParse({
+      ...parsed.data,
+      date: endDate,
+    });
+    if (!parsedEndDate.success) {
+      return flash(parsedEndDate.error.issues[0]?.message || "Choose a valid end date.");
+    }
+    if (endDate < startDate) {
+      return flash("End date must be the same as or after the start date.");
+    }
+    if (hasExchange && !exchangeTime) {
+      return flash("Choose an exchange time.");
+    }
+    if (hasExchange && !exchangeDirection) {
+      return flash("Choose an exchange direction.");
+    }
 
-    const date = parsed.data.date;
+    const dates = buildPaintDateRange(startDate, endDate);
+    const targetDates = new Set(dates);
+    const exchangeDates = new Set<string>();
+    if (selectedExchangeBoundary === "start" || selectedExchangeBoundary === "both") {
+      exchangeDates.add(startDate);
+    }
+    if (selectedExchangeBoundary === "end" || selectedExchangeBoundary === "both") {
+      exchangeDates.add(endDate);
+    }
     try {
       await updateDataset((current) => {
-        const existing = current.custodyDayAssignments.find(
-          (item) => item.userId === userId && item.caseId === caseId && item.date === date
+        const existingByDate = new Map(
+          current.custodyDayAssignments
+            .filter((item) => item.userId === userId && item.caseId === caseId)
+            .map((item) => [item.date, item])
         );
         const nextData = emptyToUndefined(parsed.data);
-        const nextAssignment: CustodyDayAssignment = {
-          id: existing?.id || createId("custody-day"),
-          caseId,
-          userId,
-          createdAt: existing?.createdAt || nowIso(),
-          updatedAt: nowIso(),
-          date: nextData.date,
-          caregiverLabel: nextData.caregiverLabel,
-          color: nextData.color,
-          startsAt: nextData.startsAt,
-          endsAt: nextData.endsAt,
-          exchangeTime: nextData.exchangeTime,
-          exchangeDirection: nextData.exchangeDirection || undefined,
-          exchangeLocation: nextData.exchangeLocation,
-          notes: nextData.notes,
-        };
+        const updatedAt = nowIso();
+        const nextAssignments = dates.map((date) => {
+          const existing = existingByDate.get(date);
+          const isExchangeDay = exchangeDates.has(date);
+          return {
+            id: existing?.id || createId("custody-day"),
+            caseId,
+            userId,
+            createdAt: existing?.createdAt || updatedAt,
+            updatedAt,
+            date,
+            caregiverLabel: nextData.caregiverLabel,
+            color: nextData.color,
+            startsAt: "00:00",
+            endsAt: "23:59",
+            exchangeTime: isExchangeDay ? nextData.exchangeTime : undefined,
+            exchangeDirection: isExchangeDay
+              ? nextData.exchangeDirection || undefined
+              : undefined,
+            exchangeLocation: isExchangeDay ? nextData.exchangeLocation : undefined,
+            notes: nextData.notes,
+          } satisfies CustodyDayAssignment;
+        });
+        const retainedAssignments = current.custodyDayAssignments.filter(
+          (item) =>
+            item.userId !== userId ||
+            item.caseId !== caseId ||
+            !targetDates.has(item.date)
+        );
+        const existingCount = dates.filter((date) => existingByDate.has(date)).length;
 
         return withAudit(
           {
             ...current,
-            custodyDayAssignments: existing
-              ? current.custodyDayAssignments.map((item) =>
-                  item.id === existing.id ? nextAssignment : item
-                )
-              : [nextAssignment, ...current.custodyDayAssignments],
+            custodyDayAssignments: [...nextAssignments, ...retainedAssignments],
           },
           {
             userId,
             caseId,
-            action: existing ? "updated" : "created",
+            action: existingCount === dates.length ? "updated" : "created",
             entityType: "custodyDayAssignment",
-            entityId: nextAssignment.id,
-            metadataSummary: "Custody day color assignment saved without child names.",
+            entityId: dates.length === 1 ? nextAssignments[0].id : "custody-date-range",
+            metadataSummary:
+              dates.length === 1
+                ? "Custody schedule day saved without child names."
+                : `${dates.length}-day custody schedule range saved without child names.`,
           }
         );
       });
-      setSelectedDay(date);
-      flash("Custody day color saved successfully.");
+      setOptimisticPaintAssignments((current) =>
+        current.filter(
+          (item) =>
+            item.userId !== userId ||
+            item.caseId !== caseId ||
+            !targetDates.has(item.date)
+        )
+      );
+      setCalendarMonthKey(monthKeyFromDate(startDate, timezone));
+      setSelectedDay(startDate);
+      flash(`Custody schedule saved for ${dates.length} day${dates.length === 1 ? "" : "s"}.`);
     } catch (error) {
-      flash(error instanceof Error ? error.message : "Calendar day save failed.");
+      flash(error instanceof Error ? error.message : "Calendar date range save failed.");
     }
   }
 
@@ -2339,15 +2467,24 @@ function CalendarView({
 
   return (
     <div className="min-w-0 max-w-full space-y-4">
-      <Segmented
-        value={mode}
-        options={[
-          { value: "month", label: "Month" },
-          { value: "list", label: "Weekly/List" },
-          { value: "timeline", label: "Timeline" },
-        ]}
-        onChange={(value) => setMode(value as "month" | "list" | "timeline")}
-      />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Segmented
+          value={mode}
+          options={[
+            { value: "month", label: "Month" },
+            { value: "list", label: "Weekly/List" },
+            { value: "timeline", label: "Timeline" },
+          ]}
+          onChange={(value) => setMode(value as "month" | "list" | "timeline")}
+        />
+        <button
+          type="button"
+          className="btn-secondary h-10 px-3"
+          onClick={() => onExportSection(sectionExport, "pdf")}
+        >
+          Export calendar PDF
+        </button>
+      </div>
 
       {mode === "month" && (
         <section className="grid gap-4 xl:grid-cols-[1fr_400px]">
@@ -2401,22 +2538,40 @@ function CalendarView({
               </summary>
               <div className="grid gap-3 border-t border-slate-200 p-3 2xl:grid-cols-[minmax(360px,1fr)_auto] 2xl:items-end">
                 <div className="grid gap-3 grid-cols-[minmax(0,1fr)_88px] sm:grid-cols-[minmax(0,1fr)_160px]">
-                <Field label="Caregiver label">
-                  <input
+                <Field label="Caregiver">
+                  <select
+                    aria-label="Caregiver for color tools"
                     className="input"
                     value={paintCaregiverLabel}
-                    maxLength={60}
-                    onChange={(event) => setPaintCaregiverLabel(event.target.value)}
-                  />
+                    onChange={(event) => {
+                      const caregiverLabel = event.target.value;
+                      setPaintCaregiverLabel(caregiverLabel);
+                      setPaintColor(
+                        calendarColorForCaregiver(
+                          caregiverLabel,
+                          userRoleLabel,
+                          otherParentLabel,
+                          custodyDayAssignments
+                        )
+                      );
+                    }}
+                  >
+                    {caregiverOptions.map((caregiverLabel) => (
+                      <option key={caregiverLabel} value={caregiverLabel}>
+                        {caregiverLabel}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
-                <Field label="Active color">
-                  <input
-                    aria-label="Active calendar color"
-                    type="color"
-                    value={paintColor}
-                    onChange={(event) => setPaintColor(event.target.value)}
-                    className="h-10 w-full cursor-pointer rounded-md border border-slate-300 bg-white p-1"
-                  />
+                <Field label="Automatic color">
+                  <div className="flex h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-600">
+                    <span
+                      aria-hidden="true"
+                      className="h-5 w-5 shrink-0 rounded-full"
+                      style={{ backgroundColor: paintColor }}
+                    />
+                    Coordinated
+                  </div>
                 </Field>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -2428,21 +2583,6 @@ function CalendarView({
                 >
                   Multi-day paint: {multiDayPaintEnabled ? "On" : "Off"}
                 </button>
-                {custodyDayColors.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    aria-label={`Use calendar color ${color}`}
-                    aria-pressed={paintColor.toLowerCase() === color.toLowerCase()}
-                    onClick={() => setPaintColor(color)}
-                    className={`h-9 w-9 rounded-md border-2 transition ${
-                      paintColor.toLowerCase() === color.toLowerCase()
-                        ? "border-slate-950"
-                        : "border-white shadow-sm ring-1 ring-slate-200"
-                    }`}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
                 {paintSelectionDates.size > 0 && (
                   <>
                     <button
@@ -2549,7 +2689,7 @@ function CalendarView({
                     const isWeekend = index % 7 === 0 || index % 7 === 6;
                     const visibleColor = isPaintDraft ? paintColor : assignment?.color;
                     const visibleLabel = isPaintDraft
-                      ? paintCaregiverLabel.trim() || "Parent A"
+                      ? paintCaregiverLabel.trim() || userRoleLabel
                       : assignment?.caregiverLabel;
                     return (
                       <button
@@ -2692,63 +2832,133 @@ function CalendarView({
               />
             </Panel>
 
-            <Panel title="Color selected day" action="Custody schedule">
-              <form key={selectedDay} onSubmit={saveCustodyDay} className="grid gap-3">
-                <Field label="Date">
-                  <input name="date" type="date" className="input" defaultValue={selectedDay} />
-                </Field>
-                <Field label="Child will be with">
-                  <input
-                    name="caregiverLabel"
-                    className="input"
-                    defaultValue={selectedAssignment?.caregiverLabel || "Parent A"}
-                  />
-                </Field>
-                <Field label="Color">
-                  <div className="flex flex-wrap gap-2">
-                    {custodyDayColors.map((color) => (
-                      <label
-                        key={color}
-                        className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
-                      >
-                        <input
-                          name="color"
-                          type="radio"
-                          value={color}
-                          defaultChecked={(selectedAssignment?.color || "#0f766e") === color}
-                        />
-                        <span className="h-4 w-4 rounded-full" style={{ backgroundColor: color }} />
-                      </label>
-                    ))}
-                  </div>
-                </Field>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Start">
-                    <input name="startsAt" type="time" className="input" defaultValue={selectedAssignment?.startsAt || "00:00"} />
+            <Panel title="Add or edit date range" action="Custody schedule">
+              <form onSubmit={saveCustodyDay} className="grid gap-3">
+                <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                  <Field label="Start date">
+                    <input
+                      name="startDate"
+                      type="date"
+                      className="input min-w-0 max-w-full"
+                      value={rangeStartDate}
+                      onChange={(event) => {
+                        const nextDate = event.target.value;
+                        setRangeDraftState({
+                          ...rangeDraft,
+                          startDate: nextDate,
+                          endDate: rangeEndDate < nextDate ? nextDate : rangeEndDate,
+                        });
+                      }}
+                    />
                   </Field>
-                  <Field label="End">
-                    <input name="endsAt" type="time" className="input" defaultValue={selectedAssignment?.endsAt || "23:59"} />
+                  <Field label="End date">
+                    <input
+                      name="endDate"
+                      type="date"
+                      className="input min-w-0 max-w-full"
+                      value={rangeEndDate}
+                      min={rangeStartDate}
+                      onChange={(event) =>
+                        setRangeDraftState({ ...rangeDraft, endDate: event.target.value })
+                      }
+                    />
                   </Field>
                 </div>
-                <Field label="Exchange time">
-                  <input name="exchangeTime" type="time" className="input" defaultValue={selectedAssignment?.exchangeTime || ""} />
-                </Field>
-                <Field label="Exchange direction">
-                  <select name="exchangeDirection" className="input" defaultValue={selectedAssignment?.exchangeDirection || ""}>
-                    <option value="">No exchange on this date</option>
-                    <option value="other_parent_to_me">Other Parent to Me</option>
-                    <option value="me_to_other_parent">Me to Other Parent</option>
+                <Field label="Child will be with">
+                  <select
+                    name="caregiverLabel"
+                    className="input"
+                    value={rangeCaregiverLabel}
+                    onChange={(event) =>
+                      setRangeDraftState({
+                        ...rangeDraft,
+                        caregiverLabel: event.target.value,
+                      })
+                    }
+                  >
+                    {caregiverOptions.map((caregiverLabel) => (
+                      <option key={caregiverLabel} value={caregiverLabel}>
+                        {caregiverLabel}
+                      </option>
+                    ))}
                   </select>
                 </Field>
-                <Field label="Exchange location">
-                  <input name="exchangeLocation" className="input" defaultValue={selectedAssignment?.exchangeLocation || ""} />
+                <Field label="Calendar color">
+                  <div className="flex h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700">
+                    <span
+                      aria-hidden="true"
+                      className="h-5 w-5 rounded-full"
+                      style={{ backgroundColor: rangeColor }}
+                    />
+                    Assigned automatically for {rangeCaregiverLabel}
+                  </div>
                 </Field>
+                <Field label="Exchange day">
+                  <select
+                    name="exchangeBoundary"
+                    className="input"
+                    value={exchangeBoundary}
+                    onChange={(event) =>
+                      setRangeDraftState({
+                        ...rangeDraft,
+                        exchangeBoundary: event.target.value as
+                          | "none"
+                          | "start"
+                          | "end"
+                          | "both",
+                      })
+                    }
+                  >
+                    <option value="none">No exchange in this date range</option>
+                    <option value="start">Start date</option>
+                    <option value="end">End date</option>
+                    <option value="both">Start and end dates</option>
+                  </select>
+                </Field>
+                {exchangeBoundary !== "none" && (
+                  <div className="grid gap-3 rounded-md border border-amber-200 bg-amber-50/60 p-3">
+                    <p className="text-xs leading-5 text-amber-900">
+                      Exchange details will be added only to the selected boundary day
+                      {exchangeBoundary === "both" ? "s" : ""}.
+                    </p>
+                    <Field label="Exchange time">
+                      <input
+                        name="exchangeTime"
+                        type="time"
+                        className="input min-w-0 max-w-full"
+                        defaultValue={selectedAssignment?.exchangeTime || ""}
+                      />
+                    </Field>
+                    <Field label="Exchange direction">
+                      <select
+                        name="exchangeDirection"
+                        className="input"
+                        defaultValue={selectedAssignment?.exchangeDirection || ""}
+                      >
+                        <option value="">Choose direction</option>
+                        <option value="other_parent_to_me">
+                          {otherParentLabel} to {userRoleLabel}
+                        </option>
+                        <option value="me_to_other_parent">
+                          {userRoleLabel} to {otherParentLabel}
+                        </option>
+                      </select>
+                    </Field>
+                    <Field label="Exchange location">
+                      <input
+                        name="exchangeLocation"
+                        className="input"
+                        defaultValue={selectedAssignment?.exchangeLocation || ""}
+                      />
+                    </Field>
+                  </div>
+                )}
                 <Field label="Notes">
                   <textarea name="notes" className="input min-h-20" defaultValue={selectedAssignment?.notes || ""} />
                 </Field>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <button className="btn-primary" type="submit">
-                    Save color
+                    Save date range
                   </button>
                   <button
                     className="btn-secondary"
@@ -2810,6 +3020,7 @@ function TimelineView({
   flash: (message: string) => void;
 }) {
   const [filter, setFilter] = useState<TimelineFilter>("all");
+  const [designationSavingId, setDesignationSavingId] = useState("");
   const visibleEvents = events.filter(isTimelineVisibleEvent);
   const filteredEvents = visibleEvents.filter((event) => matchesTimelineFilter(event, filter));
   const attentionCount = visibleEvents.filter(isAttentionTimelineEvent).length;
@@ -2827,6 +3038,27 @@ function TimelineView({
 
     updateDataset((current) => deleteTimelineEventFromDataset(current, event, userId, caseId));
     flash(`${labelEventType(event.type)} deleted from timeline.`);
+  }
+
+  async function changeTimelineDesignation(
+    event: CalendarEvent,
+    choice: TimelineDesignationChoice
+  ) {
+    setDesignationSavingId(event.id);
+    try {
+      await updateDataset((current) =>
+        setTimelineEventDesignation(current, event, choice, userId, caseId)
+      );
+      flash(
+        choice === "automatic"
+          ? "Timeline designation returned to the automatic suggestion."
+          : `Timeline designation changed to ${timelineSeverityLabel(choice)}.`
+      );
+    } catch (error) {
+      flash(error instanceof Error ? error.message : "Timeline designation could not be saved.");
+    } finally {
+      setDesignationSavingId("");
+    }
   }
 
   function downloadTimelineCsv() {
@@ -2915,6 +3147,13 @@ function TimelineView({
                 </div>
               </div>
               <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Timeline designations
+                </p>
+                <p className="text-xs leading-5 text-slate-500">
+                  The app suggests these from each record. Expand any timeline item to change its
+                  designation or return it to Automatic.
+                </p>
                 {(["critical", "attention", "positive", "neutral"] as const).map((severity) => (
                   <div key={severity} className="flex items-center justify-between gap-3 text-xs">
                     <span className="font-medium capitalize text-slate-700">{severity}</span>
@@ -2935,6 +3174,8 @@ function TimelineView({
             events={filteredEvents}
             emptyLabel="No timeline records match this filter."
             onDeleteEvent={deleteTimelineEvent}
+            onChangeDesignation={changeTimelineDesignation}
+            designationSavingId={designationSavingId}
           />
         </Panel>
       </section>
@@ -6794,7 +7035,7 @@ function WorkspaceHeader({
   return (
     <header
       data-testid="workspace-header"
-      className="sticky top-0 z-10 border-b border-teal-200 bg-white/95 px-3 py-2 shadow-[0_1px_4px_rgba(15,118,110,0.08)] backdrop-blur lg:px-6 lg:py-3"
+      className="sticky top-0 z-10 border-b border-blue-200 bg-white/95 px-3 py-2 shadow-[0_1px_4px_rgba(37,99,235,0.08)] backdrop-blur lg:px-6 lg:py-3"
     >
       {mobileOptionsOpen && (
         <button
@@ -6846,7 +7087,7 @@ function WorkspaceHeader({
 
         <div
           id={mobileOptionsId}
-          className={`${mobileOptionsOpen ? "grid" : "hidden"} absolute left-3 right-3 top-[calc(100%+0.5rem)] z-20 max-h-[calc(100vh-6rem)] min-w-0 gap-3 overflow-y-auto rounded-lg border border-teal-200 bg-white p-4 shadow-xl lg:static lg:z-auto lg:flex lg:w-full lg:flex-wrap lg:items-center lg:gap-2 lg:overflow-visible lg:bg-[#e8f3f0] lg:p-1.5 lg:shadow-inner xl:flex-nowrap 2xl:w-auto`}
+          className={`${mobileOptionsOpen ? "grid" : "hidden"} absolute left-3 right-3 top-[calc(100%+0.5rem)] z-20 max-h-[calc(100vh-6rem)] min-w-0 gap-3 overflow-y-auto rounded-lg border border-blue-200 bg-white p-4 shadow-xl lg:static lg:z-auto lg:flex lg:w-full lg:flex-wrap lg:items-center lg:gap-2 lg:overflow-visible lg:bg-[#e8f1fb] lg:p-1.5 lg:shadow-inner xl:flex-nowrap 2xl:w-auto`}
         >
           <div className="lg:hidden">
             <h2 className="text-sm font-semibold text-slate-950">Workspace options</h2>
@@ -7312,6 +7553,69 @@ function deleteTimelineEventFromDataset(
   return dataset;
 }
 
+function setTimelineEventDesignation(
+  dataset: RecordsDataset,
+  event: CalendarEvent,
+  choice: TimelineDesignationChoice,
+  userId: string,
+  caseId: string
+) {
+  const existingDesignations = dataset.timelineDesignations || [];
+  const existing = existingDesignations.find(
+    (item) =>
+      item.eventId === event.id &&
+      item.userId === userId &&
+      item.caseId === caseId
+  );
+  const now = nowIso();
+  const timelineDesignations =
+    choice === "automatic"
+      ? existingDesignations.filter(
+          (item) =>
+            !(
+              item.eventId === event.id &&
+              item.userId === userId &&
+              item.caseId === caseId
+            )
+        )
+      : existing
+        ? existingDesignations.map((item) =>
+            item.id === existing.id
+              ? { ...item, severity: choice, updatedAt: now }
+              : item
+          )
+        : [
+            {
+              id: createId("timeline-designation"),
+              userId,
+              caseId,
+              eventId: event.id,
+              severity: choice,
+              createdAt: now,
+              updatedAt: now,
+            },
+            ...existingDesignations,
+          ];
+
+  return withAudit(
+    {
+      ...dataset,
+      timelineDesignations,
+    },
+    {
+      userId,
+      caseId,
+      action: "updated",
+      entityType: "timelineDesignation",
+      entityId: event.id,
+      metadataSummary:
+        choice === "automatic"
+          ? "Timeline designation returned to the automatic suggestion."
+          : "Timeline designation changed by the account owner.",
+    }
+  );
+}
+
 function matchesTimelineFilter(event: CalendarEvent, filter: TimelineFilter) {
   if (filter === "all") return true;
   if (filter === "attention") return isAttentionTimelineEvent(event);
@@ -7376,11 +7680,18 @@ function Timeline({
   emptyLabel = "No records yet.",
   compact = false,
   onDeleteEvent,
+  onChangeDesignation,
+  designationSavingId,
 }: {
   events: CalendarEvent[];
   emptyLabel?: string;
   compact?: boolean;
   onDeleteEvent?: (event: CalendarEvent) => void;
+  onChangeDesignation?: (
+    event: CalendarEvent,
+    choice: TimelineDesignationChoice
+  ) => void;
+  designationSavingId?: string;
 }) {
   if (events.length === 0) return <Empty label={emptyLabel} />;
 
@@ -7406,6 +7717,8 @@ function Timeline({
                 event={event}
                 compact={compact}
                 onDeleteEvent={onDeleteEvent}
+                onChangeDesignation={onChangeDesignation}
+                designationSaving={designationSavingId === event.id}
               />
             ))}
           </div>
@@ -7419,10 +7732,17 @@ function TimelineEventRow({
   event,
   compact,
   onDeleteEvent,
+  onChangeDesignation,
+  designationSaving = false,
 }: {
   event: CalendarEvent;
   compact: boolean;
   onDeleteEvent?: (event: CalendarEvent) => void;
+  onChangeDesignation?: (
+    event: CalendarEvent,
+    choice: TimelineDesignationChoice
+  ) => void;
+  designationSaving?: boolean;
 }) {
   const severity = timelineSeverity(event);
   const tagList = event.tags || [];
@@ -7481,6 +7801,41 @@ function TimelineEventRow({
             </span>
           )}
         </div>
+        {onChangeDesignation && (
+          <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                Timeline designation
+              </span>
+              <select
+                aria-label={`Timeline designation for ${event.title}`}
+                value={event.severitySource === "user" ? severity : "automatic"}
+                onChange={(changeEvent) =>
+                  onChangeDesignation(
+                    event,
+                    changeEvent.target.value as TimelineDesignationChoice
+                  )
+                }
+                disabled={designationSaving}
+                className="input mt-2"
+              >
+                <option value="automatic">
+                  Automatic ({timelineSeverityLabel(severity)})
+                </option>
+                {timelineDesignationOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              {event.severitySource === "user"
+                ? "You selected this designation. Choose Automatic to use the app suggestion again."
+                : "This is an automatic suggestion based on the source record. You can change it here."}
+            </p>
+          </div>
+        )}
         <TagList tags={tagList} />
         {showDelete && (
           <div className="mt-3">
@@ -8003,4 +8358,19 @@ function withAlpha(hex: string, alpha: number) {
   const green = (value >> 8) & 255;
   const blue = value & 255;
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+function calendarColorForCaregiver(
+  caregiverLabel: string,
+  userRoleLabel: string,
+  otherParentLabel: string,
+  assignments: CustodyDayAssignment[] = []
+) {
+  if (caregiverLabel === userRoleLabel) return custodyDayColors[0];
+  if (caregiverLabel === otherParentLabel) return custodyDayColors[1];
+  if (caregiverLabel === "Alternate caregiver") return custodyDayColors[2];
+  return (
+    assignments.find((assignment) => assignment.caregiverLabel === caregiverLabel)?.color ||
+    custodyDayColors[2]
+  );
 }

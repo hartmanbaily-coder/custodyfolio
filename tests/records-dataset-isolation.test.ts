@@ -25,6 +25,15 @@ describe("records dataset account isolation", () => {
 
   it("removes every profile, case, and record owned by another account", () => {
     const contaminated = createRecordsSeed();
+    contaminated.timelineDesignations.push({
+      id: "foreign-designation",
+      userId: "user-demo-parent-b",
+      caseId: "case-other-user",
+      eventId: "note-private",
+      severity: "critical",
+      createdAt: "2026-06-15T12:00:00.000Z",
+      updatedAt: "2026-06-15T12:00:00.000Z",
+    });
 
     expect(datasetContainsForeignRecords(contaminated, demoUserId)).toBe(true);
 
@@ -46,6 +55,7 @@ describe("records dataset account isolation", () => {
     ]) {
       expect(records.every((item) => item.userId === demoUserId && item.caseId === demoCaseId)).toBe(true);
     }
+    expect(isolated.timelineDesignations).toEqual([]);
     expect(isolated.auditLogs.every((item) => item.userId === demoUserId)).toBe(true);
     expect(datasetContainsForeignRecords(isolated, demoUserId)).toBe(false);
   });

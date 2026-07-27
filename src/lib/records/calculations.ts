@@ -413,6 +413,11 @@ export function buildCalendarEvents(
   const evidenceItems = filterOwnedCaseRecords(dataset.evidenceItems, userId, caseId);
   const payments = filterOwnedCaseRecords(dataset.childSupportPayments, userId, caseId);
   const expenses = filterOwnedCaseRecords(dataset.expenseItems, userId, caseId);
+  const designationByEventId = new Map(
+    (dataset.timelineDesignations || [])
+      .filter((item) => item.userId === userId && item.caseId === caseId)
+      .map((item) => [item.eventId, item] as const)
+  );
 
   const events: CalendarEvent[] = [
     ...expected.map((event) => ({
@@ -661,6 +666,14 @@ export function buildCalendarEvents(
 
   return events
     .filter((event) => isWithinDateRange(event.date, range))
+    .map((event) => {
+      const designation = designationByEventId.get(event.id);
+      return {
+        ...event,
+        severity: designation?.severity || event.severity || "neutral",
+        severitySource: designation ? ("user" as const) : ("automatic" as const),
+      };
+    })
     .sort(
       (a, b) =>
         (a.sortAt || buildSortAt(a.date, a.time)).localeCompare(b.sortAt || buildSortAt(b.date, b.time)) ||

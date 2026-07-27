@@ -136,6 +136,20 @@ final class NativeSecurityPolicyTests: XCTestCase {
         XCTAssertFalse(model.canGoForward)
     }
 
+    @MainActor
+    func testWorkspaceStartsAtComfortableDisplayScale() {
+        let userContentController = WKUserContentController()
+
+        WorkspaceDisplayPolicy.apply(to: userContentController)
+
+        let script = userContentController.userScripts.first
+        XCTAssertEqual(userContentController.userScripts.count, 1)
+        XCTAssertEqual(script?.injectionTime, .atDocumentStart)
+        XCTAssertEqual(script?.isForMainFrameOnly, true)
+        XCTAssertTrue(script?.source.contains("font-size: 95%") ?? false)
+        XCTAssertTrue(script?.source.contains("-webkit-text-size-adjust: 100%") ?? false)
+    }
+
     func testSensitiveExportStoreRemovesWrittenFiles() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("LostToFoundTests-\(UUID().uuidString)", isDirectory: true)
