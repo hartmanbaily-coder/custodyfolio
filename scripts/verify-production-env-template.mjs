@@ -97,12 +97,12 @@ if (duplicateKeys.size > 0) {
   findings.push(`Duplicate keys: ${Array.from(duplicateKeys).join(", ")}`);
 }
 
-if (entries.get("NEXT_PUBLIC_APP_URL") !== "https://losttofound.org") {
-  findings.push("NEXT_PUBLIC_APP_URL must point at https://losttofound.org.");
+if (entries.get("NEXT_PUBLIC_APP_URL") !== "https://custodyfolio.com") {
+  findings.push("NEXT_PUBLIC_APP_URL must point at https://custodyfolio.com.");
 }
 
-if (entries.get("NEXT_PUBLIC_RECORDS_HOST") !== "losttofound.org") {
-  findings.push("NEXT_PUBLIC_RECORDS_HOST must be losttofound.org.");
+if (entries.get("NEXT_PUBLIC_RECORDS_HOST") !== "custodyfolio.com") {
+  findings.push("NEXT_PUBLIC_RECORDS_HOST must be custodyfolio.com.");
 }
 
 if (entries.get("NEXT_PUBLIC_SUPABASE_URL") !== "https://cieuilbpnwuvnrxrlczj.supabase.co") {

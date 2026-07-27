@@ -45,7 +45,7 @@ const verifiedTokens = {
 };
 
 function request(path: string, body: unknown) {
-  return new NextRequest(`https://losttofound.org${path}`, {
+  return new NextRequest(`https://custodyfolio.com${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

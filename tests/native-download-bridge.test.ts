@@ -51,7 +51,7 @@ describe("native text export bridge", () => {
     });
   });
 
-  it("sends CSV exports to the My Custody Case iOS bridge", () => {
+  it("sends CSV exports to the Custody Folio iOS bridge", () => {
     const postMessage = vi.fn();
     vi.stubGlobal("window", {
       webkit: {

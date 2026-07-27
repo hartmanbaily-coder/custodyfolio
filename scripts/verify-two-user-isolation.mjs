@@ -34,7 +34,7 @@ const userBEmail = `l2f-isolation-b-${runId}@${emailDomain}`;
 const caseKey = `isolation-${runId}`;
 const caseId = `case-${runId}`;
 const evidenceId = `evidence-${runId}`;
-const evidenceContent = `My Custody Case synthetic isolation evidence ${runId}\n`;
+const evidenceContent = `Custody Folio synthetic isolation evidence ${runId}\n`;
 const storageBucket = process.env.RECORDS_EVIDENCE_BUCKET;
 
 let userAId = "";

@@ -5,7 +5,7 @@ const sections: PolicySection[] = [
   {
     title: "Commitment",
     body: [
-      "My Custody Case works to support keyboard navigation, readable text and contrast, labeled forms, visible focus, and mobile layouts.",
+      "Custody Folio works to support keyboard navigation, readable text and contrast, labeled forms, visible focus, and mobile layouts.",
       "Charts and calendars include written labels or summaries where available.",
     ],
   },
@@ -40,7 +40,7 @@ export default function AccessibilityPage() {
           <a href={supportMailto} className="font-mono font-semibold text-emerald-700 underline underline-offset-2">
             {supportEmail}
           </a>
-          . Use a subject such as My Custody Case accessibility issue and include the page, browser, device, and affected task.
+          . Use a subject such as Custody Folio accessibility issue and include the page, browser, device, and affected task.
         </p>
       </section>
     </PolicyPage>

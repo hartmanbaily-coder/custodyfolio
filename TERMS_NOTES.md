@@ -6,7 +6,7 @@ The public `/terms` page contains a records-specific draft for counsel review be
 
 ## Not Legal Advice
 
-My Custody Case helps users organize records. It does not provide legal advice, predict court outcomes, or replace consultation with a qualified attorney.
+Custody Folio helps users organize records. It does not provide legal advice, predict court outcomes, or replace consultation with a qualified attorney.
 
 ## User Responsibility
 

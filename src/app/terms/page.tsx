@@ -4,7 +4,7 @@ const sections: PolicySection[] = [
   {
     title: "Purpose",
     body: [
-      "My Custody Case helps adults organize custody records, calendars, expenses, files, and reports.",
+      "Custody Folio helps adults organize custody records, calendars, expenses, files, and reports.",
       "It does not provide legal advice, legal representation, court findings, or a guarantee that any record will be accepted as evidence.",
       "Consult a qualified attorney about your situation and applicable court rules.",
     ],
@@ -52,7 +52,7 @@ const sections: PolicySection[] = [
   {
     title: "Safety and changes",
     body: [
-      "My Custody Case is not an emergency service and does not monitor safety or enforce court orders. Contact emergency services when immediate help is needed.",
+      "Custody Folio is not an emergency service and does not monitor safety or enforce court orders. Contact emergency services when immediate help is needed.",
       "We may update the service or these terms. The date on this page identifies the current version.",
     ],
   },
@@ -62,7 +62,7 @@ export default function TermsPage() {
   return (
     <PolicyPage
       title="Terms of Use"
-      description="The rules and limitations for using My Custody Case."
+      description="The rules and limitations for using Custody Folio."
       sections={sections}
     />
   );

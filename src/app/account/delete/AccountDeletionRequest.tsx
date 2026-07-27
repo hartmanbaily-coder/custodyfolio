@@ -157,7 +157,7 @@ export function AccountDeletionRequest() {
           className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
         />
         <span>
-          I understand this will permanently delete my account and associated My Custody Case
+          I understand this will permanently delete my account and associated Custody Folio
           records. This cannot be undone. Limited copies may remain temporarily in backups or when
           retention is required by law.
         </span>

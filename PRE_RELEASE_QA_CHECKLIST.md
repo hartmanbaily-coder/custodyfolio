@@ -1,4 +1,4 @@
-# My Custody Case Pre-Release QA Checklist
+# Custody Folio Pre-Release QA Checklist
 
 Use synthetic users, cases, records, files, and payment references only. Do not deploy, migrate production data, upload a build, or change App Store Connect while running this checklist.
 
@@ -6,7 +6,7 @@ Allowed result labels: `PASS`, `FIXED`, `FAIL`, `BLOCKED`, `MANUAL`, `NOT APPLIC
 
 ## 1. Scope and repository safety
 
-- [ ] Confirm the public product name is **My Custody Case** and the production domain is `losttofound.org`.
+- [ ] Confirm the public product name is **Custody Folio** and the production domain is `custodyfolio.com`.
 - [ ] Record branch, revision, and working-tree state; preserve unrelated changes.
 - [ ] Read applicable `AGENTS.md`, security guidance, deployment documentation, migrations, and iOS release notes.
 - [ ] Confirm the environment is local, demo, test, or explicitly safe staging before creating data.
@@ -73,7 +73,7 @@ For every supported record type: create, locate in source and derived views, rel
 ## 6. Production operational gates
 
 - [ ] `npm run check:production` passes with the intended production secret source.
-- [ ] `RECORDS_APP_BASE_URL=https://losttofound.org npm run check:live` returns ready.
+- [ ] `RECORDS_APP_BASE_URL=https://custodyfolio.com npm run check:live` returns ready.
 - [ ] `npm run verify:edge-controls`
 - [ ] `npm run verify:malware`
 - [ ] `npm run verify:supabase-auth`
@@ -106,7 +106,7 @@ For every supported record type: create, locate in source and derived views, rel
 
 ## 9. App Store Connect and policy review
 
-- [ ] Confirm App Store name/display name **My Custody Case**, version/build, bundle ID, signing team, category, age rating, and SKU.
+- [ ] Confirm App Store name/display name **Custody Folio**, version/build, bundle ID, signing team, category, age rating, and SKU.
 - [ ] Confirm privacy-policy, support, terms, and account-deletion URLs return 200.
 - [ ] Complete privacy labels from actual collection/use; reconcile them with `PrivacyInfo.xcprivacy`.
 - [ ] Review required-reason APIs, encryption/export compliance, permissions, screenshots, description, keywords, and review notes.
@@ -133,7 +133,7 @@ For every supported record type: create, locate in source and derived views, rel
 | Code, unit, browser, build, audit, secrets, headers, edge, deployment recovery | `PASS` | 174 unit tests, 12 Playwright tests, production build, zero audit vulnerabilities |
 | Responsive notes/files and calendar accessibility | `FIXED` | Long-label regression and blank-calendar-cell accessibility assertions pass |
 | Recovery, MFA approval, AAL/recent-auth, global revocation, login CSRF, attorney revoke quota | `FIXED` | Focused route/security regressions and full unit suite pass |
-| Public branding and native display metadata | `FIXED` | Web/PWA/iOS metadata now uses My Custody Case; domain and technical identifiers retained |
+| Public branding and native display metadata | `FIXED` | Web/PWA/iOS metadata now uses Custody Folio; domain and technical identifiers retained |
 | Native simulator test plan and unsigned Release archive | `PASS` | 6 native tests; archive version 0.1.0 build 12 contains privacy manifest |
 | Production monitoring, backup restore, retention, incident response, legal approval | `BLOCKED` | Live readiness reports five blockers |
 | Live two-user/case isolation rerun from this workstation | `BLOCKED` | Safe disposable credentials and explicit production/staging environment were unavailable |

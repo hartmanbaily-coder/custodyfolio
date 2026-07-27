@@ -1,5 +1,5 @@
 import { PolicyPage, type PolicySection } from "@/components/PolicyPage";
-import { accountDeletionPath, supportEmail, supportMailto } from "@/lib/site";
+import { accountDeletionPath, privacyEmail, privacyMailto } from "@/lib/site";
 import Link from "next/link";
 
 const sections: PolicySection[] = [
@@ -21,7 +21,7 @@ const sections: PolicySection[] = [
   {
     title: "Service providers and disclosure",
     body: [
-      "We use Supabase for account authentication and data storage, Hetzner for application hosting, and Cloudflare for website protection, domain services, and email routing.",
+      "We use Supabase for account authentication and data storage, Hetzner for application hosting, Cloudflare for website protection and domain services, and Apple iCloud Mail for support, privacy, and security email.",
       "These providers may process only the information needed to provide their services and must protect it.",
       "We may disclose information when required by law or valid legal process, or when needed to protect people, accounts, or the service.",
     ],
@@ -63,7 +63,7 @@ export default function PrivacyPage() {
   return (
     <PolicyPage
       title="Privacy Policy"
-      description="How My Custody Case collects, uses, shares, retains, and deletes information."
+      description="How Custody Folio collects, uses, shares, retains, and deletes information."
       sections={sections}
     >
       <section className="rounded-lg border border-slate-200 bg-white p-6 text-sm leading-6 text-slate-600">
@@ -74,8 +74,8 @@ export default function PrivacyPage() {
             Delete Account
           </Link>
           . Send other privacy, access, correction, or account-data requests to{" "}
-          <a href={supportMailto} className="font-mono font-semibold text-emerald-700 underline underline-offset-2">
-            {supportEmail}
+          <a href={privacyMailto} className="font-mono font-semibold text-emerald-700 underline underline-offset-2">
+            {privacyEmail}
           </a>
           . Include the email address associated with the account and do not include sensitive case details in the subject line.
         </p>

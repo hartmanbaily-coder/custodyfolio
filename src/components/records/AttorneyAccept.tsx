@@ -89,7 +89,7 @@ export default function AttorneyAccept() {
         <h1 className="mt-2 text-2xl font-semibold">Accept a read-only invitation</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
           Acceptance starts 30 days of read-only access, during which you may return as often as needed.
-          My Custody Case organizes user provided information. It does not verify allegations, provide legal advice,
+          Custody Folio organizes user provided information. It does not verify allegations, provide legal advice,
           guarantee admissibility, create representation, or automatically create attorney-client privilege.
         </p>
         <p role="status" aria-live="polite" className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">

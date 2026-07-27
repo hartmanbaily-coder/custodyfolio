@@ -1,8 +1,8 @@
 # Edge Security Rules
 
-Use these as the starting production rule set for the hosting/CDN/WAF provider. Apply them at `losttofound.org` before setting `EDGE_RATE_LIMITING_ENABLED=true` or `EDGE_WAF_ENABLED=true`.
+Use these as the starting production rule set for the hosting/CDN/WAF provider. Apply them at `custodyfolio.com` before setting `EDGE_RATE_LIMITING_ENABLED=true` or `EDGE_WAF_ENABLED=true`.
 
-Current status from 2026-06-28: `losttofound.org` is still using GoDaddy nameservers (`ns65.domaincontrol.com`, `ns66.domaincontrol.com`) and live traffic is served directly by Caddy. Cloudflare/CDN WAF and rate-limit rules cannot be applied until the domain is added to the provider and DNS is routed through that provider.
+Current status from 2026-07-25: `custodyfolio.com` is active on Cloudflare, and its proxied apex and `www` records route through the healthy Custody Folio production tunnel. Keep the WAF and rate-limit readiness flags evidence-backed; do not enable them until the corresponding rules are applied and verified.
 
 ## Route Groups
 
@@ -47,22 +47,22 @@ Keep the app-level fallback limiter enabled even after provider limits are confi
 Use equivalent expressions for your provider.
 
 ```text
-http.host eq "losttofound.org"
+http.host eq "custodyfolio.com"
 and http.request.uri.path starts_with "/api/records/auth/"
 ```
 
 ```text
-http.host eq "losttofound.org"
+http.host eq "custodyfolio.com"
 and http.request.uri.path starts_with "/api/records/evidence/"
 ```
 
 ```text
-http.host eq "losttofound.org"
+http.host eq "custodyfolio.com"
 and http.request.uri.path eq "/api/records/dataset"
 ```
 
 ```text
-http.host eq "losttofound.org"
+http.host eq "custodyfolio.com"
 and (
   http.request.uri.path eq "/api/records/readiness"
   or http.request.uri.path eq "/launch-readiness"
@@ -76,7 +76,7 @@ Add these rules first so `npm run verify:edge-controls` can prove the provider i
 WAF custom rule:
 
 ```text
-http.host eq "losttofound.org"
+http.host eq "custodyfolio.com"
 and http.request.uri.path eq "/api/records/edge-control-probe"
 and http.request.uri.query contains "edge_waf_probe"
 ```
@@ -86,7 +86,7 @@ Action: block. The verifier expects HTTP `403`.
 Rate limiting rule:
 
 ```text
-http.host eq "losttofound.org"
+http.host eq "custodyfolio.com"
 and http.request.uri.path eq "/api/records/edge-control-probe"
 ```
 
@@ -95,7 +95,7 @@ Threshold: 3 requests per IP per 10 seconds. Action: block/throttle with HTTP `4
 Then run:
 
 ```bash
-RECORDS_APP_BASE_URL=https://losttofound.org npm run verify:edge-controls
+RECORDS_APP_BASE_URL=https://custodyfolio.com npm run verify:edge-controls
 ```
 
 If the command prints `EDGE_CONTROLS_TESTED_AT=<date>`, record the date, provider, and rule IDs before setting the production readiness flags.

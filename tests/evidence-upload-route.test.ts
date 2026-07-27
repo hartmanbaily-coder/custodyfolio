@@ -61,7 +61,7 @@ describe("evidence upload route storage ownership", () => {
     formData.append("caseId", "case-1");
     formData.append("evidenceId", "evidence-1");
     const request = new NextRequest(
-      "https://losttofound.org/api/records/evidence/upload",
+      "https://custodyfolio.com/api/records/evidence/upload",
       { method: "POST", body: formData }
     );
 
@@ -112,7 +112,7 @@ describe("evidence upload route storage ownership", () => {
     formData.append("caseId", "case-2");
     formData.append("evidenceId", "evidence-2");
     const request = new NextRequest(
-      "https://losttofound.org/api/records/evidence/upload",
+      "https://custodyfolio.com/api/records/evidence/upload",
       { method: "POST", body: formData }
     );
 

@@ -19,7 +19,7 @@ vi.mock("@/lib/security/securityEvents", () => ({ recordSecurityEvent }));
 import { POST } from "@/app/api/records/auth/logout/route";
 
 function request(cookies = "") {
-  return new NextRequest("https://losttofound.org/api/records/auth/logout", {
+  return new NextRequest("https://custodyfolio.com/api/records/auth/logout", {
     method: "POST",
     headers: cookies ? { Cookie: cookies } : undefined,
   });

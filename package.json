@@ -13,6 +13,7 @@
     "test:unit": "vitest run",
     "test:deploy": "bash deploy/production/test-health-recovery.sh",
     "test:e2e": "playwright test",
+    "test:e2e:webkit": "playwright test --config=playwright.webkit.config.ts",
     "security:audit": "npm audit --omit=dev --audit-level=high",
     "security:secrets": "node scripts/check-secrets.mjs",
     "security:scan": "npm run security:secrets && npm run security:audit",
@@ -53,7 +54,7 @@
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "^16.2.9",
-    "postcss": "^8.5.15",
+    "postcss": "^8.5.23",
     "tailwindcss": "^3.4.18",
     "typescript": "^5"
   },

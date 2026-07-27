@@ -2,9 +2,11 @@
 
 ## Domains
 
-Production domain: `losttofound.org`
+Production domain: `custodyfolio.com`
 
-Suggested staging subdomain: `staging-losttofound.org`
+Suggested staging subdomain: `staging-custodyfolio.com`
+
+The former `losttofound.org` hostname remains a temporary compatibility fallback. Do not remove its tunnel routes or DNS records until installed iOS builds, auth email links, monitors, and external bookmarks have migrated to `custodyfolio.com`.
 
 ## HTTPS
 
@@ -16,11 +18,12 @@ Enable HSTS only after HTTPS is verified end-to-end. The app currently sends:
 Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 ```
 
-Review whether `includeSubDomains` and `preload` are appropriate for all `losttofound.org` subdomains before final production launch.
+Review whether `includeSubDomains` and `preload` are appropriate for all `custodyfolio.com` subdomains before final production launch.
 
 ## DNS Setup
 
-- Point `losttofound.org` only to the active hosting provider.
+- Point `custodyfolio.com` only to the active hosting provider.
+- Keep `losttofound.org` on the same active origin during the compatibility window; redirect it only after auth and installed-client verification.
 - Verify ownership in the hosting provider dashboard.
 - Use a separate staging host for staging.
 - Avoid sharing auth cookies across sibling subdomains.
@@ -32,8 +35,8 @@ Dangling DNS records can create subdomain takeover risk.
 
 Production auth cookies must be:
 
-- Host-only for `losttofound.org`
-- Not scoped to `.losttofound.org`
+- Host-only for `custodyfolio.com`
+- Not scoped to `.custodyfolio.com`
 - Secure
 - HttpOnly
 - SameSite=Lax or SameSite=Strict
@@ -53,7 +56,7 @@ Use deployment platform secret storage. Do not commit:
 
 Rotate exposed credentials immediately.
 
-Before production deploy, use `.env.production.example` as the source checklist and configure the host secrets used by the actual deployment path for `losttofound.org`:
+Before production deploy, use `.env.production.example` as the source checklist and configure the host secrets used by the actual deployment path for `custodyfolio.com`:
 
 - `NEXT_PUBLIC_APP_URL`
 - `NEXT_PUBLIC_RECORDS_HOST`
@@ -100,18 +103,18 @@ Before production deploy, use `.env.production.example` as the source checklist 
 - `VENDOR_SECURITY_REVIEW_APPROVED`
 - `SECURITY_CONTACT_EMAIL`
 
-Production for `losttofound.org` runs on a dedicated Ubuntu host under the non-root `losttofound` account. Its rootless Docker daemon owns only the LostToFound, ClamAV, and Caddy containers. The Listhaus repository, host, secrets, Compose project, and deployment workflow are not part of this deployment boundary.
+Production for `custodyfolio.com` runs on a dedicated Ubuntu host under the non-root `losttofound` account. Its rootless Docker daemon owns only the LostToFound, ClamAV, and Caddy containers. The Listhaus repository, host, secrets, Compose project, and deployment workflow are not part of this deployment boundary.
 
-Use this deploy path for My Custody Case changes:
+Use this deploy path for Custody Folio changes:
 
-1. Commit and push the My Custody Case change to the `main` branch of the configured GitHub repository.
-2. Confirm that the `Validate My Custody Case` workflow passes lint, typecheck, unit tests, secret scanning, production env template validation, dependency audit, and build.
+1. Commit and push the Custody Folio change to the `main` branch of the configured GitHub repository.
+2. Confirm that the `Validate Custody Folio` workflow passes lint, typecheck, unit tests, secret scanning, production env template validation, dependency audit, and build.
 3. From a trusted administrator Mac with the pinned SSH host key at `~/.ssh/losttofound_known_hosts`, run `deploy/production/deploy-from-mac.sh <host> <validated-commit-sha>`.
 4. The remote deploy builds a release-tagged image, starts the isolated stack, verifies readiness, verifies clean/EICAR malware scanning, verifies security headers, and rolls back to the prior image if validation fails.
 5. Verify production after deploy:
-   - `https://losttofound.org/records` serves the expected bundle/UI.
-   - A fake login to `POST https://losttofound.org/api/records/auth/login` returns a handled `400` or `401` JSON response, not a blank `500`.
-   - `https://losttofound.org/api/records/readiness` returns a structured `ready` or `not_ready` result with no unexpected infrastructure blocker. Policy and dashboard attestations remain visible and must not be marked complete without evidence.
+   - `https://custodyfolio.com/records` serves the expected bundle/UI.
+   - A fake login to `POST https://custodyfolio.com/api/records/auth/login` returns a handled `400` or `401` JSON response, not a blank `500`.
+   - `https://custodyfolio.com/api/records/readiness` returns a structured `ready` or `not_ready` result with no unexpected infrastructure blocker. Policy and dashboard attestations remain visible and must not be marked complete without evidence.
 
 Production deployment is intentionally not triggered by GitHub Actions. This keeps the production SSH key and host environment out of GitHub and removes the cross-repository `LISTHAUS_DEPLOY_TOKEN`. Run `npm run check:production` with the real host environment before accepting real records.
 
@@ -125,7 +128,7 @@ When Supabase is intentionally saved for last, run `npm run check:pre-supabase` 
 
 Set `EXPECTED_SUPABASE_PROJECT_REF=cieuilbpnwuvnrxrlczj` in production. The readiness check rejects the older staging/mixed-use Supabase project so records traffic cannot accidentally launch against `adhnoiicwfvppzenwcgv`.
 
-Run `npm run verify:env-template` before deploy to confirm the committed production template still points at `losttofound.org` and the clean records Supabase project without containing real secrets.
+Run `npm run verify:env-template` before deploy to confirm the committed production template still points at `custodyfolio.com` and the clean records Supabase project without containing real secrets.
 
 Run `npm run verify:headers` against the local or deployed app to confirm CSP, HSTS, frame blocking, referrer policy, content-type sniffing protection, and browser permissions policy are present. Non-local production URLs must use HTTPS.
 

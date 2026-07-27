@@ -1,20 +1,22 @@
 import SwiftUI
 
 enum AppBrand {
-    static let name = "My Custody Case"
+    static let name = "Custody Folio"
     static let tagline = "Remove the emotion. Track the data."
-    static let supportEmail = "support@lendori.io"
+    static let supportEmail = "support@custodyfolio.com"
+    static let privacyEmail = "privacy@custodyfolio.com"
+    static let securityEmail = "security@custodyfolio.com"
     static let accountDeletionRequestURL = URL(
-        string: "https://losttofound.org/account/delete"
+        string: "https://custodyfolio.com/account/delete"
     )!
     static let legalDisclaimer = "This app helps organize records and does not provide legal advice. Consult a qualified attorney about your situation."
 }
 
 private let appPolicyLinks: [PolicyLink] = [
-    PolicyLink(title: "Privacy Policy", url: URL(string: "https://losttofound.org/privacy")!),
-    PolicyLink(title: "Terms of Use", url: URL(string: "https://losttofound.org/terms")!),
+    PolicyLink(title: "Privacy Policy", url: URL(string: "https://custodyfolio.com/privacy")!),
+    PolicyLink(title: "Terms of Use", url: URL(string: "https://custodyfolio.com/terms")!),
     PolicyLink(title: "Account Deletion", url: AppBrand.accountDeletionRequestURL),
-    PolicyLink(title: "Contact", url: URL(string: "https://losttofound.org/contact")!)
+    PolicyLink(title: "Contact", url: URL(string: "https://custodyfolio.com/contact")!)
 ]
 
 struct AppBrandMark: View {
@@ -53,7 +55,7 @@ struct PrivacySummaryView: View {
             Section {
                 AppBrandHeader()
 
-                Text("My Custody Case is for adult users organizing private custody and parenting plan records.")
+                Text("Custody Folio is for adult users organizing private custody and parenting plan records.")
                     .font(.body)
                     .foregroundStyle(.secondary)
             }
@@ -81,7 +83,7 @@ struct SupportView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Need account, privacy, deletion, accessibility, or product help?")
                         .font(.headline)
-                    Text("Email support without putting sensitive case details in the subject line.")
+                    Text("Choose the appropriate inbox without putting sensitive case details in the subject line.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -90,10 +92,18 @@ struct SupportView: View {
 
             Section("Contact") {
                 Link(destination: URL(string: "mailto:\(AppBrand.supportEmail)")!) {
-                    Label(AppBrand.supportEmail, systemImage: "envelope")
+                    Label("Support — \(AppBrand.supportEmail)", systemImage: "envelope")
                 }
 
-                Link(destination: URL(string: "https://losttofound.org/contact")!) {
+                Link(destination: URL(string: "mailto:\(AppBrand.privacyEmail)")!) {
+                    Label("Privacy — \(AppBrand.privacyEmail)", systemImage: "hand.raised")
+                }
+
+                Link(destination: URL(string: "mailto:\(AppBrand.securityEmail)")!) {
+                    Label("Security — \(AppBrand.securityEmail)", systemImage: "lock.shield")
+                }
+
+                Link(destination: URL(string: "https://custodyfolio.com/contact")!) {
                     Label("Contact page", systemImage: "safari")
                 }
             }
@@ -105,7 +115,7 @@ struct SupportView: View {
                     Label("Delete account", systemImage: "person.crop.circle.badge.xmark")
                 }
 
-                Link(destination: URL(string: "https://losttofound.org/privacy")!) {
+                Link(destination: URL(string: "https://custodyfolio.com/privacy")!) {
                     Label("Privacy and deletion policy", systemImage: "doc.text.magnifyingglass")
                 }
 

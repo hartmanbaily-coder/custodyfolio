@@ -1,4 +1,4 @@
-name: Validate My Custody Case
+name: Validate Custody Folio
 
 on:
   push:

@@ -11,21 +11,28 @@ const sections: PolicySection[] = [
   {
     title: "Hetzner",
     body: [
-      "Hosts the My Custody Case application server.",
+      "Hosts the Custody Folio application server.",
       "May process encrypted web traffic and limited operational information needed to provide hosting.",
     ],
   },
   {
     title: "Cloudflare",
     body: [
-      "Provides website traffic protection, domain services, and email routing.",
-      "May process IP addresses, web request information, security events, and email routing information.",
+      "Provides website traffic protection, DNS, and domain services.",
+      "May process IP addresses, web request information, and security events.",
+    ],
+  },
+  {
+    title: "Apple iCloud Mail",
+    body: [
+      "Provides the Custody Folio support, privacy, and security mailboxes.",
+      "May process the sender address, message content, attachments, and delivery information when someone contacts those mailboxes.",
     ],
   },
   {
     title: "Provider changes",
     body: [
-      "We require service providers to protect personal information and use it only to provide their services to My Custody Case.",
+      "We require service providers to protect personal information and use it only to provide their services to Custody Folio.",
       "We will update this page before a material new provider begins processing customer records.",
     ],
   },
@@ -35,7 +42,7 @@ export default function SubprocessorsPage() {
   return (
     <PolicyPage
       title="Subprocessors"
-      description="Service providers that may process information to operate My Custody Case."
+      description="Service providers that may process information to operate Custody Folio."
       sections={sections}
     />
   );

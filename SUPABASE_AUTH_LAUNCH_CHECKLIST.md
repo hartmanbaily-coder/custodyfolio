@@ -6,7 +6,7 @@ This checklist covers dashboard-controlled Supabase Auth settings that cannot be
 
 ## Current Policy
 
-Keep My Custody Case invite-only until launch review is complete:
+Keep Custody Folio invite-only until launch review is complete:
 
 - `NEXT_PUBLIC_RECORDS_SIGNUPS_ENABLED=false`
 - `RECORDS_SIGNUPS_ENABLED=false`
@@ -39,7 +39,7 @@ Open Supabase Dashboard for project `cieuilbpnwuvnrxrlczj`.
 
 2. Custom SMTP
    - Go to Authentication > Emails > SMTP Settings.
-   - Configure a production sender on the `losttofound.org` domain or an approved transactional email domain.
+   - Configure a production sender on the `custodyfolio.com` domain or an approved transactional email domain.
    - Disable provider link tracking for auth links if the provider offers it.
    - Send and receive a test confirmation/reset email using a synthetic account.
    - Confirm the Invite user template retains `{{ .ConfirmationURL }}` so server-admin attorney invitations deliver the mailbox-verification link.
@@ -47,13 +47,14 @@ Open Supabase Dashboard for project `cieuilbpnwuvnrxrlczj`.
 
 3. Redirect URLs
    - Go to Authentication > URL Configuration.
-   - Set Site URL to `https://losttofound.org`.
+   - Set Site URL to `https://custodyfolio.com`.
    - Allow exact production redirects used by the app:
-     - `https://losttofound.org/auth/confirm`
-     - `https://losttofound.org/records`
-     - `https://losttofound.org/records?auth=confirmed`
-     - `https://losttofound.org/records?auth=attorney-invite&next=%2Fattorney%2Faccept&invite=1`
-     - `https://losttofound.org/records?auth=recovery`
+     - `https://custodyfolio.com/auth/confirm`
+     - `https://custodyfolio.com/records`
+     - `https://custodyfolio.com/records?auth=confirmed`
+     - `https://custodyfolio.com/records?auth=attorney-invite&next=%2Fattorney%2Faccept&invite=1&attorney_token=*`
+     - `https://custodyfolio.com/records?auth=recovery`
+   - During the compatibility window, retain the equivalent exact `https://losttofound.org` redirects for confirmation, records, and recovery links already in circulation, plus the same narrowly scoped attorney-token wildcard.
    - Avoid broad production wildcards.
    - Verify signup confirmation, attorney invitation email onboarding, and password reset with synthetic accounts.
    - After verification, set Listhaus repo variable `LOSTTOFOUND_SUPABASE_AUTH_REDIRECTS_VERIFIED_AT=YYYY-MM-DD`.

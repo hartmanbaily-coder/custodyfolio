@@ -1,4 +1,4 @@
--- My Custody Case production schema baseline.
+-- Custody Folio production schema baseline.
 --
 -- Keep this file aligned with the applied Supabase migrations documented in
 -- PRODUCTION_PREPAREDNESS.md and DEPLOYMENT_NOTES.md.

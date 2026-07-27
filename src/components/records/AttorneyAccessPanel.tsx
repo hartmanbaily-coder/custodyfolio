@@ -170,7 +170,7 @@ export default function AttorneyAccessPanel({
     }
     try {
       await navigator.share({
-        title: "My Custody Case attorney access",
+        title: "Custody Folio attorney access",
         text: `Private ${attorneyAccessDurationDays}-day read-only access invitation. Open this link using the attorney account that was invited.`,
         url: invitationUrl,
       });
@@ -209,7 +209,7 @@ export default function AttorneyAccessPanel({
       </div>
 
       <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
-        Revocation blocks future requests immediately, but My Custody Case cannot recall copies already downloaded.
+        Revocation blocks future requests immediately, but Custody Folio cannot recall copies already downloaded.
         Access history records dates and actions without including record contents. Deleting the case or account ends access.
       </div>
 
@@ -220,7 +220,7 @@ export default function AttorneyAccessPanel({
       ) : null}
       {state?.delivery === "owner_share" ? (
         <p className="mt-3 rounded-md border border-teal-200 bg-teal-50 p-3 text-sm leading-6 text-teal-950">
-          My Custody Case does not email this invitation. After creating it, use Share Link, Copy Link, or the QR code to deliver it through a channel you trust.
+          Custody Folio does not email this invitation. After creating it, use Share Link, Copy Link, or the QR code to deliver it through a channel you trust.
         </p>
       ) : null}
       {!newInvitationsEnabled ? (

@@ -43,8 +43,9 @@ describe("customer facing copy", () => {
 
   it("uses the monitored support channel", () => {
     const site = readFileSync(resolve(process.cwd(), "src/lib/site.ts"), "utf8");
-    expect(site).toContain('supportEmail = "support@lendori.io"');
-    expect(site).not.toContain("securityEmail");
+    expect(site).toContain('supportEmail = "support@custodyfolio.com"');
+    expect(site).toContain('privacyEmail = "privacy@custodyfolio.com"');
+    expect(site).toContain('securityEmail = "security@custodyfolio.com"');
   });
 
   it("states that signed-in account deletion is immediate and self-service", () => {

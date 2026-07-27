@@ -41,7 +41,7 @@ import {
   setAttorneyPasswordSetupCookie,
 } from "@/lib/records/attorneyServer";
 
-const request = new NextRequest("https://losttofound.org/api/records/attorney/portal");
+const request = new NextRequest("https://custodyfolio.com/api/records/attorney/portal");
 
 describe("attorney authentication policy", () => {
   beforeEach(() => {
@@ -181,7 +181,7 @@ describe("attorney authentication policy", () => {
       }
     );
     const cookie = response.cookies.get(attorneyPasswordSetupCookieName)?.value || "";
-    const boundRequest = new NextRequest("https://losttofound.org/api/records/auth/password/update", {
+    const boundRequest = new NextRequest("https://custodyfolio.com/api/records/auth/password/update", {
       headers: { Cookie: `${attorneyPasswordSetupCookieName}=${cookie}` },
     });
 
@@ -203,7 +203,7 @@ describe("attorney authentication policy", () => {
       }
     );
     const cookie = response.cookies.get(attorneyMailboxProofCookieName)?.value || "";
-    const boundRequest = new NextRequest("https://losttofound.org/api/records/attorney/accept", {
+    const boundRequest = new NextRequest("https://custodyfolio.com/api/records/attorney/accept", {
       headers: { Cookie: `${attorneyMailboxProofCookieName}=${cookie}` },
     });
 

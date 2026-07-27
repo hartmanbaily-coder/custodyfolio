@@ -1,6 +1,6 @@
 # Privacy and Security Readiness
 
-My Custody Case handles custody, parenting-time, child support, court, school, health-adjacent, financial, and evidence records. Treat production data as highly sensitive even when it is not regulated as medical, financial, or child-directed data.
+Custody Folio handles custody, parenting-time, child support, court, school, health-adjacent, financial, and evidence records. Treat production data as highly sensitive even when it is not regulated as medical, financial, or child-directed data.
 
 ## Target Baseline
 
@@ -16,8 +16,8 @@ These gates are enforced by `src/lib/production/readiness.ts` and `scripts/check
 
 | Gate | Required signal | Status |
 | --- | --- | --- |
-| HTTPS production URL | `NEXT_PUBLIC_APP_URL=https://losttofound.org` | Required |
-| Host-only records domain | `NEXT_PUBLIC_RECORDS_HOST=losttofound.org` | Required |
+| HTTPS production URL | `NEXT_PUBLIC_APP_URL=https://custodyfolio.com` | Required |
+| Host-only records domain | `NEXT_PUBLIC_RECORDS_HOST=custodyfolio.com` | Required |
 | Supabase mode | `RECORDS_STORAGE_MODE=supabase` and `NEXT_PUBLIC_RECORDS_STORAGE_MODE=supabase` | Required |
 | Production Supabase project guard | `EXPECTED_SUPABASE_PROJECT_REF=cieuilbpnwuvnrxrlczj`; production must not point at staging project `adhnoiicwfvppzenwcgv` | Required |
 | Server-only service role | `SUPABASE_SERVICE_ROLE_KEY` only in server secrets | Required |

@@ -99,17 +99,17 @@ describe("attorney read-only projection", () => {
 describe("attorney CSRF protection", () => {
   it("requires matching double-submit tokens and a same-origin request", () => {
     const token = createRecordsCsrfToken();
-    const accepted = new NextRequest("https://losttofound.org/api/records/attorney/portal/action", {
+    const accepted = new NextRequest("https://custodyfolio.com/api/records/attorney/portal/action", {
       method: "POST",
       headers: {
-        Origin: "https://losttofound.org",
+        Origin: "https://custodyfolio.com",
         Cookie: `${recordsCsrfCookieName}=${token}`,
         "X-L2F-CSRF": token,
       },
     });
     expect(verifyRecordsCsrf(accepted)).toEqual({ ok: true });
 
-    const rejected = new NextRequest("https://losttofound.org/api/records/attorney/portal/action", {
+    const rejected = new NextRequest("https://custodyfolio.com/api/records/attorney/portal/action", {
       method: "POST",
       headers: {
         Origin: "https://attacker.example",

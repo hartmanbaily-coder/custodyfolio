@@ -40,6 +40,35 @@ body {
   max-width: 100%;
 }
 
+.records-workspace input[type="date"] {
+  box-sizing: border-box;
+  display: block;
+  max-inline-size: 100%;
+  min-inline-size: 0 !important;
+  overflow: hidden;
+}
+
+.records-workspace input[type="date"]::-webkit-date-and-time-value {
+  inline-size: 100%;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-align: left;
+}
+
+@supports (-webkit-touch-callout: none) {
+  .records-workspace input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .records-workspace input[type="date"] {
+    inline-size: 100%;
+    width: 100%;
+  }
+}
+
 .records-table-scroll {
   width: 100%;
   overscroll-behavior-inline: contain;

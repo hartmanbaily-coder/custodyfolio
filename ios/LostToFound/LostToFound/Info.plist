@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>My Custody Case</string>
+	<string>Custody Folio</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -23,9 +23,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
-	<string>My Custody Case uses Face ID to protect access to your private records workspace.</string>
+	<string>Custody Folio uses Face ID to protect access to your private records workspace.</string>
 	<key>WKAppBoundDomains</key>
 	<array>
+		<string>custodyfolio.com</string>
+		<string>www.custodyfolio.com</string>
 		<string>losttofound.org</string>
 		<string>www.losttofound.org</string>
 	</array>

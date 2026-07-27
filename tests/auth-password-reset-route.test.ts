@@ -24,7 +24,7 @@ function fakeJwt(payload: Record<string, unknown>) {
 }
 
 function makeRequest(body: unknown) {
-  return new NextRequest("https://losttofound.org/api/records/auth/password/reset", {
+  return new NextRequest("https://custodyfolio.com/api/records/auth/password/reset", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -63,7 +63,7 @@ describe("records password reset route", () => {
     });
     expect(response.status).toBe(200);
     expect(resetPasswordForEmail).toHaveBeenCalledWith("reviewer@example.test", {
-      redirectTo: "https://losttofound.org/records?auth=recovery",
+      redirectTo: "https://custodyfolio.com/records?auth=recovery",
     });
     expect(recordSecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({

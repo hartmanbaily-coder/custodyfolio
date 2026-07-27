@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       detail: "MFA enrollment verification was rejected because the records profile is not approved.",
     });
     return NextResponse.json(
-      { error: "This account is not enabled for My Custody Case." },
+      { error: "This account is not enabled for Custody Folio." },
       { status: 403, headers: { "Cache-Control": "no-store" } }
     );
   }

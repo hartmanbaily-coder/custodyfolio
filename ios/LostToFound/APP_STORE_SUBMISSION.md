@@ -4,8 +4,8 @@ This draft is a working submission packet. It should be reviewed before public s
 
 ## App Identity
 
-- App name: My Custody Case
-- Display name: My Custody Case
+- App name: Custody Folio
+- Display name: Custody Folio
 - Bundle ID: `io.lendori.losttofound`
 - Version: `0.1.0`
 - Build: `12`
@@ -16,13 +16,13 @@ This draft is a working submission packet. It should be reviewed before public s
 - Primary category: Productivity
 - Secondary category: Utilities
 - Content rights: owned by the developer
-- Support URL: `https://losttofound.org/contact`
-- Privacy Policy URL: `https://losttofound.org/privacy`
-- Terms URL: `https://losttofound.org/terms`
+- Support URL: `https://custodyfolio.com/contact`
+- Privacy Policy URL: `https://custodyfolio.com/privacy`
+- Terms URL: `https://custodyfolio.com/terms`
 
 ## Subtitle
 
-Evidence, Logs & Court Reports
+Parenting Records & Reports
 
 ## Promotional Text Draft
 
@@ -30,7 +30,7 @@ Remove the emotion. Track the data. Organize custody events, parenting time, exp
 
 ## Description Draft
 
-My Custody Case helps adult users privately organize custody records and supporting evidence.
+Custody Folio helps adult users privately organize custody records and supporting evidence.
 
 Track dated notes, exchanges, FaceTime issues, expenses, files, calendar items, and clear reports from one place. The app is built for factual organization and personal recordkeeping. It helps users maintain cleaner records for personal review or attorney conversations.
 
@@ -41,13 +41,13 @@ Key features:
 - Document upload support through the protected workspace
 - Report and export workflows for review
 - Device level unlock with Face ID, Touch ID, or passcode
-- Controlled records web view limited to `losttofound.org` and `www.losttofound.org`
+- Controlled records web view limited to the Custody Folio domains, with the former `losttofound.org` domains retained temporarily for transition compatibility
 - Privacy, security, and AI data use notices available in app
 
 Important boundaries:
 
-- My Custody Case does not provide legal advice.
-- My Custody Case is not a law firm and does not create an attorney client relationship.
+- Custody Folio does not provide legal advice.
+- Custody Folio is not a law firm and does not create an attorney client relationship.
 - Users are responsible for verifying records against original source material.
 - The app is for adult users only and is not directed to children.
 - The app is not an emergency service, law enforcement tool, supervised exchange tool, or coparent messaging system.
@@ -58,9 +58,9 @@ coparenting,parenting time,evidence,incident log,expenses,calendar,attorney,fami
 
 ## Review Notes Draft
 
-My Custody Case is a private records organizer for adult users documenting custody and parenting plan information. It is not a legal advice app, law firm, emergency service, child facing app, social network, payment processor, or coparent messaging platform.
+Custody Folio is a private records organizer for adult users documenting custody and parenting plan information. It is not a legal advice app, law firm, emergency service, child facing app, social network, payment processor, or coparent messaging platform.
 
-The app uses a native SwiftUI shell with a device-authentication gate, native tab navigation, native privacy/support surfaces, and a controlled `WKWebView` workspace. The web view is app-bound to `losttofound.org` and `www.losttofound.org`; external web links and `mailto:` links open outside the records workspace.
+The app uses a native SwiftUI shell with a device-authentication gate, native tab navigation, native privacy/support surfaces, and a controlled `WKWebView` workspace. The web view uses `custodyfolio.com` and `www.custodyfolio.com` as its primary app-bound domains. The former `losttofound.org` domains remain app-bound temporarily so existing links continue working during the transition; external web links and `mailto:` links open outside the records workspace.
 
 Review flow:
 
@@ -68,7 +68,7 @@ Review flow:
 2. Unlock with the review device's Face ID, Touch ID, or passcode. The app uses Apple's LocalAuthentication framework and does not receive or store biometric data.
 3. Open the Records tab and sign in with the review account below.
 4. Review the Policies tab for native privacy, terms, security, AI data use, subprocessors, accessibility, and contact links.
-5. Review the Support tab for support contact, account/data help, and the in-app self-service account deletion entry point. The deletion entry point opens `https://losttofound.org/account/delete`, where a signed-in records user can permanently delete the account after explicit confirmation.
+5. Review the Support tab for support contact, account/data help, and the in-app self-service account deletion entry point. The deletion entry point opens `https://custodyfolio.com/account/delete`, where a signed-in records user can permanently delete the account after explicit confirmation.
 
 Provide Apple Review with a dedicated test account before submission:
 
@@ -77,7 +77,7 @@ Provide Apple Review with a dedicated test account before submission:
 - MFA status: `[disable for review account or provide review instructions]`
 - Test data: synthetic only
 
-Account deletion path for review: Support tab -> Account and Data -> Delete account -> `https://losttofound.org/account/delete`. The direct deletion page lets a signed-in records user confirm the irreversible consequences and press "Permanently delete my account." The server removes private evidence files, revokes sessions, deletes the Auth account and cascaded active records, and reports completion without an approval queue. The public Privacy Policy also documents backup aging and legally required retention.
+Account deletion path for review: Support tab -> Account and Data -> Delete account -> `https://custodyfolio.com/account/delete`. The direct deletion page lets a signed-in records user confirm the irreversible consequences and press "Permanently delete my account." The server removes private evidence files, revokes sessions, deletes the Auth account and cascaded active records, and reports completion without an approval queue. The public Privacy Policy also documents backup aging and legally required retention.
 
 Current native build snapshot:
 
@@ -85,9 +85,9 @@ Current native build snapshot:
 - Bundle ID: `io.lendori.losttofound`
 - Version/build: `0.1.0 (12)` in the project; App Store uploads use Xcode-managed next-available build numbering
 - Deployment target: iOS 17.0
-- Records URL: `https://losttofound.org/records`
-- Account deletion URL: `https://losttofound.org/account/delete`
-- Web navigation allowlist: `losttofound.org`, `www.losttofound.org`
+- Records URL: `https://custodyfolio.com/records`
+- Account deletion URL: `https://custodyfolio.com/account/delete`
+- Web navigation allowlist: `custodyfolio.com`, `www.custodyfolio.com`, plus the temporary `losttofound.org` fallback
 - Scene privacy behavior: app returns to locked state when it leaves the active scene
 - Automated verification: 6 native security tests passed with 0 failures on 2026-07-16, and an unsigned Release archive completed with store validation enabled
 
@@ -154,7 +154,7 @@ Do not use real custody, child, court, message, phone, address, or evidence data
 - TestFlight build installed on a real iPhone.
 - App Review test account created with synthetic data.
 - App Review notes include review-device unlock instructions and login/MFA instructions.
-- Self-service account deletion tested in the native Support tab and at `https://losttofound.org/account/delete`.
+- Self-service account deletion tested in the native Support tab and at `https://custodyfolio.com/account/delete`.
 - Privacy Policy, Terms, Security, AI Data Use, Accessibility, and Contact pages live.
 - No production secrets committed.
 - No real user data in screenshots or demo account.

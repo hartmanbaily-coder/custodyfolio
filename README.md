@@ -1,8 +1,10 @@
-# My Custody Case
+# Custody Folio
 
-My Custody Case is a privacy focused product for organizing custody, parenting time, child support, expense, evidence, and family court records.
+Custody Folio is a privacy focused product for organizing custody, parenting time, child support, expense, evidence, and family court records.
 
-Production domain: `losttofound.org`
+Production domain: `custodyfolio.com`
+
+The former `losttofound.org` hostname remains routed to the same production service during the transition. Keep it as a compatibility fallback until installed builds, auth links, and external bookmarks have migrated.
 
 The product is for factual documentation and organization only. It does not provide legal advice, predict court outcomes, or claim that any record is legally established.
 
@@ -94,9 +96,9 @@ Before storing real user records, verify the production deployment end to end:
 - Rate limits on auth and write-heavy routes
 - Deployed readiness verification with `npm run check:live`
 
-## losttofound.org
+## custodyfolio.com
 
-Production cookies must be host-only for `losttofound.org`. Do not set auth cookies for `.losttofound.org`.
+Production cookies must be host-only for `custodyfolio.com`. Do not set auth cookies for `.custodyfolio.com`.
 
 Use Secure, HttpOnly, SameSite=Lax or SameSite=Strict cookies, and prefer `__Host-` prefixed cookies where compatible.
 

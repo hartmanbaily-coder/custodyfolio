@@ -9,13 +9,13 @@ final class NativeSecurityPolicyTests: XCTestCase {
         let validRefresh = try makeCookie(
             name: "__Host-l2f-records-refresh",
             value: "refresh-token",
-            host: "losttofound.org",
+            host: "custodyfolio.com",
             expiresAt: now.addingTimeInterval(3_600)
         )
         let validAccess = try makeCookie(
             name: "__Host-l2f-records-access",
             value: "access-token",
-            host: "www.losttofound.org",
+            host: "www.custodyfolio.com",
             expiresAt: now.addingTimeInterval(600)
         )
         let expired = try makeCookie(
@@ -90,6 +90,10 @@ final class NativeSecurityPolicyTests: XCTestCase {
 
     func testNavigationPolicyKeepsOnlyProductHTTPSInsideWorkspace() throws {
         XCTAssertEqual(
+            WorkspaceNavigationPolicy.decision(for: try XCTUnwrap(URL(string: "https://custodyfolio.com/records"))),
+            .allowInWorkspace
+        )
+        XCTAssertEqual(
             WorkspaceNavigationPolicy.decision(for: try XCTUnwrap(URL(string: "https://losttofound.org/records"))),
             .allowInWorkspace
         )
@@ -98,7 +102,7 @@ final class NativeSecurityPolicyTests: XCTestCase {
             .openExternally
         )
         XCTAssertEqual(
-            WorkspaceNavigationPolicy.decision(for: try XCTUnwrap(URL(string: "mailto:support@lendori.io"))),
+            WorkspaceNavigationPolicy.decision(for: try XCTUnwrap(URL(string: "mailto:support@custodyfolio.com"))),
             .openExternally
         )
         XCTAssertEqual(

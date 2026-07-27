@@ -16,7 +16,7 @@ vi.mock("@/lib/records/authServer", () => ({
 }));
 
 function makeRequest() {
-  return new NextRequest("https://losttofound.org/api/records/auth/session");
+  return new NextRequest("https://custodyfolio.com/api/records/auth/session");
 }
 
 describe("records auth session route", () => {

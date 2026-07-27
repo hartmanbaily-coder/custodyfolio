@@ -1,16 +1,16 @@
-# My Custody Case iOS
+# Custody Folio iOS
 
-This folder prepares My Custody Case for the Apple App Store path.
+This folder prepares Custody Folio for the Apple App Store path.
 
 The iOS app is a native SwiftUI shell with:
 
 - Device authentication gate using Face ID, Touch ID, or device passcode.
 - Native tab structure for Records, Policies, and Support.
-- A controlled `WKWebView` workspace pointed at `https://losttofound.org/records`.
-- WebKit app-bound domains for `losttofound.org` and `www.losttofound.org`.
+- A controlled `WKWebView` workspace pointed at `https://custodyfolio.com/records`.
+- WebKit app-bound domains for `custodyfolio.com` and `www.custodyfolio.com`, with the former `losttofound.org` domains retained temporarily for transition compatibility.
 - External link handling that opens non-product links outside the workspace.
 - Native privacy/support summaries that mirror the public policy pages and expose account deletion support.
-- App icon assets generated from the My Custody Case book, records, graph, and gavel logo.
+- App icon assets generated from the Custody Folio book, records, graph, and gavel logo.
 
 ## Local Setup
 
@@ -29,7 +29,7 @@ The iOS app is a native SwiftUI shell with:
 5. Use TestFlight for internal testing.
 6. Submit for App Review after privacy/legal copy and screenshots are final.
 
-Before App Review, create a dedicated synthetic review account and make sure the review notes explain device unlock, login/MFA, native policy/support tabs, and the Support tab self-service deletion path at `https://losttofound.org/account/delete`, including the signed-in "Permanently delete my account" control.
+Before App Review, create a dedicated synthetic review account and make sure the review notes explain device unlock, login/MFA, native policy/support tabs, and the Support tab self-service deletion path at `https://custodyfolio.com/account/delete`, including the signed-in "Permanently delete my account" control.
 
 ## Native Value
 

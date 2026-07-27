@@ -1,4 +1,4 @@
-const baseUrl = String(process.env.RECORDS_APP_BASE_URL || "https://losttofound.org").replace(/\/$/, "");
+const baseUrl = String(process.env.RECORDS_APP_BASE_URL || "https://custodyfolio.com").replace(/\/$/, "");
 const provider = String(process.env.EDGE_CONTROL_PROVIDER || "cloudflare").trim().toLowerCase();
 const probePath = String(process.env.EDGE_CONTROL_PROBE_PATH || "/api/records/edge-control-probe");
 const rateAttempts = Number(process.env.EDGE_RATE_LIMIT_TEST_ATTEMPTS || 8);
@@ -67,7 +67,7 @@ if (![200, 204].includes(baseline.status)) {
   fail(`Edge-control probe endpoint returned HTTP ${baseline.status}; expected 200 or 204.`);
 }
 if (!hasExpectedProviderMarker(baseline.headers)) {
-  fail(`No ${provider} marker was found on the probe response. Put losttofound.org behind the edge provider first.`);
+  fail(`No ${provider} marker was found on the probe response. Put custodyfolio.com behind the edge provider first.`);
 }
 
 const wafUrl = new URL(probeUrl);

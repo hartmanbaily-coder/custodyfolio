@@ -37,11 +37,11 @@ function fakeJwt(payload: Record<string, unknown>) {
 }
 
 function makeRequest(email: string, invitationToken = "") {
-  return new NextRequest("https://losttofound.org/api/records/auth/login", {
+  return new NextRequest("https://custodyfolio.com/api/records/auth/login", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Origin: "https://losttofound.org",
+      Origin: "https://custodyfolio.com",
       "X-Forwarded-For": "192.0.2.10",
       ...(invitationToken ? { Cookie: `l2f-attorney-invite=${invitationToken}` } : {}),
     },
@@ -104,7 +104,7 @@ describe("records login route", () => {
 
   it("rejects cross-origin simple requests before credentials reach Supabase", async () => {
     const response = await POST(
-      new NextRequest("https://losttofound.org/api/records/auth/login", {
+      new NextRequest("https://custodyfolio.com/api/records/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "text/plain",
@@ -171,7 +171,7 @@ describe("records login route", () => {
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({
-      error: "This account is not enabled for My Custody Case.",
+      error: "This account is not enabled for Custody Folio.",
     });
     expect(signOut).toHaveBeenCalledWith({ scope: "local" });
     expect(setSession).not.toHaveBeenCalled();

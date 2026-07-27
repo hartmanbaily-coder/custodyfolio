@@ -19,7 +19,7 @@ function fakeJwt(payload: Record<string, unknown>) {
 }
 
 function makeRequest(body: unknown) {
-  return new NextRequest("https://losttofound.org/api/records/auth/signup/resend", {
+  return new NextRequest("https://custodyfolio.com/api/records/auth/signup/resend", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -38,7 +38,7 @@ describe("records signup confirmation resend route", () => {
       RECORDS_STORAGE_MODE: "supabase",
       NEXT_PUBLIC_RECORDS_SIGNUPS_ENABLED: "true",
       RECORDS_SIGNUPS_ENABLED: "true",
-      NEXT_PUBLIC_APP_URL: "https://losttofound.org",
+      NEXT_PUBLIC_APP_URL: "https://custodyfolio.com",
       NEXT_PUBLIC_SUPABASE_URL: "https://project-ref.supabase.co",
       NEXT_PUBLIC_SUPABASE_ANON_KEY: fakeJwt({ role: "anon" }),
     };
@@ -63,7 +63,7 @@ describe("records signup confirmation resend route", () => {
     expect(resend).toHaveBeenCalledWith({
       type: "signup",
       email: "new.user@example.test",
-      options: { emailRedirectTo: "https://losttofound.org/records?auth=confirmed" },
+      options: { emailRedirectTo: "https://custodyfolio.com/records?auth=confirmed" },
     });
     expect(recordSecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({ type: "auth_signup_confirmation_resent", status: 200 })

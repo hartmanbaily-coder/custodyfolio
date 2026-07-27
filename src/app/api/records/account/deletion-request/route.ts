@@ -148,7 +148,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ok: true,
       deletedAt,
       clearLocalSession: true,
-      message: "Your account and active My Custody Case records were permanently deleted.",
+      message: "Your account and active Custody Folio records were permanently deleted.",
     },
     { headers: { "Cache-Control": "no-store" } }
   );

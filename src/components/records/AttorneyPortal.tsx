@@ -300,7 +300,7 @@ export default function AttorneyPortal() {
         </div>
       </header>
       <div className="mx-auto max-w-7xl px-4 py-5">
-        <div className="rounded-md border border-teal-200 bg-teal-50 p-3 text-sm leading-6 text-teal-950">Read only access through {new Date(portal.accessExpiresAt).toLocaleString()}. You may return as often as needed before then. You cannot create, edit, delete, upload, change report inclusion, invite others, or access the owner’s account settings. My Custody Case organizes user provided information and does not verify allegations or provide legal advice.</div>
+        <div className="rounded-md border border-teal-200 bg-teal-50 p-3 text-sm leading-6 text-teal-950">Read only access through {new Date(portal.accessExpiresAt).toLocaleString()}. You may return as often as needed before then. You cannot create, edit, delete, upload, change report inclusion, invite others, or access the owner’s account settings. Custody Folio organizes user provided information and does not verify allegations or provide legal advice.</div>
         <nav className="mt-4 flex max-w-full gap-2 overflow-x-auto pb-2" aria-label="Shared matter sections">{portalViews.map((item) => <button key={item} type="button" onClick={() => setView(item)} className={`shrink-0 rounded-md px-3 py-2 text-sm font-semibold ${view === item ? "bg-teal-700 text-white" : "border border-slate-200 bg-white text-slate-700"}`}>{item}</button>)}</nav>
         {message ? <p role="status" aria-live="polite" className="mt-3 rounded-md border border-slate-200 bg-white p-3 text-sm">{message}</p> : null}
         <main className="mt-4 min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">

@@ -32,7 +32,7 @@ vi.mock("@/lib/security/securityEvents", () => ({ recordSecurityEvent }));
 import { POST } from "@/app/api/records/auth/recovery/session/route";
 
 function request() {
-  return new NextRequest("https://losttofound.org/api/records/auth/recovery/session", {
+  return new NextRequest("https://custodyfolio.com/api/records/auth/recovery/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

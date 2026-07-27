@@ -1,6 +1,6 @@
 # Incident Response Runbook
 
-This runbook covers security and privacy incidents involving My Custody Case. It follows the practical structure of NIST SP 800-61 Rev. 3 and FTC breach-response guidance: prepare, detect, analyze, contain, eradicate, recover, communicate, and learn.
+This runbook covers security and privacy incidents involving Custody Folio. It follows the practical structure of NIST SP 800-61 Rev. 3 and FTC breach-response guidance: prepare, detect, analyze, contain, eradicate, recover, communicate, and learn.
 
 This is an operational runbook, not legal advice. Involve qualified counsel for breach notification, law enforcement, court-related records, subpoenas, and state-law analysis.
 
@@ -179,14 +179,14 @@ Complete within five business days:
 
 Current operational contacts:
 
-- Incident commander: assigned on-call operator, reachable through `security@losttofound.org`
+- Incident commander: assigned on-call operator, reachable through `security@custodyfolio.com`
 - Engineering lead: assigned engineering operator
 - Supabase owner: assigned database operator
 - Hosting/CDN owner: assigned infrastructure operator (Hetzner and Cloudflare)
 - DNS/domain owner: assigned domain operator (Cloudflare)
 - Malware scanner: self-hosted ClamAV on the dedicated LostToFound host
 - Monitoring sources: Hetzner/Docker platform logs, Cloudflare, and the scheduled GitHub `live-monitor` workflow
-- Security contact email: `security@losttofound.org`, routed through Cloudflare Email Routing to the verified operator mailbox
+- Security contact email: `security@custodyfolio.com`, hosted through the iCloud+ Custom Email Domain configured in Cloudflare DNS
 
 Still required before legal approval:
 
