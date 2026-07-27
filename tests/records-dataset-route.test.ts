@@ -136,4 +136,44 @@ describe("records dataset route account isolation", () => {
     );
     expect(recordSecurityEvent).not.toHaveBeenCalled();
   });
+
+  it("repairs a missing same-account matter before storing new records", async () => {
+    const dataset = createEmptyRecordsDatasetForUser(
+      demoUserId,
+      "blank@example.test",
+      "UTC"
+    );
+    dataset.matters = [];
+    dataset.custodyDayAssignments = [
+      {
+        id: "legacy-day",
+        userId: demoUserId,
+        caseId: "legacy-case",
+        date: "2026-07-27",
+        caregiverLabel: "Parent A",
+        color: "#0f766e",
+        createdAt: "2026-07-27T00:00:00.000Z",
+        updatedAt: "2026-07-27T00:00:00.000Z",
+      },
+    ];
+
+    const response = await PUT(request(dataset));
+    expect(response).toBeDefined();
+    if (!response) throw new Error("Dataset route did not return a response.");
+    expect(response.status).toBe(200);
+    expect(snapshotUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dataset: expect.objectContaining({
+          matters: [
+            expect.objectContaining({
+              id: "legacy-case",
+              userId: demoUserId,
+            }),
+          ],
+          custodyDayAssignments: dataset.custodyDayAssignments,
+        }),
+      }),
+      { onConflict: "user_id,case_key" }
+    );
+  });
 });

@@ -129,6 +129,7 @@ export async function PUT(request: NextRequest) {
       { status: 403 }
     );
   }
+  const ownedDataset = sanitizeRecordsDatasetForUser(body.dataset, userId);
 
   const caseKey = getRecordsCaseKey(request);
   const { data: currentRow, error: currentError } = await supabase
@@ -142,7 +143,7 @@ export async function PUT(request: NextRequest) {
   }
   const currentDataset = currentRow?.dataset as Partial<RecordsDataset> | undefined;
   const nextCaseIds = new Set(
-    body.dataset.matters.filter((matter) => matter.userId === userId).map((matter) => matter.id)
+    ownedDataset.matters.map((matter) => matter.id)
   );
   const removedCaseIds = (currentDataset?.matters || [])
     .filter((matter) => matter.userId === userId && !nextCaseIds.has(matter.id))
@@ -163,7 +164,7 @@ export async function PUT(request: NextRequest) {
     {
       user_id: userId,
       case_key: caseKey,
-      dataset: body.dataset,
+      dataset: ownedDataset,
       schema_version: 1,
       updated_at: new Date().toISOString(),
     },

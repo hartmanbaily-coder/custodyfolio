@@ -191,7 +191,8 @@ async function persistRemoteDataset(dataset: RecordsDataset) {
   });
 
   if (!response.ok) {
-    throw new Error(`Records dataset save failed with ${response.status}.`);
+    const body = (await response.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Records dataset save failed with ${response.status}.`);
   }
 }
 
@@ -281,9 +282,13 @@ export function useRecordsStore() {
   }, [reloadDataset]);
 
   function updateDataset(updater: (current: RecordsDataset) => RecordsDataset) {
+    const previous = datasetRef.current;
     const next = updater(cloneDataset(datasetRef.current));
     setCurrentDataset(next);
-    return persistDataset(next);
+    return persistDataset(next).catch((error: unknown) => {
+      if (datasetRef.current === next) setCurrentDataset(previous);
+      throw error;
+    });
   }
 
   function resetDemoData() {

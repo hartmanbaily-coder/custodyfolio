@@ -60,4 +60,22 @@ describe("records dataset account isolation", () => {
     expect(datasetContainsForeignRecords(blank, blank.users[0].userId)).toBe(false);
     expect(sanitizeRecordsDatasetForUser(blank, blank.users[0].userId)).toEqual(blank);
   });
+
+  it("repairs same-account legacy records whose matter row is missing", () => {
+    const legacy = sanitizeRecordsDatasetForUser(createRecordsSeed(), demoUserId);
+    const assignmentCount = legacy.custodyDayAssignments.length;
+    legacy.matters = [];
+
+    expect(datasetContainsForeignRecords(legacy, demoUserId)).toBe(false);
+
+    const repaired = sanitizeRecordsDatasetForUser(legacy, demoUserId);
+    expect(repaired.matters).toEqual([
+      expect.objectContaining({
+        id: demoCaseId,
+        userId: demoUserId,
+        caseName: "Parenting Records",
+      }),
+    ]);
+    expect(repaired.custodyDayAssignments).toHaveLength(assignmentCount);
+  });
 });
