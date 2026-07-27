@@ -13,7 +13,7 @@ jobs:
   monitor:
     runs-on: ubuntu-latest
     env:
-      RECORDS_APP_BASE_URL: https://losttofound.org
+      RECORDS_APP_BASE_URL: https://custodyfolio.com
     steps:
       - name: Check live records app
         run: |
