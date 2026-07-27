@@ -15,7 +15,10 @@ import {
   sealAttorneyHandle,
 } from "./attorneyCrypto";
 import { attorneyAcceptanceCookieMaxAge } from "./attorneyPolicy";
-import type { RecordsDataset } from "./types";
+import {
+  isRecordsDataset,
+  sanitizeRecordsDatasetForUser,
+} from "./datasetIsolation";
 
 const secureCookies = process.env.NODE_ENV === "production";
 export const attorneyAcceptanceCookieName = secureCookies
@@ -239,12 +242,13 @@ export async function ownerCaseExists(input: {
     .eq("case_key", input.caseKey)
     .maybeSingle();
   if (error || !data?.dataset) return false;
-  const dataset = data.dataset as unknown as Partial<RecordsDataset>;
-  return Boolean(
-    dataset.matters?.some(
-      (matter) => matter.userId === input.ownerUserId && matter.id === input.caseId
-    )
+  if (!isRecordsDataset(data.dataset)) return false;
+
+  const dataset = sanitizeRecordsDatasetForUser(
+    data.dataset,
+    input.ownerUserId
   );
+  return dataset.matters.some((matter) => matter.id === input.caseId);
 }
 
 export function isAttorneyDevelopmentDeliveryEnabled(

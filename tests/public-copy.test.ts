@@ -70,4 +70,13 @@ describe("customer facing copy", () => {
     expect(recordsApp).toContain("Email confirmation proves you control the account address");
     expect(recordsApp).toContain("separate second factor");
   });
+
+  it("uses the requested attorney access history wording", () => {
+    const attorneyAccess = readFileSync(
+      resolve(process.cwd(), "src/components/records/AttorneyAccessPanel.tsx"),
+      "utf8"
+    );
+    expect(attorneyAccess).toContain("Privacy safe access history");
+    expect(attorneyAccess).not.toContain("Privacy-safe access history");
+  });
 });
