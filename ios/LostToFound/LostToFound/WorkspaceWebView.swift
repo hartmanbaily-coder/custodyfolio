@@ -4,6 +4,32 @@ import UIKit
 import WebKit
 
 @MainActor
+enum WorkspaceDisplayPolicy {
+    static let nativeRootFontScalePercent = 95
+
+    static func apply(to userContentController: WKUserContentController) {
+        let source = """
+        (() => {
+          const styleId = "custody-folio-native-display-scale";
+          if (document.getElementById(styleId)) return;
+
+          const style = document.createElement("style");
+          style.id = styleId;
+          style.textContent = "html { font-size: \(nativeRootFontScalePercent)% !important; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }";
+          (document.head || document.documentElement).appendChild(style);
+        })();
+        """
+        userContentController.addUserScript(
+            WKUserScript(
+                source: source,
+                injectionTime: .atDocumentStart,
+                forMainFrameOnly: true
+            )
+        )
+    }
+}
+
+@MainActor
 @Observable
 final class WebViewModel {
     var canGoBack = false
@@ -200,6 +226,7 @@ struct WorkspaceWebView: UIViewRepresentable {
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
         configuration.websiteDataStore = websiteDataStore
         configuration.applicationNameForUserAgent = "LostToFound-iOS/0.1"
+        WorkspaceDisplayPolicy.apply(to: configuration.userContentController)
         configuration.userContentController.add(
             WeakScriptMessageHandler(delegate: context.coordinator),
             name: Coordinator.nativeDownloadHandlerName

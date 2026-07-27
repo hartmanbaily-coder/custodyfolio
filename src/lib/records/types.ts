@@ -343,6 +343,16 @@ export interface AuditLog {
   userAgentHash?: string;
 }
 
+export interface TimelineDesignation {
+  id: Id;
+  caseId: Id;
+  userId: Id;
+  eventId: Id;
+  severity: TimelineSeverity;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CalendarEvent {
   id: Id;
   caseId: Id;
@@ -356,6 +366,7 @@ export interface CalendarEvent {
   body?: string;
   tags?: string[];
   severity?: TimelineSeverity;
+  severitySource?: "automatic" | "user";
   sourceLabel?: string;
   relatedIds?: Id[];
   includeInReports?: boolean;
@@ -373,6 +384,7 @@ export interface RecordsDataset {
   childSupportOrders: ChildSupportOrder[];
   childSupportPayments: ChildSupportPayment[];
   expenseItems: ExpenseItem[];
+  timelineDesignations: TimelineDesignation[];
   auditLogs: AuditLog[];
 }
 

@@ -31,6 +31,22 @@ function shiftMonthKey(monthKey: string, offset: number) {
   return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}`;
 }
 
+function threeDayRangeWithoutSeededExchange(monthKey: string) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  for (let startDay = 1; startDay <= daysInMonth - 2; startDay += 1) {
+    const dates = [startDay, startDay + 1, startDay + 2].map(
+      (day) => `${monthKey}-${pad2(day)}`
+    );
+    const avoidsSeededFridayAndSundayExchanges = dates.every((date) => {
+      const dayOfWeek = new Date(`${date}T12:00:00.000Z`).getUTCDay();
+      return dayOfWeek !== 0 && dayOfWeek !== 5;
+    });
+    if (avoidsSeededFridayAndSundayExchanges) return dates;
+  }
+  throw new Error(`Could not find a three-day exchange-free range in ${monthKey}.`);
+}
+
 test("records login and report workflow", async ({ page }) => {
   test.setTimeout(60_000);
   const currentCalendar = localDateParts();
@@ -77,17 +93,21 @@ test("records login and report workflow", async ({ page }) => {
   await page.getByRole("button", { name: "Today", exact: true }).click();
   await expect(page.getByLabel("Calendar month")).toHaveValue(currentCalendar.monthKey);
   await expect(page.getByRole("button", { name: `Edit calendar day ${currentCalendar.today}` })).toBeVisible();
-  await expect(page.getByText("Color selected day")).toBeVisible();
-  await page.getByLabel("Child will be with").fill("Parent C");
+  await expect(page.getByText("Add or edit date range")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export calendar PDF" })).toBeVisible();
+  await page.getByLabel("Child will be with").selectOption("Alternate caregiver");
+  await expect(page.getByLabel("Exchange time")).toHaveCount(0);
+  await page.getByLabel("Exchange day").selectOption("start");
   await page.getByLabel("Exchange time").fill("17:00");
-  await page.getByRole("button", { name: "Save color" }).click();
-  await expect(page.getByRole("status")).toContainText("Custody day color saved successfully");
-  await expect(page.getByText("Parent C days", { exact: true })).toBeVisible();
+  await page.getByLabel("Exchange direction").selectOption("other_parent_to_me");
+  await page.getByRole("button", { name: "Save date range" }).click();
+  await expect(page.getByRole("status")).toContainText("Custody schedule saved for 1 day");
+  await expect(page.getByText("Alternate caregiver days", { exact: true })).toBeVisible();
   await expect(page.getByText("Custody days by caregiver label", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Calendar records by source", { exact: true })).toHaveCount(0);
   const paintedDay = page.getByRole("button", { name: `Edit calendar day ${currentCalendar.today}` });
   await expect(paintedDay).toBeVisible();
-  await expect(paintedDay.getByText("Parent C", { exact: true })).toBeVisible();
+  await expect(paintedDay.getByText("Alternate caregiver", { exact: true })).toBeVisible();
   const fivePmMarker = paintedDay.locator('[data-exchange-time-marker="17:00"]');
   await expect(fivePmMarker).toHaveCount(1);
   const fivePmPosition = await fivePmMarker.evaluate((element) =>
@@ -96,9 +116,34 @@ test("records login and report workflow", async ({ page }) => {
   expect(fivePmPosition).toBeCloseTo(70.8333, 4);
   await page.getByRole("button", { name: "Clear selected day" }).click();
   await expect(page.getByText("Custody day color cleared.")).toBeVisible();
-  await expect(paintedDay.getByText("Parent C", { exact: true })).toHaveCount(0);
+  await expect(paintedDay.getByText("Alternate caregiver", { exact: true })).toHaveCount(0);
+
+  const [rangeStartDate, rangeMiddleDate, rangeEndDate] =
+    threeDayRangeWithoutSeededExchange(currentCalendar.monthKey);
+  await page.getByLabel("Start date", { exact: true }).fill(rangeStartDate);
+  await page.getByLabel("End date", { exact: true }).fill(rangeEndDate);
+  await page.getByLabel("Child will be with").selectOption("Alternate caregiver");
+  await page.getByLabel("Exchange day").selectOption("end");
+  await page.getByLabel("Exchange time").fill("18:00");
+  await page.getByLabel("Exchange direction").selectOption("me_to_other_parent");
+  await page.getByRole("button", { name: "Save date range" }).click();
+  await expect(page.getByRole("status")).toContainText("Custody schedule saved for 3 days");
+  const rangeStartDay = page.getByRole("button", { name: `Edit calendar day ${rangeStartDate}` });
+  const rangeMiddleDay = page.getByRole("button", { name: `Edit calendar day ${rangeMiddleDate}` });
+  const rangeEndDay = page.getByRole("button", { name: `Edit calendar day ${rangeEndDate}` });
+  await expect(rangeStartDay.getByText("Alternate caregiver", { exact: true })).toBeVisible();
+  await expect(rangeMiddleDay.getByText("Alternate caregiver", { exact: true })).toBeVisible();
+  await expect(rangeEndDay.getByText("Alternate caregiver", { exact: true })).toBeVisible();
+  await expect(rangeStartDay.locator('[data-exchange-time-marker="18:00"]')).toHaveCount(0);
+  await expect(rangeMiddleDay.locator('[data-exchange-time-marker="18:00"]')).toHaveCount(0);
+  await expect(rangeEndDay.locator('[data-exchange-time-marker="18:00"]')).toHaveCount(1);
+  await rangeEndDay.click();
+  await expect(page.getByLabel("Child will be with")).toHaveValue("Alternate caregiver");
+  await expect(page.getByLabel("Exchange day")).toHaveValue("start");
+  await expect(page.getByLabel("Exchange time")).toHaveValue("18:00");
+
   await page.getByTestId("calendar-color-tools").locator("summary").click();
-  await page.getByLabel("Caregiver label").fill("Drag Parent");
+  await page.getByLabel("Caregiver for color tools").selectOption("Alternate caregiver");
   await page.getByRole("button", { name: "Multi-day paint: Off" }).click();
   await expect(page.getByRole("button", { name: "Multi-day paint: On" })).toHaveAttribute("aria-pressed", "true");
   const dragStartDay = page.getByRole("button", { name: `Edit calendar day ${calendarDay(9)}` });
@@ -115,16 +160,16 @@ test("records login and report workflow", async ({ page }) => {
   await page.mouse.move(endBox.x + endBox.width / 2, endBox.y + endBox.height / 2, { steps: 4 });
   await page.mouse.up();
   await expect(page.getByText("3 custody days colored.")).toBeVisible();
-  await expect(dragStartDay.getByText("Drag Parent", { exact: true })).toBeVisible();
-  await expect(dragMiddleDay.getByText("Drag Parent", { exact: true })).toBeVisible();
-  await expect(dragEndDay.getByText("Drag Parent", { exact: true })).toBeVisible();
+  await expect(dragStartDay.getByText("Alternate caregiver", { exact: true })).toBeVisible();
+  await expect(dragMiddleDay.getByText("Alternate caregiver", { exact: true })).toBeVisible();
+  await expect(dragEndDay.getByText("Alternate caregiver", { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Calendar", exact: true }).click();
   await expect(page.getByLabel("Calendar month")).toHaveValue(currentCalendar.monthKey);
-  await expect(page.getByRole("button", { name: `Edit calendar day ${calendarDay(9)}` }).getByText("Drag Parent", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: `Edit calendar day ${calendarDay(10)}` }).getByText("Drag Parent", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: `Edit calendar day ${calendarDay(11)}` }).getByText("Drag Parent", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: `Edit calendar day ${calendarDay(9)}` }).getByText("Alternate caregiver", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: `Edit calendar day ${calendarDay(10)}` }).getByText("Alternate caregiver", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: `Edit calendar day ${calendarDay(11)}` }).getByText("Alternate caregiver", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Import", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Import", exact: true })).toBeVisible();
@@ -521,6 +566,7 @@ test("attorney portal is a separate read-only mobile experience", async ({ page 
     childSupportOrders: [],
     childSupportPayments: [],
     expenseItems: [],
+    timelineDesignations: [],
     auditLogs: [],
   };
   await page.route("**/api/records/attorney/portal", async (route) => {
@@ -738,12 +784,12 @@ test("mobile create flows stay visible across every record tab and reload with a
   await expect(page.getByRole("status")).toContainText("Payment record saved. It appears below");
   await expect(page.getByTestId("mobile-support-payments")).toContainText("$123.00");
 
-  const caregiverName = "Persistence audit caregiver";
+  const caregiverName = "Alternate caregiver";
   await page.getByRole("button", { name: "Calendar", exact: true }).click();
   await expectPhoneWidth();
-  await page.getByLabel("Child will be with").fill(caregiverName);
-  await page.getByRole("button", { name: "Save color" }).click();
-  await expect(page.getByRole("status")).toContainText("Custody day color saved successfully");
+  await page.getByLabel("Child will be with").selectOption(caregiverName);
+  await page.getByRole("button", { name: "Save date range" }).click();
+  await expect(page.getByRole("status")).toContainText("Custody schedule saved for 1 day");
   await expect(
     page.getByRole("button", { name: `Edit calendar day ${currentCalendar.today}` }).getByText(caregiverName)
   ).toBeVisible();
@@ -1223,6 +1269,64 @@ test("a restored session never flashes the login screen", async ({ page }) => {
   ).toBe(false);
 });
 
+test("timeline designations explain automatic labels and remain editable", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  async function openSeedTimeline() {
+    await page.getByRole("button", { name: "Options", exact: true }).click();
+    await page.getByLabel("From date").fill("2026-05-01");
+    await page.getByLabel("To date").fill("2026-06-15");
+    await page.getByRole("button", { name: "Done", exact: true }).click();
+    await page.locator("aside nav button").filter({ hasText: "Timeline" }).click();
+    await expect(page.getByRole("heading", { name: "Timeline controls", exact: true })).toBeVisible();
+  }
+
+  await page.goto("/records");
+  await page.getByRole("button", { name: "Enter records workspace" }).click();
+  await openSeedTimeline();
+
+  await expect(
+    page.getByText(
+      "The app suggests these from each record. Expand any timeline item to change its designation or return it to Automatic."
+    )
+  ).toBeVisible();
+
+  let schoolNote = page.locator("details").filter({ hasText: "School pickup note" }).first();
+  await schoolNote.locator("summary").click();
+  const designationLabel = "Timeline designation for School pickup note";
+  await expect(page.getByLabel(designationLabel)).toHaveValue("automatic");
+  await expect(
+    schoolNote.getByText(
+      "This is an automatic suggestion based on the source record. You can change it here."
+    )
+  ).toBeVisible();
+
+  await page.getByLabel(designationLabel).selectOption("critical");
+  await expect(page.getByRole("status")).toContainText(
+    "Timeline designation changed to Critical"
+  );
+  schoolNote = page.locator("details").filter({ hasText: "School pickup note" }).first();
+  await expect(
+    schoolNote.locator("span").filter({ hasText: /^Critical$/ }).first()
+  ).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+  await openSeedTimeline();
+  schoolNote = page.locator("details").filter({ hasText: "School pickup note" }).first();
+  await schoolNote.locator("summary").click();
+  await expect(page.getByLabel(designationLabel)).toHaveValue("critical");
+
+  await page.getByLabel(designationLabel).selectOption("automatic");
+  await expect(page.getByRole("status")).toContainText(
+    "Timeline designation returned to the automatic suggestion"
+  );
+  await expect(page.getByLabel(designationLabel)).toHaveValue("automatic");
+  await expect(
+    schoolNote.locator("span").filter({ hasText: /^Neutral$/ }).first()
+  ).toBeVisible();
+});
+
 test("mobile calendar, policy menu, and timeline labels remain usable", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/records");
@@ -1297,6 +1401,8 @@ test("mobile calendar, policy menu, and timeline labels remain usable", async ({
   const timelineControls = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Timeline controls", exact: true }),
   });
-  await expect(timelineControls.getByText("Recorded issue", { exact: true })).toBeVisible();
+  await expect(
+    timelineControls.locator("span").filter({ hasText: /^Recorded issue$/ }).first()
+  ).toBeVisible();
   await expect(page.getByText("Needs review", { exact: true })).toHaveCount(0);
 });

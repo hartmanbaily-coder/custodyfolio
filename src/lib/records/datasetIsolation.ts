@@ -83,6 +83,24 @@ export function isRecordsDataset(input: unknown): input is RecordsDataset {
     }
   }
 
+  if (
+    candidate.timelineDesignations !== undefined &&
+    (!Array.isArray(candidate.timelineDesignations) ||
+      !candidate.timelineDesignations.every(
+        (item) =>
+          isObject(item) &&
+          typeof item.id === "string" &&
+          typeof item.userId === "string" &&
+          typeof item.caseId === "string" &&
+          typeof item.eventId === "string" &&
+          ["neutral", "positive", "attention", "critical"].includes(
+            String(item.severity)
+          )
+      ))
+  ) {
+    return false;
+  }
+
   return (candidate.auditLogs as unknown[]).every(
     (item) =>
       isObject(item) &&
@@ -121,6 +139,9 @@ export function sanitizeRecordsDatasetForUser(
     users,
     matters,
     ...ownedCaseRecords,
+    timelineDesignations: (dataset.timelineDesignations || []).filter(
+      (item) => item.userId === userId && caseIds.has(item.caseId)
+    ),
     auditLogs: dataset.auditLogs.filter(
       (item) => item.userId === userId && (!item.caseId || caseIds.has(item.caseId))
     ),
@@ -128,7 +149,10 @@ export function sanitizeRecordsDatasetForUser(
 }
 
 export function datasetContainsForeignRecords(dataset: RecordsDataset, userId: string) {
-  return datasetKeys.some((key) =>
-    dataset[key].some((item) => item.userId !== userId)
+  return (
+    datasetKeys.some((key) =>
+      dataset[key].some((item) => item.userId !== userId)
+    ) ||
+    (dataset.timelineDesignations || []).some((item) => item.userId !== userId)
   );
 }

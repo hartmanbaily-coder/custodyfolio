@@ -419,6 +419,7 @@ export function createRecordsSeed(): RecordsDataset {
         updatedAt: now,
       },
     ],
+    timelineDesignations: [],
     auditLogs: [
       {
         id: "audit-login-demo",
@@ -485,6 +486,7 @@ export function createEmptyRecordsDatasetForUser(
     childSupportOrders: [],
     childSupportPayments: [],
     expenseItems: [],
+    timelineDesignations: [],
     auditLogs: [],
   };
 }

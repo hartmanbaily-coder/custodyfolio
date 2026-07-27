@@ -45,14 +45,43 @@ export function projectSharedCaseDataset(
   const childSupportOrders = owned(dataset.childSupportOrders);
   const childSupportPayments = owned(dataset.childSupportPayments);
   const expenseItems = owned(dataset.expenseItems);
+  const timelineDesignations = owned(dataset.timelineDesignations || []);
 
   const ruleIds = createIdMap("rule", exchangeRules);
+  const custodyDayIds = createIdMap("custody-day", custodyDayAssignments);
   const exchangeIds = createIdMap("exchange", exchangeLogs);
   const noteIds = createIdMap("note", dateNotes);
   const evidenceIds = createIdMap("file", evidenceItems);
   const orderIds = createIdMap("support-order", childSupportOrders);
   const paymentIds = createIdMap("support-payment", childSupportPayments);
   const expenseIds = createIdMap("expense", expenseItems);
+
+  function remapTimelineEventId(eventId: string) {
+    const exactPrefixes: Array<[string, Map<string, string>]> = [
+      ["custody-scheduled-exchange-", custodyDayIds],
+      ["log-", exchangeIds],
+      ["note-", noteIds],
+      ["evidence-", evidenceIds],
+      ["payment-due-", paymentIds],
+      ["payment-paid-", paymentIds],
+      ["expense-", expenseIds],
+    ];
+
+    for (const [prefix, idMap] of exactPrefixes) {
+      for (const [sourceId, sharedId] of idMap) {
+        if (eventId === `${prefix}${sourceId}`) return `${prefix}${sharedId}`;
+      }
+    }
+
+    for (const [sourceId, sharedId] of ruleIds) {
+      const prefix = `expected-${sourceId}-`;
+      if (eventId.startsWith(prefix)) {
+        return `expected-${sharedId}-${eventId.slice(prefix.length)}`;
+      }
+    }
+
+    return null;
+  }
 
   const sharedEvidence: SharedEvidenceItem[] = evidenceItems.map((record) => {
     return {
@@ -101,9 +130,9 @@ export function projectSharedCaseDataset(
       caseId: sharedCaseId,
       custodyExchangeRuleId: mapped(record.custodyExchangeRuleId, ruleIds),
     })),
-    custodyDayAssignments: custodyDayAssignments.map((record, index) => ({
+    custodyDayAssignments: custodyDayAssignments.map((record) => ({
       ...record,
-      id: `custody-day-${index + 1}`,
+      id: custodyDayIds.get(record.id) || "custody-day",
       userId: sharedOwnerId,
       caseId: sharedCaseId,
     })),
@@ -168,6 +197,17 @@ export function projectSharedCaseDataset(
       userId: sharedOwnerId,
       caseId: sharedCaseId,
     })),
+    timelineDesignations: timelineDesignations.flatMap((record, index) => {
+      const eventId = remapTimelineEventId(record.eventId);
+      if (!eventId) return [];
+      return [{
+        ...record,
+        id: `timeline-designation-${index + 1}`,
+        userId: sharedOwnerId,
+        caseId: sharedCaseId,
+        eventId,
+      }];
+    }),
     auditLogs: [],
   };
 
