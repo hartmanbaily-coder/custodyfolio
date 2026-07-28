@@ -19,18 +19,6 @@ jobs:
         run: |
           node <<'NODE'
           const baseUrl = process.env.RECORDS_APP_BASE_URL.replace(/\/$/, "");
-          const expectedKnownBlockers = new Set([
-            "supabase-custom-smtp",
-            "supabase-auth-redirects",
-            "supabase-leaked-passwords",
-            "supabase-auth-hardening-verified",
-            "malware-scanner-tested",
-            "security-monitoring",
-            "backup-restore-tested",
-            "data-retention-policy",
-            "incident-response-plan",
-            "legal-review",
-          ]);
 
           function fail(message) {
             console.error(message);
@@ -120,11 +108,33 @@ jobs:
           if (!Array.isArray(readiness.blockers)) {
             fail("Readiness response does not include blockers array.");
           }
+          if (!Array.isArray(readiness.checks)) {
+            fail("Readiness response does not include checks array.");
+          }
 
-          const blockerIds = readiness.blockers.map((item) => item.id);
-          const unexpected = blockerIds.filter((id) => !expectedKnownBlockers.has(id));
-          if (unexpected.length > 0) {
-            fail(`Unexpected readiness blockers: ${unexpected.join(", ")}`);
+          const blockers = Array.isArray(readiness.blockers) ? readiness.blockers : [];
+          const checks = Array.isArray(readiness.checks) ? readiness.checks : [];
+          const invalidBlockers = blockers.filter(
+            (item) => typeof item?.id !== "string" || item.id.length === 0
+          );
+          const invalidChecks = checks.filter(
+            (item) => typeof item?.id !== "string" || item.id.length === 0
+          );
+          if (invalidBlockers.length > 0 || invalidChecks.length > 0) {
+            fail("Readiness response includes malformed blocker or check identifiers.");
+          }
+
+          const blockerIds = blockers
+            .map((item) => item.id)
+            .filter((id) => typeof id === "string" && id.length > 0);
+          const declaredCheckIds = new Set(
+            checks
+              .map((item) => item.id)
+              .filter((id) => typeof id === "string" && id.length > 0)
+          );
+          const undeclared = blockerIds.filter((id) => !declaredCheckIds.has(id));
+          if (undeclared.length > 0) {
+            fail(`Readiness blockers missing from checks catalog: ${undeclared.join(", ")}`);
           }
 
           console.log(

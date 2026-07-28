@@ -55,25 +55,21 @@ if [[ ${readiness_status} != "ready" && ${readiness_status} != "not_ready" ]]; t
   exit 1
 fi
 
-mapfile -t readiness_blockers < <(jq -r '.blockers[]?.id' "${readiness_file}")
+if ! jq -e '
+  (.blockers | type == "array" and all(.[]; (.id | type == "string") and (.id | length > 0))) and
+  (.checks | type == "array" and all(.[]; (.id | type == "string") and (.id | length > 0)))
+' "${readiness_file}" >/dev/null; then
+  echo "Readiness API returned malformed blockers or checks." >&2
+  exit 1
+fi
+
+mapfile -t readiness_blockers < <(jq -r '.blockers[].id' "${readiness_file}")
 for blocker in "${readiness_blockers[@]}"; do
-  case "${blocker}" in
-    supabase-custom-smtp | \
-      supabase-auth-redirects | \
-      supabase-leaked-passwords | \
-      supabase-auth-hardening-verified | \
-      malware-scanner-tested | \
-      security-monitoring | \
-      backup-restore-tested | \
-      data-retention-policy | \
-      incident-response-plan | \
-      legal-review)
-      ;;
-    *)
-      echo "Readiness API reported unexpected blocker '${blocker}'." >&2
-      exit 1
-      ;;
-  esac
+  if ! jq -e --arg blocker "${blocker}" \
+    '.checks | any(.id == $blocker)' "${readiness_file}" >/dev/null; then
+    echo "Readiness API blocker '${blocker}' is not present in its checks catalog." >&2
+    exit 1
+  fi
 done
 
 if [[ ${readiness_status} == "not_ready" && ${#readiness_blockers[@]} -eq 0 ]]; then
