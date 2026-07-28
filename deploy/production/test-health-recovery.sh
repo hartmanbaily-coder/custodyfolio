@@ -124,8 +124,13 @@ fi
 grep -q 'ps -q cloudflared' "${script_dir}/smoke-test.sh"
 grep -q 'Registered tunnel connection' "${script_dir}/smoke-test.sh"
 grep -q 'LOSTTOFOUND_PUBLIC_URL:-https://custodyfolio.com' "${script_dir}/smoke-test.sh"
-grep -q 'malware-scanner-tested' "${script_dir}/smoke-test.sh"
-grep -q 'malware-scanner-tested' "${script_dir}/../../.github/workflows/live-monitor.yml"
+grep -q 'not present in its checks catalog' "${script_dir}/smoke-test.sh"
+grep -q 'declaredCheckIds' "${script_dir}/../../.github/workflows/live-monitor.yml"
+if grep -Eq 'supabase-custom-smtp|two-user-isolation-tested|malware-scanner-tested' \
+  "${script_dir}/smoke-test.sh"; then
+  echo "Production smoke test must derive readiness blocker IDs from the checks catalog." >&2
+  exit 1
+fi
 grep -Fq -- '--header "Origin: ${public_url%/}"' "${script_dir}/smoke-test.sh"
 grep -Fq -- "--header 'Sec-Fetch-Site: same-origin'" "${script_dir}/smoke-test.sh"
 grep -q 'STARTER_RESOURCE_PROFILE: ${STARTER_RESOURCE_PROFILE:-true}' "${compose_source}"
