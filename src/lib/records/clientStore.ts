@@ -2,11 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  createBlankRecordsDataset,
   createEmptyRecordsDatasetForUser,
   createRecordsSeed,
   demoCaseId,
   demoUserId,
 } from "./seed";
+import {
+  datasetAccountId,
+  recordsAccountBindingHeaderName,
+} from "./accountBoundary";
 import { defaultRecordsTimezone, safeRecordsTimezone } from "./dateRanges";
 import type { AuditAction, RecordsDataset } from "./types";
 
@@ -158,6 +163,9 @@ async function readRemoteDataset(session: RecordsSession) {
   const response = await fetch(`/api/records/dataset?caseId=${encodeURIComponent(remoteDatasetKey)}`, {
     cache: "no-store",
     credentials: "same-origin",
+    headers: {
+      [recordsAccountBindingHeaderName]: session.userId,
+    },
   });
 
   const body = (await response.json().catch(() => ({}))) as {
@@ -177,16 +185,17 @@ async function readRemoteDataset(session: RecordsSession) {
   if (body.dataset) return normalizeDataset(body.dataset, emptyDataset);
 
   const initial = emptyDataset;
-  void persistRemoteDataset(initial);
+  await persistRemoteDataset(initial, session.userId);
   return initial;
 }
 
-async function persistRemoteDataset(dataset: RecordsDataset) {
+async function persistRemoteDataset(dataset: RecordsDataset, accountId: string) {
   const response = await fetch(`/api/records/dataset?caseId=${encodeURIComponent(remoteDatasetKey)}`, {
     method: "PUT",
     credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
+      [recordsAccountBindingHeaderName]: accountId,
     },
     body: JSON.stringify({ dataset }),
   });
@@ -198,7 +207,9 @@ async function persistRemoteDataset(dataset: RecordsDataset) {
 }
 
 export function useRecordsStore() {
-  const [dataset, setDataset] = useState<RecordsDataset>(() => createRecordsSeed());
+  const [dataset, setDataset] = useState<RecordsDataset>(() =>
+    recordsStorageMode === "supabase" ? createBlankRecordsDataset() : createRecordsSeed()
+  );
   const [hydrated, setHydrated] = useState(false);
   const [storageStatus, setStorageStatus] = useState(
     recordsStorageMode === "supabase" ? "Cloud records storage pending." : "Private drafting storage."
@@ -216,7 +227,15 @@ export function useRecordsStore() {
     if (typeof window === "undefined") return Promise.resolve();
 
     if (recordsStorageMode === "supabase") {
-      const write = remoteWriteChainRef.current.then(() => persistRemoteDataset(next));
+      let accountId: string;
+      try {
+        accountId = datasetAccountId(next);
+      } catch (error) {
+        return Promise.reject(error);
+      }
+      const write = remoteWriteChainRef.current.then(() =>
+        persistRemoteDataset(next, accountId)
+      );
       remoteWriteChainRef.current = write.catch(() => undefined);
       return write
         .then(() => {
@@ -250,21 +269,7 @@ export function useRecordsStore() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Records storage unavailable.";
       if (recordsStorageMode === "supabase") {
-        setCurrentDataset({
-          users: [],
-          matters: [],
-          exchangeRules: [],
-          scheduleExceptions: [],
-          custodyDayAssignments: [],
-          exchangeLogs: [],
-          dateNotes: [],
-          evidenceItems: [],
-          childSupportOrders: [],
-          childSupportPayments: [],
-          expenseItems: [],
-          timelineDesignations: [],
-          auditLogs: [],
-        });
+        setCurrentDataset(createBlankRecordsDataset());
       } else {
         setCurrentDataset(createRecordsSeed());
       }
@@ -273,6 +278,14 @@ export function useRecordsStore() {
     } finally {
       setHydrated(true);
     }
+  }, [setCurrentDataset]);
+
+  const prepareForAccountBoundary = useCallback(() => {
+    remoteWriteChainRef.current = Promise.resolve();
+    setCurrentDataset(createBlankRecordsDataset());
+    setHydrated(false);
+    setStorageError(null);
+    setStorageStatus("Cloud records storage pending.");
   }, [setCurrentDataset]);
 
   useEffect(() => {
@@ -321,6 +334,7 @@ export function useRecordsStore() {
     storageStatus,
     storageError,
     recordsStorageMode,
+    prepareForAccountBoundary,
   };
 }
 

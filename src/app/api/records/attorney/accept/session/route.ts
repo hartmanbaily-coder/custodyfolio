@@ -21,7 +21,7 @@ import {
   createServerSupabaseAuthClient,
   createServerSupabaseSessionClient,
 } from "@/lib/supabaseClient";
-import { demoCaseId } from "@/lib/records/seed";
+import { defaultCaseIdForUser } from "@/lib/records/accountBoundary";
 import { selectTotpFactorForVerification } from "@/lib/records/mfaServer";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
         refresh_token: refreshToken,
         expires_in: Number.isFinite(expiresIn) ? expiresIn : 3600,
       },
-      demoCaseId
+      defaultCaseIdForUser(user.id)
     );
     if (passwordSetupRequired) {
       const parsedOnboardingExpiry = new Date(invitation.onboarding_expires_at).getTime();

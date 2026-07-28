@@ -6,6 +6,7 @@ import {
   isSupabaseRecordsMode,
 } from "@/lib/records/authServer";
 import type { RecordsDataset } from "@/lib/records/types";
+import { recordsAccountBindingHeaderName } from "@/lib/records/accountBoundary";
 import {
   datasetContainsForeignRecords,
   isRecordsDataset,
@@ -29,6 +30,26 @@ function disabledResponse() {
   );
 }
 
+async function verifyAccountBinding(
+  request: NextRequest,
+  userId: string
+) {
+  if (request.headers.get(recordsAccountBindingHeaderName) === userId) return null;
+
+  await recordSecurityEvent({
+    type: "records_dataset_account_binding_blocked",
+    severity: "critical",
+    request,
+    userId,
+    status: 409,
+    detail: "A records request did not match the authenticated account boundary.",
+  });
+  return NextResponse.json(
+    { error: "The records session changed. Reload before accessing this account." },
+    { status: 409, headers: { "Cache-Control": "no-store" } }
+  );
+}
+
 export async function GET(request: NextRequest) {
   if (!isSupabaseRecordsMode()) return disabledResponse();
 
@@ -43,6 +64,8 @@ export async function GET(request: NextRequest) {
   if ("error" in context) return context.error;
 
   const { supabase, userId } = context;
+  const bindingError = await verifyAccountBinding(request, userId);
+  if (bindingError) return bindingError;
   const caseKey = getRecordsCaseKey(request);
   const { data, error } = await supabase
     .from("records_case_snapshots")
@@ -70,7 +93,7 @@ export async function GET(request: NextRequest) {
       request,
       userId,
       status: 200,
-      detail: "Foreign-owned records were removed from an account snapshot response.",
+      detail: "Foreign-owned or orphaned records were removed from an account snapshot response.",
     });
   }
 
@@ -97,6 +120,9 @@ export async function PUT(request: NextRequest) {
   const context = await getRecordsAuthContext(request);
   if ("error" in context) return context.error;
 
+  const bindingError = await verifyAccountBinding(request, context.userId);
+  if (bindingError) return bindingError;
+
   const rawBody = await request.text();
   if (new TextEncoder().encode(rawBody).length > maxDatasetBytes) {
     return NextResponse.json({ error: "Records dataset is too large." }, { status: 413 });
@@ -122,10 +148,10 @@ export async function PUT(request: NextRequest) {
       request,
       userId,
       status: 403,
-      detail: "A snapshot write attempted to include records owned by another account.",
+      detail: "A snapshot write attempted to include foreign-owned or orphaned records.",
     });
     return NextResponse.json(
-      { error: "Records dataset contains data that does not belong to this account." },
+      { error: "Records dataset contains records outside the current account or case." },
       { status: 403 }
     );
   }

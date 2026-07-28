@@ -1,4 +1,4 @@
-import { demoCaseId } from "./seed";
+import { defaultCaseIdForUser } from "./accountBoundary";
 
 export interface RecordsTotpFactor {
   id: string;
@@ -24,7 +24,7 @@ export function selectTotpFactorForVerification<T extends RecordsTotpFactor>(fac
 export function sessionFromMfaVerify(data: { user: { id: string; email?: string } }) {
   return {
     userId: data.user.id,
-    caseId: demoCaseId,
+    caseId: defaultCaseIdForUser(data.user.id),
     email: data.user.email || "",
     authMode: "supabase" as const,
   };

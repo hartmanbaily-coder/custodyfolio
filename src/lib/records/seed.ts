@@ -1,9 +1,28 @@
 import type { RecordsDataset } from "./types";
+import { defaultCaseIdForUser } from "./accountBoundary";
 
 const now = "2026-06-15T12:00:00.000Z";
 
 export const demoUserId = "user-demo-parent-a";
 export const demoCaseId = "case-demo-parenting-plan";
+
+export function createBlankRecordsDataset(): RecordsDataset {
+  return {
+    users: [],
+    matters: [],
+    exchangeRules: [],
+    scheduleExceptions: [],
+    custodyDayAssignments: [],
+    exchangeLogs: [],
+    dateNotes: [],
+    evidenceItems: [],
+    childSupportOrders: [],
+    childSupportPayments: [],
+    expenseItems: [],
+    timelineDesignations: [],
+    auditLogs: [],
+  };
+}
 
 function buildDemoCustodyDayAssignments() {
   const days: RecordsDataset["custodyDayAssignments"] = [];
@@ -451,6 +470,7 @@ export function createEmptyRecordsDatasetForUser(
 ): RecordsDataset {
   const createdAt = new Date().toISOString();
   const displayName = email.split("@")[0]?.replace(/[._-]+/g, " ") || "Records user";
+  const caseId = defaultCaseIdForUser(userId);
 
   return {
     users: [
@@ -466,7 +486,7 @@ export function createEmptyRecordsDatasetForUser(
     ],
     matters: [
       {
-        id: demoCaseId,
+        id: caseId,
         userId,
         caseName: "Parenting Records",
         childDisplayLabels: [],

@@ -8,7 +8,7 @@ import {
   isSupabaseRecordsMode,
   setRecordsSessionCookies,
 } from "@/lib/records/authServer";
-import { demoCaseId } from "@/lib/records/seed";
+import { defaultCaseIdForUser } from "@/lib/records/accountBoundary";
 import { recordsProfileIsAuthorized, upsertRecordsProfile } from "@/lib/records/profileServer";
 import { recordsCsrfError, verifyRecordsTrustedJsonRequest } from "@/lib/security/csrf";
 import { checkRateLimit, rateLimitClientAddress, rateLimitExceededResponse } from "@/lib/security/rateLimit";
@@ -92,7 +92,7 @@ function loginFailure(error: unknown) {
 function sessionBody(input: { userId: string; email: string }) {
   return {
     userId: input.userId,
-    caseId: demoCaseId,
+    caseId: defaultCaseIdForUser(input.userId),
     email: input.email,
     authMode: "supabase" as const,
   };
@@ -142,7 +142,11 @@ async function mfaResponse(input: {
       },
       { status: 403, headers: { "Cache-Control": "no-store" } }
     );
-    setRecordsSessionCookies(response, input.session, demoCaseId);
+    setRecordsSessionCookies(
+      response,
+      input.session,
+      defaultCaseIdForUser(input.session.user.id)
+    );
     await recordSecurityEvent({
       type: "auth_mfa_required",
       severity: "info",
@@ -196,7 +200,11 @@ async function mfaResponse(input: {
     },
     { status: 403, headers: { "Cache-Control": "no-store" } }
   );
-  setRecordsSessionCookies(response, input.session, demoCaseId);
+  setRecordsSessionCookies(
+    response,
+    input.session,
+    defaultCaseIdForUser(input.session.user.id)
+  );
   await recordSecurityEvent({
     type: "auth_mfa_enrollment_started",
     severity: "info",
@@ -304,7 +312,7 @@ async function handleLoginPost(request: NextRequest) {
     },
     { headers: { "Cache-Control": "no-store" } }
   );
-  setRecordsSessionCookies(response, data.session, demoCaseId);
+  setRecordsSessionCookies(response, data.session, defaultCaseIdForUser(data.user.id));
   return response;
 }
 

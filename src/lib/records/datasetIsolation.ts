@@ -31,27 +31,6 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object";
 }
 
-function recoveryMatter(
-  dataset: RecordsDataset,
-  userId: string,
-  caseId: string
-): RecordsDataset["matters"][number] {
-  const profile = dataset.users.find((item) => item.userId === userId);
-  const timestamp = profile?.createdAt || "1970-01-01T00:00:00.000Z";
-
-  return {
-    id: caseId,
-    userId,
-    caseName: "Parenting Records",
-    childDisplayLabels: [],
-    userRoleLabel: "Parent A",
-    otherParentLabel: "Parent B",
-    timezone: profile?.timezone || "UTC",
-    createdAt: timestamp,
-    updatedAt: timestamp,
-  };
-}
-
 export function isRecordsDataset(input: unknown): input is RecordsDataset {
   if (!input || typeof input !== "object") return false;
   const candidate = input as Partial<Record<keyof RecordsDataset, unknown>>;
@@ -114,26 +93,13 @@ export function sanitizeRecordsDatasetForUser(
   userId: string
 ): RecordsDataset {
   const users = dataset.users.filter((item) => item.userId === userId);
-  const ownedMatters = dataset.matters.filter((item) => item.userId === userId);
-  const ownsCaseRecord = (item: { userId: string; caseId: string }) => item.userId === userId;
+  const matters = dataset.matters.filter((item) => item.userId === userId);
+  const caseIds = new Set(matters.map((item) => item.id));
+  const ownsCaseRecord = (item: { userId: string; caseId: string }) =>
+    item.userId === userId && caseIds.has(item.caseId);
   const ownedCaseRecords = Object.fromEntries(
     caseRecordKeys.map((key) => [key, dataset[key].filter(ownsCaseRecord)])
   ) as Pick<RecordsDataset, (typeof caseRecordKeys)[number]>;
-  const knownCaseIds = new Set(ownedMatters.map((item) => item.id));
-  const recoveredCaseIds = new Set<string>();
-
-  for (const key of caseRecordKeys) {
-    for (const item of ownedCaseRecords[key]) {
-      if (!knownCaseIds.has(item.caseId)) recoveredCaseIds.add(item.caseId);
-    }
-  }
-  const matters = [
-    ...ownedMatters,
-    ...Array.from(recoveredCaseIds)
-      .sort()
-      .map((caseId) => recoveryMatter({ ...dataset, users }, userId, caseId)),
-  ];
-  const caseIds = new Set(matters.map((item) => item.id));
 
   return {
     users,
@@ -149,10 +115,9 @@ export function sanitizeRecordsDatasetForUser(
 }
 
 export function datasetContainsForeignRecords(dataset: RecordsDataset, userId: string) {
+  const isolated = sanitizeRecordsDatasetForUser(dataset, userId);
   return (
-    datasetKeys.some((key) =>
-      dataset[key].some((item) => item.userId !== userId)
-    ) ||
-    (dataset.timelineDesignations || []).some((item) => item.userId !== userId)
+    datasetKeys.some((key) => isolated[key].length !== dataset[key].length) ||
+    isolated.timelineDesignations.length !== (dataset.timelineDesignations || []).length
   );
 }
