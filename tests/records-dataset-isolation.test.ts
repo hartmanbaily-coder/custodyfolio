@@ -71,21 +71,16 @@ describe("records dataset account isolation", () => {
     expect(sanitizeRecordsDatasetForUser(blank, blank.users[0].userId)).toEqual(blank);
   });
 
-  it("repairs same-account legacy records whose matter row is missing", () => {
+  it("rejects and removes orphaned records instead of resurrecting a deleted case", () => {
     const legacy = sanitizeRecordsDatasetForUser(createRecordsSeed(), demoUserId);
     const assignmentCount = legacy.custodyDayAssignments.length;
     legacy.matters = [];
 
-    expect(datasetContainsForeignRecords(legacy, demoUserId)).toBe(false);
+    expect(assignmentCount).toBeGreaterThan(0);
+    expect(datasetContainsForeignRecords(legacy, demoUserId)).toBe(true);
 
-    const repaired = sanitizeRecordsDatasetForUser(legacy, demoUserId);
-    expect(repaired.matters).toEqual([
-      expect.objectContaining({
-        id: demoCaseId,
-        userId: demoUserId,
-        caseName: "Parenting Records",
-      }),
-    ]);
-    expect(repaired.custodyDayAssignments).toHaveLength(assignmentCount);
+    const isolated = sanitizeRecordsDatasetForUser(legacy, demoUserId);
+    expect(isolated.matters).toEqual([]);
+    expect(isolated.custodyDayAssignments).toEqual([]);
   });
 });

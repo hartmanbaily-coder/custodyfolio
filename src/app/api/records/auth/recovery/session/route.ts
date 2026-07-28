@@ -9,7 +9,7 @@ import {
   setRecordsPasswordRecoveryCookie,
   setRecordsSessionCookies,
 } from "@/lib/records/authServer";
-import { demoCaseId } from "@/lib/records/seed";
+import { defaultCaseIdForUser } from "@/lib/records/accountBoundary";
 import { recordsProfileIsAuthorized, upsertRecordsProfile } from "@/lib/records/profileServer";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
         refresh_token: refreshToken,
         expires_in: Number.isFinite(expiresIn) ? expiresIn : 3600,
       },
-      demoCaseId
+      defaultCaseIdForUser(data.user.id)
     );
     setRecordsPasswordRecoveryCookie(response, { userId: data.user.id, sessionId });
     return response;

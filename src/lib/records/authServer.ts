@@ -7,7 +7,7 @@ import {
   createServerSupabaseSessionClient,
 } from "@/lib/supabaseClient";
 import { recordsProfileIsAuthorized } from "./profileServer";
-import { demoCaseId } from "./seed";
+import { defaultCaseIdForUser } from "./accountBoundary";
 
 const secureCookies = process.env.NODE_ENV === "production";
 
@@ -127,7 +127,7 @@ export function getRecordsCaseKey(request: NextRequest) {
 }
 
 export function getRecordsSessionCaseId(request: NextRequest) {
-  return request.cookies.get(recordsCaseCookieName)?.value || demoCaseId;
+  return request.cookies.get(recordsCaseCookieName)?.value || "";
 }
 
 function baseCookieOptions(maxAge: number) {
@@ -143,7 +143,7 @@ function baseCookieOptions(maxAge: number) {
 export function setRecordsSessionCookies(
   response: NextResponse,
   session: Pick<Session, "access_token" | "expires_in" | "refresh_token">,
-  caseId = demoCaseId
+  caseId: string
 ) {
   response.cookies.set(
     recordsAccessCookieName,
@@ -300,7 +300,7 @@ export function attachRefreshedRecordsSession(
   context: RecordsAuthContext
 ) {
   if (context.refreshedSession) {
-    setRecordsSessionCookies(response, context.refreshedSession, getRecordsSessionCaseId(request));
+    setRecordsSessionCookies(response, context.refreshedSession, context.caseId);
   }
   return response;
 }
@@ -315,7 +315,7 @@ export async function getRecordsAuthContext(request: NextRequest) {
   }
 
   const supabase = createSupabaseAdminClient();
-  const caseId = getRecordsSessionCaseId(request);
+  const requestedCaseId = getRecordsSessionCaseId(request);
 
   if (accessToken) {
     const { data, error } = await supabase.auth.getUser(accessToken);
@@ -332,7 +332,7 @@ export async function getRecordsAuthContext(request: NextRequest) {
         email: data.user.email || "",
         emailConfirmedAt: data.user.email_confirmed_at,
         assuranceLevel: getAccessTokenAal(accessToken),
-        caseId,
+        caseId: requestedCaseId || defaultCaseIdForUser(data.user.id),
       };
     }
   }
@@ -356,7 +356,7 @@ export async function getRecordsAuthContext(request: NextRequest) {
         email: user.email || "",
         emailConfirmedAt: user.email_confirmed_at,
         assuranceLevel: getAccessTokenAal(refreshed.access_token),
-        caseId,
+        caseId: requestedCaseId || defaultCaseIdForUser(user.id),
         refreshedSession: refreshed,
       };
     }

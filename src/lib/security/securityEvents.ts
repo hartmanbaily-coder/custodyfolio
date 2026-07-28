@@ -43,6 +43,7 @@ export type SecurityEventType =
   | "evidence_storage_failed"
   | "evidence_download_denied"
   | "evidence_delete_denied"
+  | "records_dataset_account_binding_blocked"
   | "records_dataset_foreign_data_blocked"
   | "records_dataset_foreign_data_removed";
 

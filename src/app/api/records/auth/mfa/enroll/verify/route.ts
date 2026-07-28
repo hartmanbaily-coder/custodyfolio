@@ -8,7 +8,7 @@ import {
 } from "@/lib/records/authServer";
 import { cleanMfaCode, isValidMfaCode, sessionFromMfaVerify } from "@/lib/records/mfaServer";
 import { recordsProfileIsAuthorized, upsertRecordsProfile } from "@/lib/records/profileServer";
-import { demoCaseId } from "@/lib/records/seed";
+import { defaultCaseIdForUser } from "@/lib/records/accountBoundary";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
 
@@ -106,6 +106,6 @@ export async function POST(request: NextRequest) {
   });
 
   const response = NextResponse.json({ session }, { headers: { "Cache-Control": "no-store" } });
-  setRecordsSessionCookies(response, verify.data, demoCaseId);
+  setRecordsSessionCookies(response, verify.data, defaultCaseIdForUser(session.userId));
   return response;
 }

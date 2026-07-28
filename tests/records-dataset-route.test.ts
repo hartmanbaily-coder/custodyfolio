@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { recordsAccountBindingHeaderName } from "@/lib/records/accountBoundary";
 import { resetRateLimitStore } from "@/lib/security/rateLimit";
 import {
   createEmptyRecordsDatasetForUser,
@@ -37,8 +38,17 @@ import { GET, PUT } from "@/app/api/records/dataset/route";
 function request(dataset: unknown) {
   return new NextRequest("https://custodyfolio.com/api/records/dataset?caseId=default", {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      [recordsAccountBindingHeaderName]: demoUserId,
+    },
     body: JSON.stringify({ dataset }),
+  });
+}
+
+function getRequest(accountId = demoUserId) {
+  return new NextRequest("https://custodyfolio.com/api/records/dataset?caseId=default", {
+    headers: { [recordsAccountBindingHeaderName]: accountId },
   });
 }
 
@@ -71,9 +81,7 @@ describe("records dataset route account isolation", () => {
       },
       error: null,
     });
-    const response = await GET(
-      new NextRequest("https://custodyfolio.com/api/records/dataset?caseId=default")
-    );
+    const response = await GET(getRequest());
     expect(response).toBeDefined();
     if (!response) throw new Error("Dataset route did not return a response.");
     const body = await response.json();
@@ -101,7 +109,7 @@ describe("records dataset route account isolation", () => {
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toMatchObject({
-      error: "Records dataset contains data that does not belong to this account.",
+      error: "Records dataset contains records outside the current account or case.",
     });
     expect(snapshotFrom).not.toHaveBeenCalled();
     expect(recordSecurityEvent).toHaveBeenCalledWith(
@@ -137,7 +145,7 @@ describe("records dataset route account isolation", () => {
     expect(recordSecurityEvent).not.toHaveBeenCalled();
   });
 
-  it("repairs a missing same-account matter before storing new records", async () => {
+  it("rejects same-account records whose matter is missing", async () => {
     const dataset = createEmptyRecordsDatasetForUser(
       demoUserId,
       "blank@example.test",
@@ -160,20 +168,38 @@ describe("records dataset route account isolation", () => {
     const response = await PUT(request(dataset));
     expect(response).toBeDefined();
     if (!response) throw new Error("Dataset route did not return a response.");
-    expect(response.status).toBe(200);
-    expect(snapshotUpsert).toHaveBeenCalledWith(
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "Records dataset contains records outside the current account or case.",
+    });
+    expect(snapshotUpsert).not.toHaveBeenCalled();
+    expect(recordSecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        dataset: expect.objectContaining({
-          matters: [
-            expect.objectContaining({
-              id: "legacy-case",
-              userId: demoUserId,
-            }),
-          ],
-          custodyDayAssignments: dataset.custodyDayAssignments,
-        }),
-      }),
-      { onConflict: "user_id,case_key" }
+        type: "records_dataset_foreign_data_blocked",
+        severity: "critical",
+        userId: demoUserId,
+        status: 403,
+      })
+    );
+  });
+
+  it("rejects a request whose client account binding does not match the session", async () => {
+    const response = await GET(getRequest("22222222-2222-4222-8222-222222222222"));
+    expect(response).toBeDefined();
+    if (!response) throw new Error("Dataset route did not return a response.");
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "The records session changed. Reload before accessing this account.",
+    });
+    expect(snapshotFrom).not.toHaveBeenCalled();
+    expect(recordSecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "records_dataset_account_binding_blocked",
+        severity: "critical",
+        userId: demoUserId,
+        status: 409,
+      })
     );
   });
 });

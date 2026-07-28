@@ -85,6 +85,7 @@ import {
   type DateRangePreset,
 } from "@/lib/records/dateRanges";
 import { demoCaseId, demoUserId } from "@/lib/records/seed";
+import { defaultCaseIdForUser } from "@/lib/records/accountBoundary";
 import type {
   CalendarEvent,
   CustodyDayAssignment,
@@ -363,6 +364,7 @@ export default function RecordsApp() {
     storageStatus,
     storageError,
     recordsStorageMode,
+    prepareForAccountBoundary,
   } = useRecordsStore();
   const [session, setSession] = useState<Session | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
@@ -612,6 +614,7 @@ export default function RecordsApp() {
     setSelectedCaseId(nextSession.caseId);
 
     if (recordsStorageMode === "supabase") {
+      prepareForAccountBoundary();
       await reloadDataset();
     } else {
       updateDataset((current) =>
@@ -653,6 +656,9 @@ export default function RecordsApp() {
   }
 
   function logout() {
+    if (recordsStorageMode === "supabase") {
+      prepareForAccountBoundary();
+    }
     void signOutRecordsSession().catch(() => {
       if (typeof window !== "undefined") {
         window.location.replace("/records?auth=logout-warning");
@@ -6677,7 +6683,12 @@ function SettingsView({
       childSupportPayments: current.childSupportPayments.filter((item) => item.caseId !== caseId || item.userId !== userId),
       expenseItems: current.expenseItems.filter((item) => item.caseId !== caseId || item.userId !== userId),
     }));
-    setSelectedCaseId(selected.matters.find((matter) => matter.id !== caseId)?.id || demoCaseId);
+    setSelectedCaseId(
+      selected.matters.find((matter) => matter.id !== caseId)?.id ||
+        (recordsStorageMode === "supabase"
+          ? defaultCaseIdForUser(userId)
+          : demoCaseId)
+    );
     flash("Selected case deleted.");
   }
 

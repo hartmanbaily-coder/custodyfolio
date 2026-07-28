@@ -35,7 +35,7 @@ describe("attorney owner case lookup", () => {
     expect(query.eq).toHaveBeenCalledWith("case_key", "default");
   });
 
-  it("finds a recoverable same-account case when an older snapshot lost its matter row", async () => {
+  it("does not recreate a case from orphaned records when its matter row is missing", async () => {
     const dataset = createRecordsSeed();
     dataset.matters = dataset.matters.filter((matter) => matter.id !== demoCaseId);
     const { client } = supabaseWithDataset(dataset);
@@ -45,7 +45,7 @@ describe("attorney owner case lookup", () => {
       ownerUserId: demoUserId,
       caseKey: "default",
       caseId: demoCaseId,
-    })).resolves.toBe(true);
+    })).resolves.toBe(false);
   });
 
   it("does not recover a case from another account's records", async () => {

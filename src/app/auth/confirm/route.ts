@@ -8,7 +8,7 @@ import {
   setRecordsPasswordRecoveryCookie,
   setRecordsSessionCookies,
 } from "@/lib/records/authServer";
-import { demoCaseId } from "@/lib/records/seed";
+import { defaultCaseIdForUser } from "@/lib/records/accountBoundary";
 import { recordsProfileIsAuthorized, upsertRecordsProfile } from "@/lib/records/profileServer";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
 
@@ -124,7 +124,11 @@ export async function GET(request: NextRequest) {
 
   const response = NextResponse.redirect(redirectUrl);
   if (isRecovery) {
-    setRecordsSessionCookies(response, data.session, demoCaseId);
+    setRecordsSessionCookies(
+      response,
+      data.session,
+      defaultCaseIdForUser(data.user.id)
+    );
     setRecordsPasswordRecoveryCookie(response, {
       userId: data.user.id,
       sessionId: recoverySessionId,
