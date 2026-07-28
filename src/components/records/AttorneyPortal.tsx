@@ -5,9 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import PolicyFooter from "@/components/PolicyFooter";
 import {
   buildCalendarEvents,
-  calculateChildSupportStats,
+  calculateChildSupportObligationStats,
   calculateExpenseStats,
   formatMoney,
+  generateChildSupportObligations,
   isTimelineVisibleEvent,
 } from "@/lib/records/calculations";
 import { attorneyMutation, getRecordsCsrfToken } from "@/lib/records/attorneyClient";
@@ -42,15 +43,21 @@ type PortalResponse = {
 };
 
 function initialRange(projection: SharedCaseProjection): DateRange {
+  const today = formatLocalDate(new Date(), projection.dataset.matters[0]?.timezone);
   const dates = [
     ...projection.dataset.exchangeLogs.map((record) => record.orderedExchangeAt.slice(0, 10)),
     ...projection.dataset.dateNotes.map((record) => record.noteDate),
     ...projection.dataset.evidenceItems.map((record) => record.evidenceDate || record.uploadedAt.slice(0, 10)),
     ...projection.dataset.childSupportPayments.map((record) => record.dueDate),
+    ...projection.dataset.childSupportOrders.flatMap((record) => [
+      record.effectiveStartDate,
+      record.firstPaymentDueDate || "",
+      record.secondPaymentDueDate || "",
+    ]),
     ...projection.dataset.expenseItems.map((record) => record.expenseDate),
     ...projection.dataset.custodyDayAssignments.map((record) => record.date),
+    today,
   ].filter(Boolean).sort();
-  const today = formatLocalDate(new Date(), projection.dataset.matters[0]?.timezone);
   return { from: dates[0] || today, to: dates.at(-1) || today };
 }
 
@@ -288,7 +295,18 @@ export default function AttorneyPortal() {
   }
 
   const matter = dataset?.matters[0];
-  const supportStats = dataset ? calculateChildSupportStats(dataset.childSupportPayments, range) : null;
+  const supportObligations = dataset
+    ? generateChildSupportObligations(
+        dataset.childSupportOrders,
+        dataset.childSupportPayments,
+        range,
+        formatLocalDate(new Date(), matter?.timezone)
+      )
+    : [];
+  const supportStats = calculateChildSupportObligationStats(
+    supportObligations,
+    formatLocalDate(new Date(), matter?.timezone)
+  );
   const expenseStats = dataset ? calculateExpenseStats(dataset.expenseItems, range) : null;
 
   return (
@@ -310,7 +328,7 @@ export default function AttorneyPortal() {
           {view === "Exchanges" ? <div><h2 className="text-lg font-semibold">Exchange records</h2><div className="mt-3 space-y-3">{dataset?.exchangeLogs.map((record) => <article key={record.id} className="rounded-md border p-3"><p className="font-semibold">{record.orderedExchangeAt}</p><p className="mt-1 text-sm text-slate-600">{record.status.replaceAll("_", " ")}{record.location ? ` · ${record.location}` : ""}</p>{record.notes ? <p className="mt-2 text-sm">{record.notes}</p> : null}</article>)}</div></div> : null}
           {view === "Notes" ? <div><h2 className="text-lg font-semibold">Notes</h2><div className="mt-3 space-y-3">{dataset?.dateNotes.map((record) => <article key={record.id} className="rounded-md border p-3"><p className="font-semibold">{record.title}</p><p className="mt-1 text-xs text-slate-500">{record.noteDate} · {record.category.replaceAll("_", " ")}</p><p className="mt-2 text-sm leading-6 text-slate-600">{record.body}</p></article>)}</div></div> : null}
           {view === "Files" ? <div><h2 className="text-lg font-semibold">Evidence files</h2><div className="mt-3 space-y-3">{evidence.map((item) => <article key={item.id} className="flex flex-wrap items-start justify-between gap-3 rounded-md border p-3"><div className="min-w-0"><p className="break-words font-semibold">{item.originalFileName}</p><p className="mt-1 text-xs text-slate-500">{item.evidenceDate || item.uploadedAt.slice(0,10)} · {Math.round(item.fileSize/1024)} KB</p>{item.description ? <p className="mt-2 text-sm text-slate-600">{item.description}</p> : null}</div><button type="button" className="btn-secondary" disabled={busy === item.downloadHandle || item.malwareScanStatus !== "clean"} onClick={() => void downloadEvidence(item)}>{busy === item.downloadHandle ? "Preparing…" : "Download"}</button></article>)}</div></div> : null}
-          {view === "Child Support" ? <div><h2 className="text-lg font-semibold">Child support</h2><p className="mt-2 text-sm text-slate-600">Recorded due: {formatMoney(supportStats?.totalDue || 0)} · recorded paid: {formatMoney(supportStats?.totalPaid || 0)}</p><div className="mt-3 space-y-3">{dataset?.childSupportPayments.map((record) => <article key={record.id} className="rounded-md border p-3"><p className="font-semibold">Due {record.dueDate} · {formatMoney(record.amountDue)}</p><p className="text-sm text-slate-600">Paid {formatMoney(record.amountPaid)} · {record.paymentStatus.replaceAll("_", " ")}</p></article>)}</div></div> : null}
+          {view === "Child Support" ? <div><h2 className="text-lg font-semibold">Child support</h2><p className="mt-2 text-sm text-slate-600">Scheduled due to date: {formatMoney(supportStats.totalDue)} · recorded paid: {formatMoney(supportStats.totalPaid)} · calculated past-due balance: {formatMoney(supportStats.pastDueBalance)}</p><p className="mt-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-xs leading-5 text-blue-950">Scheduled obligations are calculated from the owner&apos;s entered order terms and matched to user-entered payment records by due date. Check against the signed order and official agency history.</p><div className="mt-3 space-y-3">{supportObligations.map((record) => <article key={record.id} className="rounded-md border p-3"><p className="font-semibold">{record.orderNickname} · due {record.dueDate}</p><p className="text-sm text-slate-600">Scheduled {formatMoney(record.amountDue, record.currency)} · paid {formatMoney(record.amountPaid, record.currency)} · balance {formatMoney(record.balance, record.currency)} · {record.status.replaceAll("_", " ")}</p></article>)}</div></div> : null}
           {view === "Expenses" ? <div><h2 className="text-lg font-semibold">Expenses</h2><p className="mt-2 text-sm text-slate-600">Recorded total: {formatMoney(expenseStats?.totalExpenses || 0)}</p><div className="mt-3 space-y-3">{dataset?.expenseItems.map((record) => <article key={record.id} className="rounded-md border p-3"><p className="font-semibold">{record.expenseDate} · {formatMoney(record.amount)}</p><p className="text-sm text-slate-600">{record.description} · {record.reimbursementStatus.replaceAll("_", " ")}</p></article>)}</div></div> : null}
           {view === "Reports" ? <div><h2 className="text-lg font-semibold">Reports</h2><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label className="grid gap-1 text-sm font-medium">From<input type="date" className="input" value={range.from} onChange={(event) => updateReportRange("from", event.target.value)} /></label><label className="grid gap-1 text-sm font-medium">To<input type="date" className="input" value={range.to} onChange={(event) => updateReportRange("to", event.target.value)} /></label><label className="grid gap-1 text-sm font-medium sm:col-span-2">Report type<select className="input" value={reportType} onChange={(event) => updateReportType(event.target.value as ReportType)}>{reportsTabReportTypes.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label></div><div className="mt-3 flex flex-wrap gap-2"><button type="button" className="btn-primary" onClick={() => void generateReport()}>Generate report preview</button><button type="button" className="btn-secondary" disabled={!reportPreview} onClick={() => void downloadReport("csv")}>Download CSV</button><button type="button" className="btn-secondary" disabled={!reportPreview} onClick={() => void downloadReport("pdf")}>Share or print PDF</button></div>{reportPreview ? <article className="mt-5"><h3 className="text-xl font-semibold">{reportPreview.title}</h3><p className="mt-2 rounded-md border bg-slate-50 p-3 text-sm">{reportPreview.disclaimer}</p>{reportPreview.tables.map((table) => <section key={table.title} className="mt-4"><h4 className="font-semibold">{table.title}</h4><div className="mt-2 space-y-2">{table.rows.slice(0,20).map((row,index) => <div key={index} className="grid gap-1 rounded border p-2 text-xs sm:grid-cols-2">{row.map((cell,cellIndex) => <p key={cellIndex} className="break-words"><span className="font-semibold">{table.headers[cellIndex]}:</span> {cell}</p>)}</div>)}</div></section>)}</article> : null}</div> : null}
         </main>

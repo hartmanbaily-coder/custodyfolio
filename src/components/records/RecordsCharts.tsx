@@ -47,7 +47,7 @@ export function SupportPaymentChart({
 }: {
   rows: Array<{ month: string; amountDue: number; amountPaid: number; unpaidBalance: number }>;
 }) {
-  if (rows.length === 0) return <ChartEmpty label="No child support payment records in this range." />;
+  if (rows.length === 0) return <ChartEmpty label="No calculated child support obligations in this range." />;
 
   return (
     <ResponsiveContainer width="100%" height={260} minWidth={0}>

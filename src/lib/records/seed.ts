@@ -328,6 +328,7 @@ export function createRecordsSeed(): RecordsDataset {
         paymentFrequency: "monthly",
         dueDayOrSchedule: "1st day of each month",
         effectiveStartDate: "2026-02-01",
+        firstPaymentDueDate: "2026-02-01",
         payerLabel: "Parent B",
         recipientLabel: "Parent A",
         paymentMethodExpected: "State agency",

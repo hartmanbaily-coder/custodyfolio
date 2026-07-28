@@ -153,11 +153,80 @@ export const childSupportOrderSchema = z.object({
   dueDayOrSchedule: z.string().trim().min(1).max(120),
   effectiveStartDate: dateStringSchema,
   effectiveEndDate: dateStringSchema.optional().or(z.literal("")),
+  firstPaymentDueDate: dateStringSchema.optional().or(z.literal("")),
+  secondPaymentDueDate: dateStringSchema.optional().or(z.literal("")),
   payerLabel: z.string().trim().min(1).max(60),
   recipientLabel: z.string().trim().min(1).max(60),
   paymentMethodExpected: z.string().trim().max(120).optional().or(z.literal("")),
   agencyOrCaseNumber: z.string().trim().max(120).optional().or(z.literal("")),
   notes: z.string().trim().max(2_000).optional().or(z.literal("")),
+}).superRefine((order, context) => {
+  if (order.paymentFrequency !== "custom" && !order.firstPaymentDueDate) {
+    context.addIssue({
+      code: "custom",
+      path: ["firstPaymentDueDate"],
+      message: "Enter the first payment due date so obligations can be tracked.",
+    });
+  }
+  if (order.paymentFrequency === "semi_monthly" && !order.secondPaymentDueDate) {
+    context.addIssue({
+      code: "custom",
+      path: ["secondPaymentDueDate"],
+      message: "Enter the second monthly due date for a semi monthly order.",
+    });
+  }
+  if (
+    order.firstPaymentDueDate &&
+    order.firstPaymentDueDate < order.effectiveStartDate
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["firstPaymentDueDate"],
+      message: "The first payment due date cannot be before the order start date.",
+    });
+  }
+  if (
+    order.secondPaymentDueDate &&
+    order.secondPaymentDueDate < order.effectiveStartDate
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["secondPaymentDueDate"],
+      message: "The second payment due date cannot be before the order start date.",
+    });
+  }
+  if (
+    order.effectiveEndDate &&
+    order.effectiveEndDate < order.effectiveStartDate
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["effectiveEndDate"],
+      message: "The order end date cannot be before the order start date.",
+    });
+  }
+  if (
+    order.effectiveEndDate &&
+    order.firstPaymentDueDate &&
+    order.firstPaymentDueDate > order.effectiveEndDate
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["firstPaymentDueDate"],
+      message: "The first payment due date cannot be after the order end date.",
+    });
+  }
+  if (
+    order.effectiveEndDate &&
+    order.secondPaymentDueDate &&
+    order.secondPaymentDueDate > order.effectiveEndDate
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["secondPaymentDueDate"],
+      message: "The second payment due date cannot be after the order end date.",
+    });
+  }
 });
 
 export const childSupportPaymentSchema = z.object({

@@ -1,4 +1,5 @@
 import { getRecordsCsrfToken } from "./attorneyClient";
+import { recordsAccountBindingHeaderName } from "./accountBoundary";
 import { createId, nowIso, withAudit } from "./clientStore";
 import type { EvidenceItem, RecordsDataset } from "./types";
 import {
@@ -134,6 +135,9 @@ export async function saveScreenshotExhibitToFiles(input: {
     const verificationResponse = await fetch("/api/records/dataset?caseId=default", {
       cache: "no-store",
       credentials: "same-origin",
+      headers: {
+        [recordsAccountBindingHeaderName]: userId,
+      },
     });
     const verification = (await verificationResponse.json().catch(() => ({}))) as {
       dataset?: Partial<RecordsDataset>;

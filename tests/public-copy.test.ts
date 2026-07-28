@@ -29,6 +29,7 @@ const forbiddenPublicPhrases = [
   /MFA ready structure/i,
   /protected route/i,
   /reloading cloud storage/i,
+  /use the support address below instead of a personal email/i,
 ];
 
 describe("customer facing copy", () => {
@@ -78,5 +79,27 @@ describe("customer facing copy", () => {
     );
     expect(attorneyAccess).toContain("Privacy safe access history");
     expect(attorneyAccess).not.toContain("Privacy-safe access history");
+  });
+
+  it("keeps recurring exchange setup out of the primary exchange logging flow", () => {
+    const recordsApp = readFileSync(
+      resolve(process.cwd(), "src/components/records/RecordsApp.tsx"),
+      "utf8"
+    );
+    const exchangeView = recordsApp.slice(
+      recordsApp.indexOf("function ExchangesView"),
+      recordsApp.indexOf("function NotesView")
+    );
+    const calendarView = recordsApp.slice(
+      recordsApp.indexOf("function CalendarView"),
+      recordsApp.indexOf("function TimelineView")
+    );
+
+    expect(exchangeView).toContain('title="Log exchange outcome"');
+    expect(exchangeView).toContain('label="Scheduled exchange (optional)"');
+    expect(exchangeView).toContain("Manage recurring exchange schedule");
+    expect(exchangeView).not.toContain('id="exchange-rule-form"');
+    expect(calendarView).toContain("Recurring exchange schedule (optional)");
+    expect(calendarView).toContain("<ExchangeScheduleManager");
   });
 });
