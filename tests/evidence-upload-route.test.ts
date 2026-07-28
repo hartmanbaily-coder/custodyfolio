@@ -5,6 +5,7 @@ import { resetRateLimitStore } from "@/lib/security/rateLimit";
 const userId = "11111111-1111-4111-8111-111111111111";
 const getRecordsAuthContext = vi.hoisted(() => vi.fn());
 const storageUpload = vi.hoisted(() => vi.fn());
+const snapshotMaybeSingle = vi.hoisted(() => vi.fn());
 const scanEvidenceFile = vi.hoisted(() => vi.fn());
 const recordSecurityEvent = vi.hoisted(() => vi.fn());
 
@@ -42,9 +43,28 @@ describe("evidence upload route storage ownership", () => {
       provider: "clamav",
       detail: "clean",
     });
+    snapshotMaybeSingle.mockResolvedValue({
+      data: {
+        dataset: {
+          matters: [
+            { id: "case-1", userId },
+            { id: "case-2", userId },
+          ],
+        },
+      },
+      error: null,
+    });
+    const snapshotQuery = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      maybeSingle: snapshotMaybeSingle,
+    };
+    snapshotQuery.select.mockReturnValue(snapshotQuery);
+    snapshotQuery.eq.mockReturnValue(snapshotQuery);
     getRecordsAuthContext.mockResolvedValue({
       userId,
       supabase: {
+        from: vi.fn(() => snapshotQuery),
         storage: {
           from: vi.fn(() => ({ upload: storageUpload })),
         },
@@ -62,7 +82,11 @@ describe("evidence upload route storage ownership", () => {
     formData.append("evidenceId", "evidence-1");
     const request = new NextRequest(
       "https://custodyfolio.com/api/records/evidence/upload",
-      { method: "POST", body: formData }
+      {
+        method: "POST",
+        headers: { "x-custody-folio-account": userId },
+        body: formData,
+      }
     );
 
     const response = await POST(request);
@@ -113,7 +137,11 @@ describe("evidence upload route storage ownership", () => {
     formData.append("evidenceId", "evidence-2");
     const request = new NextRequest(
       "https://custodyfolio.com/api/records/evidence/upload",
-      { method: "POST", body: formData }
+      {
+        method: "POST",
+        headers: { "x-custody-folio-account": userId },
+        body: formData,
+      }
     );
 
     const response = await POST(request);
@@ -141,5 +169,62 @@ describe("evidence upload route storage ownership", () => {
       storagePath: `${userId}/case-2/evidence-2/evidence-2.docx`,
       malwareScanStatus: "clean",
     });
+  });
+
+  it("rejects an upload when the browser account binding is stale", async () => {
+    const formData = new FormData();
+    formData.append("file", new File(["private"], "private.txt", { type: "text/plain" }));
+    formData.append("caseId", "case-1");
+    formData.append("evidenceId", "evidence-1");
+    const request = new NextRequest(
+      "https://custodyfolio.com/api/records/evidence/upload",
+      {
+        method: "POST",
+        headers: { "x-custody-folio-account": "different-account" },
+        body: formData,
+      }
+    );
+
+    const response = await POST(request);
+
+    expect(response).toBeDefined();
+    if (!response) throw new Error("Upload route did not return a response.");
+    expect(response.status).toBe(409);
+    expect(storageUpload).not.toHaveBeenCalled();
+    expect(recordSecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "records_evidence_account_binding_blocked",
+        userId,
+      })
+    );
+  });
+
+  it("rejects an upload for a case outside the authenticated account snapshot", async () => {
+    const formData = new FormData();
+    formData.append("file", new File(["private"], "private.txt", { type: "text/plain" }));
+    formData.append("caseId", "case-from-another-account");
+    formData.append("evidenceId", "evidence-foreign");
+    const request = new NextRequest(
+      "https://custodyfolio.com/api/records/evidence/upload",
+      {
+        method: "POST",
+        headers: { "x-custody-folio-account": userId },
+        body: formData,
+      }
+    );
+
+    const response = await POST(request);
+
+    expect(response).toBeDefined();
+    if (!response) throw new Error("Upload route did not return a response.");
+    expect(response.status).toBe(403);
+    expect(storageUpload).not.toHaveBeenCalled();
+    expect(recordSecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "records_evidence_case_boundary_blocked",
+        userId,
+        caseId: "case-from-another-account",
+      })
+    );
   });
 });

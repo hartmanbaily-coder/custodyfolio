@@ -10,6 +10,7 @@ import {
   buildEvidenceStoragePath,
   getEvidenceBucket,
 } from "@/lib/records/evidenceStorage";
+import { recordsAccountBindingHeaderName } from "@/lib/records/accountBoundary";
 import { scanEvidenceFile } from "@/lib/records/malwareScanner";
 import {
   buildStoredEvidenceName,
@@ -43,6 +44,27 @@ function isFileLike(value: unknown): value is File {
   );
 }
 
+function datasetOwnsCase(
+  dataset: unknown,
+  userId: string,
+  caseId: string
+) {
+  if (!dataset || typeof dataset !== "object" || !("matters" in dataset)) return false;
+  const matters = (dataset as { matters?: unknown }).matters;
+  return (
+    Array.isArray(matters) &&
+    matters.some(
+      (matter) =>
+        matter &&
+        typeof matter === "object" &&
+        "id" in matter &&
+        "userId" in matter &&
+        matter.id === caseId &&
+        matter.userId === userId
+    )
+  );
+}
+
 export async function POST(request: NextRequest) {
   if (!isSupabaseRecordsMode()) return disabledResponse();
 
@@ -55,6 +77,21 @@ export async function POST(request: NextRequest) {
 
   const context = await getRecordsAuthContext(request);
   if ("error" in context) return context.error;
+
+  if (request.headers.get(recordsAccountBindingHeaderName) !== context.userId) {
+    await recordSecurityEvent({
+      type: "records_evidence_account_binding_blocked",
+      severity: "critical",
+      request,
+      userId: context.userId,
+      status: 409,
+      detail: "An evidence upload did not match the authenticated account boundary.",
+    });
+    return NextResponse.json(
+      { error: "The records session changed. Reload before uploading a file." },
+      { status: 409, headers: { "Cache-Control": "no-store" } }
+    );
+  }
 
   const readiness = evaluateEvidenceIntakeReadiness();
   if (!readiness.ready) {
@@ -77,6 +114,35 @@ export async function POST(request: NextRequest) {
 
   if (!caseId || !evidenceId) {
     return NextResponse.json({ error: "Missing evidence case or id." }, { status: 400 });
+  }
+
+  const { data: snapshot, error: snapshotError } = await context.supabase
+    .from("records_case_snapshots")
+    .select("dataset")
+    .eq("user_id", context.userId)
+    .eq("case_key", "default")
+    .maybeSingle();
+  if (snapshotError) {
+    return NextResponse.json(
+      { error: "Unable to verify the selected case." },
+      { status: 503 }
+    );
+  }
+  if (!datasetOwnsCase(snapshot?.dataset, context.userId, caseId)) {
+    await recordSecurityEvent({
+      type: "records_evidence_case_boundary_blocked",
+      severity: "critical",
+      request,
+      userId: context.userId,
+      caseId,
+      evidenceId,
+      status: 403,
+      detail: "An evidence upload referenced a case outside the authenticated account snapshot.",
+    });
+    return NextResponse.json(
+      { error: "The selected case is unavailable. Reload before uploading a file." },
+      { status: 403, headers: { "Cache-Control": "no-store" } }
+    );
   }
 
   if (!isFileLike(file)) {

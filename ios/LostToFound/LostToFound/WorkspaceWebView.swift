@@ -173,36 +173,48 @@ private struct SecureWebScreen: View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItemGroup(placement: .bottomBar) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button {
                         model.goBack()
                     } label: {
                         Label("Back", systemImage: "chevron.backward")
                     }
                     .disabled(!model.canGoBack)
+                }
 
-                    Button {
-                        model.goForward()
-                    } label: {
-                        Label("Forward", systemImage: "chevron.forward")
-                    }
-                    .disabled(!model.canGoForward)
-
-                    Spacer()
-
+                ToolbarItemGroup(placement: .topBarTrailing) {
                     if model.isLoading {
                         ProgressView()
-                    } else {
+                    }
+
+                    Menu {
+                        Button {
+                            model.goForward()
+                        } label: {
+                            Label("Forward", systemImage: "chevron.forward")
+                        }
+                        .disabled(!model.canGoForward)
+
                         Button {
                             model.reload()
                         } label: {
                             Label("Reload", systemImage: "arrow.clockwise")
                         }
+
+                        if showsWorkspaceControls {
+                            ShareLink(item: url) {
+                                Label("Share records workspace", systemImage: "square.and.arrow.up")
+                            }
+                        }
+                    } label: {
+                        Label("Workspace options", systemImage: "ellipsis.circle")
                     }
 
                     if showsWorkspaceControls {
-                        ShareLink(item: url) {
-                            Label("Share", systemImage: "square.and.arrow.up")
+                        NavigationLink {
+                            HelpCenterView()
+                        } label: {
+                            Label("Help and policies", systemImage: "questionmark.circle")
                         }
                     }
                 }

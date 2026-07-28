@@ -96,6 +96,12 @@ test("records login and report workflow", async ({ page }) => {
   await expect(page.getByText("Add or edit date range")).toBeVisible();
   await expect(page.getByRole("button", { name: "Export calendar PDF" })).toBeVisible();
   await page.getByLabel("Child will be with").selectOption("Alternate caregiver");
+  const roseRangeColor = page.getByRole("button", {
+    name: "Date range calendar color: Rose",
+  });
+  await roseRangeColor.click();
+  await expect(roseRangeColor).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("Assigned automatically for Alternate caregiver")).toHaveCount(0);
   await expect(page.getByLabel("Exchange time")).toHaveCount(0);
   await page.getByLabel("Exchange day").selectOption("start");
   await page.getByLabel("Exchange time").fill("17:00");
@@ -107,7 +113,9 @@ test("records login and report workflow", async ({ page }) => {
   await expect(page.getByText("Calendar records by source", { exact: true })).toHaveCount(0);
   const paintedDay = page.getByRole("button", { name: `Edit calendar day ${currentCalendar.today}` });
   await expect(paintedDay).toBeVisible();
-  await expect(paintedDay.getByText("Alternate caregiver", { exact: true })).toBeVisible();
+  const paintedCaregiverLabel = paintedDay.getByText("Alternate caregiver", { exact: true });
+  await expect(paintedCaregiverLabel).toBeVisible();
+  await expect(paintedCaregiverLabel).toHaveCSS("background-color", "rgb(190, 18, 60)");
   const fivePmMarker = paintedDay.locator('[data-exchange-time-marker="17:00"]');
   await expect(fivePmMarker).toHaveCount(1);
   const fivePmPosition = await fivePmMarker.evaluate((element) =>
@@ -144,6 +152,12 @@ test("records login and report workflow", async ({ page }) => {
 
   await page.getByTestId("calendar-color-tools").locator("summary").click();
   await page.getByLabel("Caregiver for color tools").selectOption("Alternate caregiver");
+  const bluePaintColor = page.getByRole("button", {
+    name: "Paint calendar color: Blue",
+  });
+  await bluePaintColor.click();
+  await expect(bluePaintColor).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("Automatic color", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Multi-day paint: Off" }).click();
   await expect(page.getByRole("button", { name: "Multi-day paint: On" })).toHaveAttribute("aria-pressed", "true");
   const dragStartDay = page.getByRole("button", { name: `Edit calendar day ${calendarDay(9)}` });
@@ -163,6 +177,10 @@ test("records login and report workflow", async ({ page }) => {
   await expect(dragStartDay.getByText("Alternate caregiver", { exact: true })).toBeVisible();
   await expect(dragMiddleDay.getByText("Alternate caregiver", { exact: true })).toBeVisible();
   await expect(dragEndDay.getByText("Alternate caregiver", { exact: true })).toBeVisible();
+  await expect(dragStartDay.getByText("Alternate caregiver", { exact: true })).toHaveCSS(
+    "background-color",
+    "rgb(37, 99, 235)"
+  );
   await page.reload();
   await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Calendar", exact: true }).click();
@@ -1383,6 +1401,12 @@ test("mobile calendar, policy menu, and timeline labels remain usable", async ({
   await expect(colorTools).not.toHaveAttribute("open", "");
   await colorTools.locator("summary").click();
   await expect(colorTools).toHaveAttribute("open", "");
+  const mobileBluePaintColor = page.getByRole("button", {
+    name: "Paint calendar color: Blue",
+  });
+  await mobileBluePaintColor.click();
+  await expect(mobileBluePaintColor).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("Automatic color", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Multi-day paint: Off" })).toHaveAttribute("aria-pressed", "false");
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
 

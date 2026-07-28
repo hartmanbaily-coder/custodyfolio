@@ -49,15 +49,20 @@ struct AppBrandHeader: View {
     }
 }
 
-struct PrivacySummaryView: View {
+struct HelpCenterView: View {
     var body: some View {
         List {
             Section {
                 AppBrandHeader()
 
-                Text("Custody Folio is for adult users organizing private custody and parenting plan records.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Help and policies")
+                        .font(.headline)
+                    Text("Find product help, privacy information, account controls, and the correct contact inbox in one place.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 4)
             }
 
             Section("Data Boundaries") {
@@ -66,28 +71,6 @@ struct PrivacySummaryView: View {
                 Label("No advertising trackers", systemImage: "hand.raised")
                 Label("User controlled records and exports", systemImage: "doc.text.magnifyingglass")
                 Label("Account deletion available in the app", systemImage: "person.crop.circle.badge.xmark")
-            }
-
-            NativePolicyFooterSections()
-        }
-        .navigationTitle("Policies")
-    }
-}
-
-struct SupportView: View {
-    var body: some View {
-        List {
-            Section {
-                AppBrandHeader()
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Need account, privacy, deletion, accessibility, or product help?")
-                        .font(.headline)
-                    Text("Choose the appropriate inbox without putting sensitive case details in the subject line.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 4)
             }
 
             Section("Contact") {
@@ -126,7 +109,7 @@ struct SupportView: View {
 
             NativePolicyFooterSections()
         }
-        .navigationTitle("Support")
+        .navigationTitle("Help & Policies")
     }
 }
 
