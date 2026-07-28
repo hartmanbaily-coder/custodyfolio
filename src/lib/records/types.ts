@@ -284,6 +284,8 @@ export interface ChildSupportOrder {
   dueDayOrSchedule: string;
   effectiveStartDate: string;
   effectiveEndDate?: string;
+  firstPaymentDueDate?: string;
+  secondPaymentDueDate?: string;
   payerLabel: string;
   recipientLabel: string;
   paymentMethodExpected?: string;

@@ -262,11 +262,21 @@ test("records login and report workflow", async ({ page }) => {
   await page.getByRole("button", { name: "Exchanges", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Exchanges", exact: true })).toBeVisible();
   const addExchangePanel = page.locator("section").filter({
-    has: page.getByRole("heading", { name: "Log actual exchange outcome" }),
+    has: page.getByRole("heading", { name: "Log exchange outcome" }),
   });
+  await expect(addExchangePanel.getByRole("button", { name: "Manage recurring exchange schedule" })).toBeVisible();
   await expect(addExchangePanel.getByLabel("Scheduled time source")).toBeVisible();
   await expect(addExchangePanel.getByLabel("Arriving / drop-off party")).toBeVisible();
   await expect(addExchangePanel.getByLabel("Who was late?")).toBeVisible();
+  const scheduledExchange = addExchangePanel.getByLabel("Scheduled exchange (optional)");
+  await scheduledExchange.selectOption({ index: 1 });
+  await expect(addExchangePanel.getByLabel("Scheduled exchange date")).not.toHaveValue("");
+  await expect(addExchangePanel.getByLabel("Location")).toHaveValue("Community center entrance");
+  await expect(page.locator("#exchange-rule-form")).toHaveCount(0);
+  await addExchangePanel.getByRole("button", { name: "Manage recurring exchange schedule" }).click();
+  await expect(page.getByRole("heading", { name: "Calendar", exact: true })).toBeVisible();
+  await expect(page.locator("#recurring-exchange-schedule")).toHaveAttribute("open", "");
+  await page.getByRole("button", { name: "Exchanges", exact: true }).click();
 
   await page.getByRole("button", { name: "Edit exchange log 2026-05-01" }).click();
   const editExchangePanel = page.locator("section").filter({
@@ -286,7 +296,8 @@ test("records login and report workflow", async ({ page }) => {
 
   await page.getByRole("button", { name: "Child Support", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Child Support", exact: true })).toBeVisible();
-  await expect(page.getByText("Payments marked unpaid")).toBeVisible();
+  await expect(page.getByText("Past-due periods")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Calculated obligation ledger" })).toBeVisible();
 
   await page.getByRole("button", { name: "Expenses", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Expenses", exact: true })).toBeVisible();
@@ -349,7 +360,9 @@ test("mobile child support records are visible, editable, and deletable", async 
 
   const orderForm = page.locator("#child-support-order-form");
   await orderForm.getByLabel("Order nickname").fill("Mobile support order");
-  await orderForm.getByLabel("Ordered amount").fill("675");
+  await orderForm.getByLabel("Amount due each payment").fill("675");
+  await orderForm.getByLabel("Order start date").fill("2026-06-01");
+  await orderForm.getByLabel("First payment due").fill("2026-06-01");
   await orderForm.getByRole("button", { name: "Save support order" }).click();
 
   await expect(page.getByRole("status")).toContainText("Child support order saved");
@@ -359,13 +372,15 @@ test("mobile child support records are visible, editable, and deletable", async 
 
   await ordersPanel.getByRole("button", { name: "Edit support order Mobile support order" }).click();
   await expect(page.getByRole("heading", { name: "Edit child support order" })).toBeVisible();
-  await orderForm.getByLabel("Ordered amount").fill("700");
+  await orderForm.getByLabel("Amount due each payment").fill("700");
   await orderForm.getByRole("button", { name: "Update support order" }).click();
   await expect(page.getByRole("status")).toContainText("Child support order updated");
   await expect(ordersPanel).toContainText("$700.00");
 
   const paymentForm = page.locator("#child-support-payment-form");
   await paymentForm.locator('select[name="childSupportOrderId"]').selectOption({ label: "Mobile support order" });
+  await expect(paymentForm.getByLabel("Applies to obligation due date")).toHaveValue("");
+  await paymentForm.getByLabel("Applies to obligation due date").fill("2026-07-01");
   await paymentForm.getByLabel("Amount due").fill("700");
   await paymentForm.getByLabel("Amount paid").fill("350");
   await paymentForm.getByLabel("Status").selectOption("partial");
@@ -373,13 +388,25 @@ test("mobile child support records are visible, editable, and deletable", async 
 
   const paymentsPanel = page.getByTestId("mobile-support-payments");
   await expect(paymentsPanel).toContainText("$350.00");
-  await paymentsPanel.getByRole("button", { name: "Edit payment record 2026-06-01 for $700.00" }).click();
+  const obligationLedger = page
+    .getByRole("heading", { name: "Calculated obligation ledger", exact: true })
+    .locator("..")
+    .locator("..");
+  const julyObligation = obligationLedger
+    .locator("table tr")
+    .filter({ hasText: "Mobile support order" })
+    .filter({ hasText: "2026-07-01" });
+  await expect(julyObligation).toContainText("partial");
+  await expect(julyObligation).toContainText("$350.00");
+  await paymentsPanel.getByRole("button", { name: "Edit payment record 2026-07-01 for $700.00" }).click();
   await paymentForm.getByLabel("Amount paid").fill("700");
   await paymentForm.getByLabel("Status").selectOption("paid");
   await paymentForm.getByRole("button", { name: "Update payment record" }).click();
   await expect(paymentsPanel).toContainText("$700.00");
+  await expect(julyObligation).toContainText("paid");
+  await expect(julyObligation).toContainText("$0.00");
 
-  await paymentsPanel.getByRole("button", { name: "Delete payment record 2026-06-01 for $700.00" }).click();
+  await paymentsPanel.getByRole("button", { name: "Delete payment record 2026-07-01 for $700.00" }).click();
   await expect(page.getByRole("status")).toContainText("Payment record deleted");
   await ordersPanel.getByRole("button", { name: "Delete support order Mobile support order" }).click();
   await expect(page.getByRole("status")).toContainText("Child support order deleted");
@@ -497,9 +524,9 @@ test("mobile exchange status indicators have readable horizontal spacing", async
   await page.getByRole("button", { name: "Exchanges", exact: true }).click();
 
   const addExchangePanel = page.locator("section").filter({
-    has: page.getByRole("heading", { name: "Log actual exchange outcome" }),
+    has: page.getByRole("heading", { name: "Log exchange outcome" }),
   });
-  await addExchangePanel.getByRole("button", { name: "Save exchange log" }).click();
+  await addExchangePanel.getByRole("button", { name: "Save exchange outcome" }).click();
 
   const loggedExchangePanel = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Logged exchanges" }),
@@ -749,20 +776,27 @@ test("mobile create flows stay visible across every record tab and reload with a
   await expect(page.getByText(noteTitle, { exact: true })).toBeVisible();
 
   const exchangeRuleName = "Persistence audit exchange rule";
-  await page.getByRole("button", { name: "Exchanges", exact: true }).click();
+  await page.getByRole("button", { name: "Calendar", exact: true }).click();
   await expectPhoneWidth();
+  await page.getByText("Recurring exchange schedule (optional)", { exact: true }).click();
   const exchangeRuleForm = page.locator("#exchange-rule-form");
-  await exchangeRuleForm.getByLabel("Rule name").fill(exchangeRuleName);
-  await exchangeRuleForm.getByRole("button", { name: "Save exchange rule" }).click();
-  await expect(page.getByRole("status")).toContainText("Exchange rule saved. It appears below");
+  await exchangeRuleForm.getByLabel("Schedule name").fill(exchangeRuleName);
+  await exchangeRuleForm.getByLabel("Scheduled time").fill("18:00");
+  await exchangeRuleForm.getByLabel("Starts").fill("2026-08-01");
+  await exchangeRuleForm.getByRole("button", { name: "Save recurring exchange" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Recurring exchange saved for calendar and report comparisons"
+  );
   await expect(page.getByText(exchangeRuleName, { exact: true })).toBeVisible();
 
+  await page.getByRole("button", { name: "Exchanges", exact: true }).click();
+  await expectPhoneWidth();
   const exchangeLogForm = page.locator("form").filter({
-    has: page.getByRole("button", { name: "Save exchange log" }),
+    has: page.getByRole("button", { name: "Save exchange outcome" }),
   });
   await exchangeLogForm.getByLabel("Scheduled exchange date").fill("2026-08-14");
   await exchangeLogForm.getByLabel("Actual date").fill("2026-08-14");
-  await exchangeLogForm.getByRole("button", { name: "Save exchange log" }).click();
+  await exchangeLogForm.getByRole("button", { name: "Save exchange outcome" }).click();
   await expect(page.getByRole("status")).toContainText("Exchange outcome saved. It appears below");
   const loggedExchanges = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Logged exchanges", exact: true }),
@@ -787,14 +821,14 @@ test("mobile create flows stay visible across every record tab and reload with a
   await expectPhoneWidth();
   const supportOrderForm = page.locator("#child-support-order-form");
   await supportOrderForm.getByLabel("Order nickname").fill(supportOrderName);
-  await supportOrderForm.getByLabel("Ordered amount").fill("321");
+  await supportOrderForm.getByLabel("Amount due each payment").fill("321");
   await supportOrderForm.getByRole("button", { name: "Save support order" }).click();
   await expect(page.getByRole("status")).toContainText("Child support order saved. It appears below");
   await expect(page.getByTestId("mobile-support-orders")).toContainText(supportOrderName);
 
   const supportPaymentForm = page.locator("#child-support-payment-form");
   await supportPaymentForm.locator('select[name="childSupportOrderId"]').selectOption({ label: supportOrderName });
-  await supportPaymentForm.getByLabel("Due date").fill("2026-08-15");
+  await supportPaymentForm.getByLabel("Applies to obligation due date").fill("2026-08-15");
   await supportPaymentForm.getByLabel("Amount due").fill("321");
   await supportPaymentForm.getByLabel("Amount paid").fill("123");
   await supportPaymentForm.getByLabel("Status").selectOption("partial");
@@ -821,9 +855,12 @@ test("mobile create flows stay visible across every record tab and reload with a
   await page.getByRole("button", { name: "Notes", exact: true }).click();
   await expectPhoneWidth();
   await expect(page.getByText(noteTitle, { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Calendar", exact: true }).click();
+  await expectPhoneWidth();
+  await page.getByText("Recurring exchange schedule (optional)", { exact: true }).click();
+  await expect(page.getByText(exchangeRuleName, { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Exchanges", exact: true }).click();
   await expectPhoneWidth();
-  await expect(page.getByText(exchangeRuleName, { exact: true })).toBeVisible();
   await expect(loggedExchanges).toContainText("2026-08-14");
   await page.locator("nav").getByRole("button", { name: /^Files/ }).click();
   await expectPhoneWidth();
@@ -1067,18 +1104,59 @@ test("workspace tab changes support native and browser back navigation", async (
   await expect(page.getByRole("heading", { name: "Notes", exact: true }).first()).toBeVisible();
 });
 
+test("settings use structured time zone selectors for profiles and cases", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/records");
+  await page.getByRole("button", { name: "Enter records workspace" }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+
+  const accountSettings = page
+    .getByRole("heading", { name: "Account settings", exact: true })
+    .locator("..")
+    .locator("..");
+  const profileTimeZone = accountSettings.getByLabel("Time zone");
+  await expect(profileTimeZone).toHaveJSProperty("tagName", "SELECT");
+  await expect(profileTimeZone.locator('option[value="America/Anchorage"]')).toHaveText(
+    "Alaska Time — most of Alaska"
+  );
+  await profileTimeZone.selectOption("America/Anchorage");
+  await accountSettings.getByRole("button", { name: "Update profile" }).click();
+  await expect(page.getByRole("status")).toContainText("Account settings updated and saved");
+
+  const caseSettings = page
+    .getByRole("heading", { name: "Selected case settings", exact: true })
+    .locator("..")
+    .locator("..");
+  const caseTimeZone = caseSettings.getByLabel("Case time zone");
+  await expect(caseTimeZone).toHaveJSProperty("tagName", "SELECT");
+  await caseTimeZone.selectOption("America/Anchorage");
+  await caseSettings.getByRole("button", { name: "Save selected case" }).click();
+  await expect(page.getByRole("status")).toContainText("Selected case settings updated and saved");
+
+  const createMatter = page
+    .getByRole("heading", { name: "Create custody matter", exact: true })
+    .locator("..")
+    .locator("..");
+  await expect(createMatter.getByLabel("Time zone")).toHaveJSProperty("tagName", "SELECT");
+  await expect(page.locator('input[name="timezone"]')).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Calendar", exact: true }).click();
+  await expect(page.getByText("Case timezone: America/Anchorage")).toBeVisible();
+});
+
 test("saved information records expose working edit and delete controls", async ({ page }) => {
   test.setTimeout(60_000);
   await page.goto("/records");
   await page.getByRole("button", { name: "Enter records workspace" }).click();
   await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Exchanges", exact: true }).click();
-  await page.getByRole("button", { name: "Edit exchange rule Friday evening exchange" }).click();
+  await page.getByRole("button", { name: "Calendar", exact: true }).click();
+  await page.getByText("Recurring exchange schedule (optional)", { exact: true }).click();
+  await page.getByRole("button", { name: "Edit recurring exchange Friday evening exchange" }).click();
   const ruleForm = page.locator("#exchange-rule-form");
-  await ruleForm.getByLabel("Rule name").fill("Updated Friday exchange");
-  await ruleForm.getByRole("button", { name: "Update exchange rule" }).click();
-  await expect(page.getByRole("status")).toContainText("Exchange rule updated");
+  await ruleForm.getByLabel("Schedule name").fill("Updated Friday exchange");
+  await ruleForm.getByRole("button", { name: "Update recurring exchange" }).click();
+  await expect(page.getByRole("status")).toContainText("Recurring exchange updated");
   await expect(page.getByText("Updated Friday exchange", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Notes", exact: true }).click();

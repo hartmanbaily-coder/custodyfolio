@@ -1,5 +1,6 @@
 import type {
   CalendarEvent,
+  ChildSupportOrder,
   ChildSupportPayment,
   CustodyDayAssignment,
   CustodyExchangeRule,
@@ -12,6 +13,7 @@ import type {
   ExchangeScheduledTimeSource,
   ExpenseItem,
   ExpectedExchangeEvent,
+  PaymentStatus,
   RecordsDataset,
 } from "./types";
 
@@ -291,6 +293,261 @@ export function calculateChildSupportStats(payments: ChildSupportPayment[], rang
   };
 }
 
+export type ChildSupportObligationStatus =
+  | PaymentStatus
+  | "due"
+  | "upcoming";
+
+export interface ChildSupportObligation {
+  id: string;
+  childSupportOrderId: string;
+  orderNickname: string;
+  dueDate: string;
+  amountDue: number;
+  amountPaid: number;
+  balance: number;
+  currency: string;
+  paymentDate?: string;
+  status: ChildSupportObligationStatus;
+  source: "order_schedule" | "manual_record";
+  paymentRecordIds: string[];
+}
+
+function addMonthsFromAnchor(anchor: string, monthOffset: number) {
+  const anchorDate = toUtcDate(anchor);
+  const year = anchorDate.getUTCFullYear();
+  const month = anchorDate.getUTCMonth() + monthOffset;
+  const day = anchorDate.getUTCDate();
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  return toDateString(new Date(Date.UTC(year, month, Math.min(day, lastDay))));
+}
+
+function scheduledSupportDueDates(order: ChildSupportOrder, range: DateRange) {
+  if (order.paymentFrequency === "custom" || !order.firstPaymentDueDate) return [];
+
+  const scheduleEnd = order.effectiveEndDate
+    ? order.effectiveEndDate < range.to
+      ? order.effectiveEndDate
+      : range.to
+    : range.to;
+  if (scheduleEnd < order.effectiveStartDate) return [];
+
+  const dates = new Set<string>();
+  const addIfIncluded = (date: string) => {
+    if (
+      date >= order.effectiveStartDate &&
+      date <= scheduleEnd &&
+      isWithinDateRange(date, range)
+    ) {
+      dates.add(date);
+    }
+  };
+
+  if (order.paymentFrequency === "weekly" || order.paymentFrequency === "biweekly") {
+    const interval = order.paymentFrequency === "weekly" ? 7 : 14;
+    let dueDate = order.firstPaymentDueDate;
+    let iterations = 0;
+    while (dueDate <= scheduleEnd && iterations < 10_000) {
+      addIfIncluded(dueDate);
+      dueDate = addDays(dueDate, interval);
+      iterations += 1;
+    }
+  } else {
+    const anchors = [
+      order.firstPaymentDueDate,
+      order.paymentFrequency === "semi_monthly" ? order.secondPaymentDueDate : undefined,
+    ].filter((date): date is string => Boolean(date));
+    for (const anchor of anchors) {
+      let monthOffset = 0;
+      let dueDate = anchor;
+      while (dueDate <= scheduleEnd && monthOffset < 1_200) {
+        addIfIncluded(dueDate);
+        monthOffset += 1;
+        dueDate = addMonthsFromAnchor(anchor, monthOffset);
+      }
+    }
+  }
+
+  return Array.from(dates).sort();
+}
+
+function roundMoney(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function obligationFromPayments(input: {
+  order: ChildSupportOrder;
+  dueDate: string;
+  payments: ChildSupportPayment[];
+  asOfDate: string;
+  source: ChildSupportObligation["source"];
+}) {
+  const amountDue =
+    input.source === "order_schedule"
+      ? input.order.orderedAmount
+      : Math.max(...input.payments.map((payment) => payment.amountDue));
+  const amountPaid = roundMoney(
+    input.payments.reduce((sum, payment) => sum + payment.amountPaid, 0)
+  );
+  const paymentDates = input.payments
+    .map((payment) => payment.paymentDate)
+    .filter((date): date is string => Boolean(date))
+    .sort();
+  const paymentDate = paymentDates.at(-1);
+  const recordedStatuses = new Set(input.payments.map((payment) => payment.paymentStatus));
+  const waived = recordedStatuses.has("waived_by_agreement");
+
+  let status: ChildSupportObligationStatus;
+  if (waived) {
+    status = "waived_by_agreement";
+  } else if (recordedStatuses.has("disputed")) {
+    status = "disputed";
+  } else if (amountPaid >= amountDue) {
+    status = paymentDate && paymentDate > input.dueDate ? "late" : "paid";
+  } else if (amountPaid > 0) {
+    status = "partial";
+  } else if (input.dueDate > input.asOfDate) {
+    status = "upcoming";
+  } else if (input.dueDate === input.asOfDate) {
+    status = "due";
+  } else {
+    status = "unpaid";
+  }
+
+  return {
+    id: `support-obligation-${input.order.id}-${input.dueDate}`,
+    childSupportOrderId: input.order.id,
+    orderNickname: input.order.orderNickname,
+    dueDate: input.dueDate,
+    amountDue: roundMoney(amountDue),
+    amountPaid,
+    balance: waived ? 0 : roundMoney(Math.max(amountDue - amountPaid, 0)),
+    currency: input.order.currency,
+    paymentDate,
+    status,
+    source: input.source,
+    paymentRecordIds: input.payments.map((payment) => payment.id),
+  } satisfies ChildSupportObligation;
+}
+
+export function generateChildSupportObligations(
+  orders: ChildSupportOrder[],
+  payments: ChildSupportPayment[],
+  range: DateRange,
+  asOfDate = toDateString(new Date())
+) {
+  const obligations: ChildSupportObligation[] = [];
+  const matchedPaymentIds = new Set<string>();
+
+  for (const order of orders) {
+    const orderPayments = payments.filter(
+      (payment) => payment.childSupportOrderId === order.id
+    );
+    for (const dueDate of scheduledSupportDueDates(order, range)) {
+      const matchingPayments = orderPayments.filter((payment) => payment.dueDate === dueDate);
+      matchingPayments.forEach((payment) => matchedPaymentIds.add(payment.id));
+      obligations.push(
+        obligationFromPayments({
+          order,
+          dueDate,
+          payments: matchingPayments,
+          asOfDate,
+          source: "order_schedule",
+        })
+      );
+    }
+
+    const unmatchedByDueDate = new Map<string, ChildSupportPayment[]>();
+    for (const payment of orderPayments) {
+      if (matchedPaymentIds.has(payment.id) || !isWithinDateRange(payment.dueDate, range)) {
+        continue;
+      }
+      unmatchedByDueDate.set(payment.dueDate, [
+        ...(unmatchedByDueDate.get(payment.dueDate) || []),
+        payment,
+      ]);
+    }
+    for (const [dueDate, matchingPayments] of unmatchedByDueDate) {
+      obligations.push(
+        obligationFromPayments({
+          order,
+          dueDate,
+          payments: matchingPayments,
+          asOfDate,
+          source: "manual_record",
+        })
+      );
+    }
+  }
+
+  return obligations.sort(
+    (first, second) =>
+      first.dueDate.localeCompare(second.dueDate) ||
+      first.orderNickname.localeCompare(second.orderNickname)
+  );
+}
+
+export function calculateChildSupportObligationStats(
+  obligations: ChildSupportObligation[],
+  asOfDate = toDateString(new Date())
+) {
+  const dueToDate = obligations.filter((obligation) => obligation.dueDate <= asOfDate);
+  const pastDue = obligations.filter(
+    (obligation) =>
+      obligation.dueDate < asOfDate &&
+      obligation.balance > 0 &&
+      obligation.status !== "disputed"
+  );
+  const lateDays = dueToDate
+    .map((obligation) => daysBetween(obligation.dueDate, obligation.paymentDate))
+    .filter((value): value is number => value !== null && value > 0);
+
+  return {
+    paymentCount: dueToDate.length,
+    totalDue: roundMoney(dueToDate.reduce((sum, obligation) => sum + obligation.amountDue, 0)),
+    totalPaid: roundMoney(dueToDate.reduce((sum, obligation) => sum + obligation.amountPaid, 0)),
+    unpaidBalance: roundMoney(
+      dueToDate.reduce((sum, obligation) => sum + obligation.balance, 0)
+    ),
+    pastDueBalance: roundMoney(
+      pastDue.reduce((sum, obligation) => sum + obligation.balance, 0)
+    ),
+    unpaidCount: pastDue.filter((obligation) => obligation.status === "unpaid").length,
+    partialCount: dueToDate.filter((obligation) => obligation.status === "partial").length,
+    lateCount: dueToDate.filter((obligation) => obligation.status === "late").length,
+    pastDueCount: pastDue.length,
+    upcomingCount: obligations.filter((obligation) => obligation.status === "upcoming").length,
+    averageDaysLate:
+      lateDays.length > 0
+        ? Math.round(lateDays.reduce((sum, value) => sum + value, 0) / lateDays.length)
+        : 0,
+  };
+}
+
+export function childSupportObligationChartRows(
+  obligations: ChildSupportObligation[],
+  asOfDate = toDateString(new Date())
+) {
+  const monthly = new Map<
+    string,
+    { month: string; amountDue: number; amountPaid: number; unpaidBalance: number }
+  >();
+  for (const obligation of obligations.filter((item) => item.dueDate <= asOfDate)) {
+    const month = getMonthKey(obligation.dueDate);
+    const current = monthly.get(month) || {
+      month,
+      amountDue: 0,
+      amountPaid: 0,
+      unpaidBalance: 0,
+    };
+    current.amountDue = roundMoney(current.amountDue + obligation.amountDue);
+    current.amountPaid = roundMoney(current.amountPaid + obligation.amountPaid);
+    current.unpaidBalance = roundMoney(current.unpaidBalance + obligation.balance);
+    monthly.set(month, current);
+  }
+  return Array.from(monthly.values()).sort((a, b) => a.month.localeCompare(b.month));
+}
+
 export function childSupportChartRows(payments: ChildSupportPayment[], range: DateRange) {
   const monthly = new Map<string, { month: string; amountDue: number; amountPaid: number; unpaidBalance: number }>();
   for (const payment of payments.filter((item) => isWithinDateRange(item.dueDate, range))) {
@@ -359,6 +616,21 @@ function paymentSeverity(payment: ChildSupportPayment): CalendarEvent["severity"
   return "neutral";
 }
 
+function obligationSeverity(
+  obligation: ChildSupportObligation
+): CalendarEvent["severity"] {
+  if (obligation.status === "unpaid" || obligation.status === "disputed") return "critical";
+  if (
+    obligation.status === "partial" ||
+    obligation.status === "late" ||
+    obligation.status === "unknown"
+  ) {
+    return "attention";
+  }
+  if (obligation.status === "paid") return "positive";
+  return "neutral";
+}
+
 function expenseSeverity(expense: ExpenseItem): CalendarEvent["severity"] {
   if (expense.reimbursementStatus === "disputed") return "critical";
   if (
@@ -411,7 +683,13 @@ export function buildCalendarEvents(
   const exchangeLogs = filterOwnedCaseRecords(dataset.exchangeLogs, userId, caseId);
   const notes = filterOwnedCaseRecords(dataset.dateNotes, userId, caseId);
   const evidenceItems = filterOwnedCaseRecords(dataset.evidenceItems, userId, caseId);
+  const supportOrders = filterOwnedCaseRecords(dataset.childSupportOrders, userId, caseId);
   const payments = filterOwnedCaseRecords(dataset.childSupportPayments, userId, caseId);
+  const supportObligations = generateChildSupportObligations(
+    supportOrders,
+    payments,
+    range
+  );
   const expenses = filterOwnedCaseRecords(dataset.expenseItems, userId, caseId);
   const designationByEventId = new Map(
     (dataset.timelineDesignations || [])
@@ -541,27 +819,42 @@ export function buildCalendarEvents(
         relatedIds: [log.id, log.custodyExchangeRuleId].filter(Boolean) as string[],
       };
     }),
-    ...payments.map((payment) => ({
-      id: `payment-due-${payment.id}`,
+    ...supportObligations.map((obligation) => ({
+      id: obligation.id,
       caseId,
-      date: payment.dueDate,
-      sortAt: buildSortAt(payment.dueDate),
+      date: obligation.dueDate,
+      sortAt: buildSortAt(obligation.dueDate),
       type: "child_support_due" as const,
-      title: `Child support due: ${formatMoney(payment.amountDue)}`,
+      title: `Child support due: ${formatMoney(obligation.amountDue, obligation.currency)}`,
       detail: joinParts([
-        `Status: ${labelPaymentStatus(payment.paymentStatus)}`,
-        `Marked paid: ${formatMoney(payment.amountPaid)}`,
+        `Status: ${
+          obligation.status === "due"
+            ? "Due today"
+            : obligation.status === "upcoming"
+              ? "Upcoming"
+              : labelPaymentStatus(obligation.status)
+        }`,
+        `Recorded paid: ${formatMoney(obligation.amountPaid, obligation.currency)}`,
+        `Calculated balance: ${formatMoney(obligation.balance, obligation.currency)}`,
       ]),
       summary: joinParts([
-        `Due: ${formatMoney(payment.amountDue)}`,
-        `Method: ${payment.paymentMethod.replaceAll("_", " ")}`,
-        payment.paymentDate ? `Payment date: ${payment.paymentDate}` : undefined,
+        `Order: ${obligation.orderNickname}`,
+        obligation.paymentDate ? `Payment date: ${obligation.paymentDate}` : undefined,
+        obligation.source === "order_schedule"
+          ? "Calculated from saved order schedule"
+          : "Manual due date",
       ]),
-      body: payment.notes,
-      tags: ["child support", labelPaymentStatus(payment.paymentStatus)],
-      severity: paymentSeverity(payment),
+      tags: [
+        "child support",
+        obligation.status === "due"
+          ? "due today"
+          : obligation.status === "upcoming"
+            ? "upcoming"
+            : labelPaymentStatus(obligation.status),
+      ],
+      severity: obligationSeverity(obligation),
       sourceLabel: "Child support",
-      relatedIds: [payment.id, payment.childSupportOrderId],
+      relatedIds: [obligation.childSupportOrderId, ...obligation.paymentRecordIds],
     })),
     ...payments
       .filter((payment) => payment.paymentDate)
@@ -858,9 +1151,9 @@ export function buildNeutralExchangeSummary(
 
 export function buildNeutralChildSupportSummary(
   range: DateRange,
-  stats: ReturnType<typeof calculateChildSupportStats>
+  stats: ReturnType<typeof calculateChildSupportObligationStats>
 ) {
-  return `Based on records entered in this app, ${stats.paymentCount} child support payments were due between ${range.from} and ${range.to}. ${stats.totalPaid === 0 ? "No payments were marked paid" : `${formatMoney(stats.totalPaid)} was marked paid`}. ${stats.partialCount} payments were marked partial, and ${stats.unpaidCount} payments were marked unpaid.`;
+  return `Based on the saved order schedule and user-entered payment records, ${stats.paymentCount} child support obligation${stats.paymentCount === 1 ? " was" : "s were"} due between ${range.from} and ${range.to}. ${stats.totalPaid === 0 ? "No payments were recorded" : `${formatMoney(stats.totalPaid)} was recorded as paid`}. ${stats.pastDueCount} past-due period${stats.pastDueCount === 1 ? " has" : "s have"} a calculated balance of ${formatMoney(stats.pastDueBalance)}.`;
 }
 
 export function buildEvidenceIndex(items: EvidenceItem[], range: DateRange) {

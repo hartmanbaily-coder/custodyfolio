@@ -3,12 +3,13 @@ import {
   buildEvidenceIndex,
   buildNeutralChildSupportSummary,
   buildNeutralExchangeSummary,
-  calculateChildSupportStats,
+  calculateChildSupportObligationStats,
   calculateExchangeStats,
   calculateExchangeTiming,
   calculateExpenseStats,
-  childSupportChartRows,
+  childSupportObligationChartRows,
   formatMoney,
+  generateChildSupportObligations,
   generateExpectedExchangeEvents,
   getMonthKey,
   getIsoDateFromDateTime,
@@ -37,6 +38,7 @@ import type {
   RecordsDataset,
   ReportType,
 } from "./types";
+import { formatLocalDate } from "./dateRanges";
 
 export type SectionExportId =
   | "calendar"
@@ -493,6 +495,7 @@ export function buildSectionExportPacket(
   const userRoleLabel = matter?.userRoleLabel || "Me";
   const otherParentLabel = matter?.otherParentLabel || "Other parent";
   const generatedAt = formatGeneratedAt();
+  const supportAsOfDate = formatLocalDate(new Date(), matter?.timezone);
   const disclaimer =
     "This export organizes user entered records. It is not legal advice; review with a qualified attorney before filing or sharing.";
   const events = buildCalendarEvents(dataset, userId, caseId, range)
@@ -516,11 +519,20 @@ export function buildSectionExportPacket(
     isWithinDateRange(payment.dueDate, range)
   );
   const orders = ownedCaseRecords(dataset.childSupportOrders, userId, caseId);
+  const supportObligations = generateChildSupportObligations(
+    orders,
+    ownedCaseRecords(dataset.childSupportPayments, userId, caseId),
+    range,
+    supportAsOfDate
+  );
   const expenses = ownedCaseRecords(dataset.expenseItems, userId, caseId).filter((expense) =>
     isWithinDateRange(expense.expenseDate, range)
   );
   const exchangeStats = calculateExchangeStats(exchangeLogs, expectedExchanges, range);
-  const supportStats = calculateChildSupportStats(payments, range);
+  const supportStats = calculateChildSupportObligationStats(
+    supportObligations,
+    supportAsOfDate
+  );
   const expenseStats = calculateExpenseStats(expenses, range);
   const attentionEvents = events.filter((event) => event.severity === "attention" || event.severity === "critical");
   const custodyDayCounts = countBy(custodyAssignments, (item) => item.caregiverLabel);
@@ -819,17 +831,22 @@ export function buildSectionExportPacket(
   }
 
   if (id === "child_support") {
-    const trendRows = childSupportChartRows(payments, range);
+    const trendRows = childSupportObligationChartRows(
+      supportObligations,
+      supportAsOfDate
+    );
     return {
       ...base,
       summaries: [
         buildNeutralChildSupportSummary(range, supportStats),
-        `${orders.length} support order record${orders.length === 1 ? "" : "s"} and ${payments.length} payment record${payments.length === 1 ? "" : "s"} are included in this section.`,
+        `${orders.length} support order record${orders.length === 1 ? "" : "s"}, ${supportObligations.length} calculated obligation period${supportObligations.length === 1 ? "" : "s"}, and ${payments.length} user-entered payment record${payments.length === 1 ? "" : "s"} are included.`,
+        "Calculated obligations are derived from user-entered order amount, frequency, first due date, and effective dates. Verify them against the signed order and official agency history.",
       ],
       metrics: [
-        { label: "Total due", value: formatMoney(supportStats.totalDue), detail: "Selected range" },
-        { label: "Total paid", value: formatMoney(supportStats.totalPaid), detail: "User entered records" },
-        { label: "Unpaid balance", value: formatMoney(supportStats.unpaidBalance), detail: `${supportStats.unpaidCount} unpaid` },
+        { label: "Scheduled due", value: formatMoney(supportStats.totalDue), detail: "Calculated through today" },
+        { label: "Recorded paid", value: formatMoney(supportStats.totalPaid), detail: "Matched by obligation due date" },
+        { label: "Calculated outstanding", value: formatMoney(supportStats.unpaidBalance), detail: "Due through today" },
+        { label: "Past-due balance", value: formatMoney(supportStats.pastDueBalance), detail: `${supportStats.pastDueCount} periods` },
         { label: "Average days late", value: supportStats.averageDaysLate, detail: "Paid late records" },
       ],
       charts: [
@@ -846,21 +863,47 @@ export function buildSectionExportPacket(
         },
         {
           title: "Payment status mix",
-          unit: "payments",
-          rows: countBy(payments, (payment) => labelPaymentStatus(payment.paymentStatus)),
+          unit: "obligations",
+          rows: countBy(supportObligations, (obligation) =>
+            obligation.status === "due"
+              ? "Due today"
+              : obligation.status === "upcoming"
+                ? "Upcoming"
+                : labelPaymentStatus(obligation.status)
+          ),
         },
       ],
       tables: [
         {
           title: "Support orders",
-          headers: ["Order", "Amount", "Frequency", "Payer", "Recipient", "Effective start"],
+          headers: ["Order", "Amount per payment", "Frequency", "Order start", "First due", "Second due", "Payer", "Recipient"],
           rows: toTableRows(orders, (order) => [
             order.orderNickname,
             formatMoney(order.orderedAmount, order.currency),
             order.paymentFrequency.replaceAll("_", " "),
+            order.effectiveStartDate,
+            order.firstPaymentDueDate || "Manual tracking",
+            order.secondPaymentDueDate || "",
             order.payerLabel,
             order.recipientLabel,
-            order.effectiveStartDate,
+          ]),
+        },
+        {
+          title: "Calculated obligation ledger",
+          headers: ["Order", "Due date", "Scheduled due", "Recorded paid", "Calculated balance", "Payment date", "Status", "Source"],
+          rows: toTableRows(supportObligations, (obligation) => [
+            obligation.orderNickname,
+            obligation.dueDate,
+            formatMoney(obligation.amountDue, obligation.currency),
+            formatMoney(obligation.amountPaid, obligation.currency),
+            formatMoney(obligation.balance, obligation.currency),
+            obligation.paymentDate || "",
+            obligation.status === "due"
+              ? "Due today"
+              : obligation.status === "upcoming"
+                ? "Upcoming"
+                : labelPaymentStatus(obligation.status),
+            obligation.source === "order_schedule" ? "Calculated schedule" : "Manual due date",
           ]),
         },
         {
@@ -878,8 +921,8 @@ export function buildSectionExportPacket(
         },
       ],
       suggestedUses: [
-        "Show due versus paid history and unpaid balance by month.",
-        "Export before discussing reimbursement, arrears, or payment compliance with counsel.",
+        "Show calculated scheduled obligations alongside user-entered payment records.",
+        "Review the calculated ledger against the signed order and official agency history with counsel.",
       ],
     };
   }
@@ -992,17 +1035,32 @@ export function buildReportRows(
       exchange_location: assignment.exchangeLocation || "",
     }));
 
-  const childSupportRows = dataset.childSupportPayments
-    .filter((payment) => payment.userId === userId && payment.caseId === caseId)
-    .filter((payment) => isWithinDateRange(payment.dueDate, range))
-    .map((payment) => ({
-      due_date: payment.dueDate,
-      amount_due: payment.amountDue,
-      amount_paid: payment.amountPaid,
-      payment_date: payment.paymentDate || "",
-      status: labelPaymentStatus(payment.paymentStatus),
-      method: payment.paymentMethod.replaceAll("_", " "),
-    }));
+  const supportAsOfDate = formatLocalDate(new Date(), matter?.timezone);
+  const childSupportRows = generateChildSupportObligations(
+    dataset.childSupportOrders.filter(
+      (order) => order.userId === userId && order.caseId === caseId
+    ),
+    dataset.childSupportPayments.filter(
+      (payment) => payment.userId === userId && payment.caseId === caseId
+    ),
+    range,
+    supportAsOfDate
+  ).map((obligation) => ({
+    order: obligation.orderNickname,
+    due_date: obligation.dueDate,
+    scheduled_due: obligation.amountDue,
+    recorded_paid: obligation.amountPaid,
+    calculated_balance: obligation.balance,
+    payment_date: obligation.paymentDate || "",
+    status:
+      obligation.status === "due"
+        ? "Due today"
+        : obligation.status === "upcoming"
+          ? "Upcoming"
+          : labelPaymentStatus(obligation.status),
+    source:
+      obligation.source === "order_schedule" ? "Calculated schedule" : "Manual due date",
+  }));
 
   const expenseRows = dataset.expenseItems
     .filter((expense) => expense.userId === userId && expense.caseId === caseId)
@@ -1335,22 +1393,42 @@ export function buildReportPreview(
   }
 
   if (reportType === "child_support_payment") {
+    const supportAsOfDate = formatLocalDate(new Date(), matter?.timezone);
+    const orders = dataset.childSupportOrders.filter(
+      (order) => order.userId === userId && order.caseId === caseId
+    );
     const payments = dataset.childSupportPayments
       .filter((payment) => payment.userId === userId && payment.caseId === caseId)
       .filter((payment) => isWithinDateRange(payment.dueDate, range));
-    const supportStats = calculateChildSupportStats(payments, range);
-    const trendRows = childSupportChartRows(payments, range);
+    const obligations = generateChildSupportObligations(
+      orders,
+      dataset.childSupportPayments.filter(
+        (payment) => payment.userId === userId && payment.caseId === caseId
+      ),
+      range,
+      supportAsOfDate
+    );
+    const supportStats = calculateChildSupportObligationStats(
+      obligations,
+      supportAsOfDate
+    );
+    const trendRows = childSupportObligationChartRows(obligations, supportAsOfDate);
     const table: SectionExportTable = {
-      title: "Child support payment records",
-      headers: ["Due date", "Amount due", "Amount paid", "Payment date", "Status", "Method", "Notes"],
-      rows: toTableRows(payments, (payment) => [
-        payment.dueDate,
-        formatMoney(payment.amountDue),
-        formatMoney(payment.amountPaid),
-        payment.paymentDate || "",
-        labelPaymentStatus(payment.paymentStatus),
-        payment.paymentMethod.replaceAll("_", " "),
-        payment.notes || "",
+      title: "Calculated child support obligation ledger",
+      headers: ["Order", "Due date", "Scheduled due", "Recorded paid", "Calculated balance", "Payment date", "Status", "Source"],
+      rows: toTableRows(obligations, (obligation) => [
+        obligation.orderNickname,
+        obligation.dueDate,
+        formatMoney(obligation.amountDue, obligation.currency),
+        formatMoney(obligation.amountPaid, obligation.currency),
+        formatMoney(obligation.balance, obligation.currency),
+        obligation.paymentDate || "",
+        obligation.status === "due"
+          ? "Due today"
+          : obligation.status === "upcoming"
+            ? "Upcoming"
+            : labelPaymentStatus(obligation.status),
+        obligation.source === "order_schedule" ? "Calculated schedule" : "Manual due date",
       ]),
     };
 
@@ -1360,13 +1438,14 @@ export function buildReportPreview(
       focus: "Child support payment history",
       summaries: [
         buildNeutralChildSupportSummary(range, supportStats),
-        `${payments.length} payment record${payments.length === 1 ? "" : "s"} are included from ${range.from} to ${range.to}.`,
-        "This report contains payment records only; support order details are available in the Child Support section export.",
+        `${obligations.length} calculated obligation period${obligations.length === 1 ? "" : "s"} and ${payments.length} user-entered payment record${payments.length === 1 ? "" : "s"} are included from ${range.from} to ${range.to}.`,
+        "Calculated obligations are derived from user-entered order terms. Verify the ledger against the signed order and official agency history before relying on it.",
       ],
       metrics: [
-        { label: "Total due", value: formatMoney(supportStats.totalDue), detail: "Selected range" },
-        { label: "Total paid", value: formatMoney(supportStats.totalPaid), detail: "User entered records" },
-        { label: "Unpaid balance", value: formatMoney(supportStats.unpaidBalance), detail: `${supportStats.unpaidCount} unpaid` },
+        { label: "Scheduled due", value: formatMoney(supportStats.totalDue), detail: "Calculated through today" },
+        { label: "Recorded paid", value: formatMoney(supportStats.totalPaid), detail: "Matched by obligation due date" },
+        { label: "Calculated outstanding", value: formatMoney(supportStats.unpaidBalance), detail: "Due through today" },
+        { label: "Past-due balance", value: formatMoney(supportStats.pastDueBalance), detail: `${supportStats.pastDueCount} periods` },
         { label: "Average days late", value: supportStats.averageDaysLate, detail: "Paid late records" },
       ],
       charts: [
@@ -1381,15 +1460,21 @@ export function buildReportPreview(
             secondaryValue: row.amountPaid,
             tertiaryValue: row.unpaidBalance,
           })),
-          emptyLabel: "No child support payment records in this range.",
+          emptyLabel: "No calculated child support obligations in this range.",
         },
         {
           kind: "bar",
           orientation: "horizontal",
           title: "Payment status mix",
-          unit: "payments",
-          rows: countBy(payments, (payment) => labelPaymentStatus(payment.paymentStatus)),
-          emptyLabel: "No child support payment records in this range.",
+          unit: "obligations",
+          rows: countBy(obligations, (obligation) =>
+            obligation.status === "due"
+              ? "Due today"
+              : obligation.status === "upcoming"
+                ? "Upcoming"
+                : labelPaymentStatus(obligation.status)
+          ),
+          emptyLabel: "No calculated child support obligations in this range.",
         },
       ],
       tables: [table],

@@ -10,12 +10,13 @@ import {
   buildDashboardTimelineStats,
   buildCalendarEvents,
   buildCustodyDayMap,
-  calculateChildSupportStats,
+  calculateChildSupportObligationStats,
   calculateExpenseStats,
-  childSupportChartRows,
+  childSupportObligationChartRows,
   daysBetween,
   exchangeChartRows,
   formatMoney,
+  generateChildSupportObligations,
   generateExpectedExchangeEvents,
   getExchangeArrivingParty,
   getExchangeLateParty,
@@ -32,6 +33,7 @@ import {
   labelNoteCategory,
   labelPaymentStatus,
   timeOfDayPositionPercent,
+  type ChildSupportObligation,
 } from "@/lib/records/calculations";
 import {
   acceptAttorneyInviteSession,
@@ -189,15 +191,24 @@ function recordsHistoryState(view: ActiveView, index: number) {
 }
 
 const recordsTimezoneOptions = [
-  "America/Anchorage",
-  "America/Adak",
-  "America/Los_Angeles",
-  "America/Denver",
-  "America/Chicago",
-  "America/New_York",
-  "America/Phoenix",
-  "Pacific/Honolulu",
-  "UTC",
+  { value: "America/Adak", label: "Aleutian Time — Adak, Alaska" },
+  { value: "America/Anchorage", label: "Alaska Time — most of Alaska" },
+  { value: "Pacific/Honolulu", label: "Hawaii Time — Hawaii" },
+  { value: "America/Los_Angeles", label: "Pacific Time — Los Angeles" },
+  { value: "America/Phoenix", label: "Mountain Time without daylight saving — Arizona" },
+  { value: "America/Denver", label: "Mountain Time — Denver" },
+  { value: "America/Boise", label: "Mountain Time — southern Idaho" },
+  { value: "America/Chicago", label: "Central Time — Chicago" },
+  { value: "America/North_Dakota/Center", label: "Central Time — North Dakota" },
+  { value: "America/New_York", label: "Eastern Time — New York" },
+  { value: "America/Detroit", label: "Eastern Time — Michigan" },
+  { value: "America/Indiana/Indianapolis", label: "Eastern Time — Indiana" },
+  { value: "America/Kentucky/Louisville", label: "Eastern Time — Kentucky" },
+  { value: "America/Puerto_Rico", label: "Atlantic Time — Puerto Rico and U.S. Virgin Islands" },
+  { value: "Pacific/Pago_Pago", label: "Samoa Time — American Samoa" },
+  { value: "Pacific/Guam", label: "Chamorro Time — Guam" },
+  { value: "Pacific/Saipan", label: "Chamorro Time — Northern Mariana Islands" },
+  { value: "UTC", label: "UTC — Coordinated Universal Time" },
 ];
 type Session = RecordsSession;
 type SectionExportFormat = "pdf" | "csv" | "json";
@@ -441,6 +452,19 @@ export default function RecordsApp() {
     }
   }, [caseTimezone]);
 
+  const openRecurringExchangeSchedule = useCallback(() => {
+    openView("Calendar");
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const schedule = document.getElementById("recurring-exchange-schedule");
+        if (schedule instanceof HTMLDetailsElement) {
+          schedule.open = true;
+          schedule.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+    });
+  }, [openView]);
+
   useEffect(() => {
     activeViewRef.current = "Dashboard";
     historyIndexRef.current = 0;
@@ -517,9 +541,25 @@ export default function RecordsApp() {
     () => generateExpectedExchangeEvents(selected.exchangeRules, range),
     [selected.exchangeRules, range]
   );
+  const supportAsOfDate = formatLocalDate(new Date(), caseTimezone);
+  const supportObligations = useMemo(
+    () =>
+      generateChildSupportObligations(
+        selected.childSupportOrders,
+        selected.childSupportPayments,
+        range,
+        supportAsOfDate
+      ),
+    [
+      selected.childSupportOrders,
+      selected.childSupportPayments,
+      range,
+      supportAsOfDate,
+    ]
+  );
   const supportStats = useMemo(
-    () => calculateChildSupportStats(selected.childSupportPayments, range),
-    [selected.childSupportPayments, range]
+    () => calculateChildSupportObligationStats(supportObligations, supportAsOfDate),
+    [supportObligations, supportAsOfDate]
   );
   const expenseStats = useMemo(
     () => calculateExpenseStats(selected.expenseItems, range),
@@ -542,8 +582,8 @@ export default function RecordsApp() {
     [calendarEvents]
   );
   const supportRows = useMemo(
-    () => childSupportChartRows(selected.childSupportPayments, range),
-    [selected.childSupportPayments, range]
+    () => childSupportObligationChartRows(supportObligations, supportAsOfDate),
+    [supportObligations, supportAsOfDate]
   );
   const reportPreview = useMemo(
     () => buildReportPreview(dataset, userId, effectiveCaseId, range, reportType),
@@ -790,6 +830,7 @@ export default function RecordsApp() {
               <CalendarView
                 events={calendarViewEvents}
                 custodyDayAssignments={selected.custodyDayAssignments}
+                exchangeRules={selected.exchangeRules}
                 updateDataset={updateDataset}
                 userId={userId}
                 caseId={effectiveCaseId}
@@ -839,6 +880,7 @@ export default function RecordsApp() {
                 expectedExchanges={expectedExchanges}
                 sectionExport={sectionExportPackets.exchanges}
                 onExportSection={exportSectionPacket}
+                onOpenCalendar={openRecurringExchangeSchedule}
                 flash={flash}
               />
             )}
@@ -873,8 +915,10 @@ export default function RecordsApp() {
                 updateDataset={updateDataset}
                 userId={userId}
                 caseId={effectiveCaseId}
+                timezone={caseTimezone}
                 orders={selected.childSupportOrders}
                 payments={selected.childSupportPayments}
+                obligations={supportObligations}
                 supportRows={supportRows}
                 supportStats={supportStats}
                 sectionExport={sectionExportPackets.childSupport}
@@ -1891,6 +1935,7 @@ function DashboardView({
 function CalendarView({
   events,
   custodyDayAssignments,
+  exchangeRules,
   updateDataset,
   userId,
   caseId,
@@ -1909,6 +1954,7 @@ function CalendarView({
 }: {
   events: CalendarEvent[];
   custodyDayAssignments: CustodyDayAssignment[];
+  exchangeRules: ReturnType<typeof useSelectedRecords>["exchangeRules"];
   updateDataset: ReturnType<typeof useRecordsStore>["updateDataset"];
   userId: string;
   caseId: string;
@@ -3013,7 +3059,306 @@ function CalendarView({
         </Panel>
       )}
 
+      <details
+        id="recurring-exchange-schedule"
+        className="group overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_5px_18px_rgba(15,23,42,0.07)]"
+      >
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-semibold text-slate-900 marker:content-none sm:px-5">
+          <span>Recurring exchange schedule (optional)</span>
+          <span className="text-xs font-medium text-slate-500 group-open:hidden">
+            {exchangeRules.length} saved
+          </span>
+          <span className="hidden text-xs font-medium text-slate-500 group-open:inline">
+            Hide setup
+          </span>
+        </summary>
+        <div className="border-t border-slate-200 p-4 sm:p-5">
+          <p className="mb-4 text-sm leading-6 text-slate-600">
+            Add a recurring schedule only when you want Custody Folio to generate expected
+            exchanges for the calendar and scheduled-versus-logged reports.
+          </p>
+          <ExchangeScheduleManager
+            exchangeRules={exchangeRules}
+            updateDataset={updateDataset}
+            userId={userId}
+            caseId={caseId}
+            userRoleLabel={userRoleLabel}
+            otherParentLabel={otherParentLabel}
+            flash={flash}
+          />
+        </div>
+      </details>
+
       <SectionExportPanel packet={sectionExport} onExport={onExportSection} />
+    </div>
+  );
+}
+
+function ExchangeScheduleManager({
+  exchangeRules,
+  updateDataset,
+  userId,
+  caseId,
+  userRoleLabel,
+  otherParentLabel,
+  flash,
+}: {
+  exchangeRules: ReturnType<typeof useSelectedRecords>["exchangeRules"];
+  updateDataset: ReturnType<typeof useRecordsStore>["updateDataset"];
+  userId: string;
+  caseId: string;
+  userRoleLabel: string;
+  otherParentLabel: string;
+  flash: (message: string) => void;
+}) {
+  const [editingRuleId, setEditingRuleId] = useState("");
+  const editingRule = exchangeRules.find((rule) => rule.id === editingRuleId) || null;
+
+  async function saveRule(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const parsed = exchangeRuleSchema.safeParse({
+      ruleName: text(formData, "ruleName"),
+      dayOfWeek: text(formData, "dayOfWeek"),
+      orderedExchangeTime: text(formData, "orderedExchangeTime"),
+      direction: text(formData, "direction"),
+      location: text(formData, "location"),
+      effectiveStartDate: text(formData, "effectiveStartDate"),
+      effectiveEndDate: text(formData, "effectiveEndDate"),
+      orderProvisionNotes: text(formData, "orderProvisionNotes"),
+    });
+    if (!parsed.success) {
+      return flash(parsed.error.issues[0]?.message || "Check the recurring exchange schedule.");
+    }
+
+    const now = nowIso();
+    const ruleId = editingRule?.id || createId("rule");
+    try {
+      await updateDataset((current) =>
+        withAudit(
+          {
+            ...current,
+            exchangeRules: editingRule
+              ? current.exchangeRules.map((rule) =>
+                  rule.id === editingRule.id && rule.userId === userId && rule.caseId === caseId
+                    ? { ...rule, ...emptyToUndefined(parsed.data), updatedAt: now }
+                    : rule
+                )
+              : [
+                  {
+                    id: ruleId,
+                    caseId,
+                    userId,
+                    createdAt: now,
+                    updatedAt: now,
+                    ...emptyToUndefined(parsed.data),
+                  },
+                  ...current.exchangeRules,
+                ],
+          },
+          {
+            userId,
+            caseId,
+            action: editingRule ? "updated" : "created",
+            entityType: "custodyExchangeRule",
+            entityId: ruleId,
+            metadataSummary: editingRule
+              ? "Recurring exchange schedule updated without court detail in audit metadata."
+              : "Recurring exchange schedule created without court detail in audit metadata.",
+          }
+        )
+      );
+      setEditingRuleId("");
+      form.reset();
+      flash(
+        editingRule
+          ? "Recurring exchange updated and saved."
+          : "Recurring exchange saved for calendar and report comparisons."
+      );
+    } catch (error) {
+      flash(error instanceof Error ? error.message : "Recurring exchange save failed.");
+    }
+  }
+
+  function deleteRule(ruleId: string) {
+    if (editingRuleId === ruleId) setEditingRuleId("");
+    updateDataset((current) =>
+      withAudit(
+        {
+          ...current,
+          exchangeRules: current.exchangeRules.filter(
+            (item) => !(item.id === ruleId && item.userId === userId && item.caseId === caseId)
+          ),
+          scheduleExceptions: current.scheduleExceptions.filter(
+            (item) =>
+              !(
+                item.custodyExchangeRuleId === ruleId &&
+                item.userId === userId &&
+                item.caseId === caseId
+              )
+          ),
+        },
+        {
+          userId,
+          caseId,
+          action: "deleted",
+          entityType: "custodyExchangeRule",
+          entityId: ruleId,
+          metadataSummary: "Recurring exchange deleted with matching schedule exceptions.",
+        }
+      )
+    );
+    flash("Recurring exchange deleted.");
+  }
+
+  return (
+    <div className="grid min-w-0 gap-4 xl:grid-cols-[420px_1fr]">
+      <Panel
+        title={editingRule ? "Edit recurring exchange" : "Add recurring exchange"}
+        action="Schedule setup"
+      >
+        <form
+          id="exchange-rule-form"
+          key={editingRule?.id || "new-exchange-rule"}
+          onSubmit={saveRule}
+          className="grid min-w-0 gap-3"
+        >
+          <Field label="Schedule name">
+            <input
+              name="ruleName"
+              className="input"
+              required
+              defaultValue={editingRule?.ruleName || ""}
+            />
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Day">
+              <select
+                name="dayOfWeek"
+                className="input"
+                defaultValue={String(editingRule?.dayOfWeek ?? 5)}
+              >
+                <option value="0">Sunday</option>
+                <option value="1">Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5">Friday</option>
+                <option value="6">Saturday</option>
+              </select>
+            </Field>
+            <Field label="Scheduled time">
+              <input
+                name="orderedExchangeTime"
+                type="time"
+                className="input"
+                required
+                defaultValue={editingRule?.orderedExchangeTime || ""}
+              />
+            </Field>
+          </div>
+          <Field label="Direction">
+            <select
+              name="direction"
+              className="input"
+              defaultValue={editingRule?.direction || "other_parent_to_me"}
+            >
+              <option value="other_parent_to_me">
+                {otherParentLabel} to {userRoleLabel}
+              </option>
+              <option value="me_to_other_parent">
+                {userRoleLabel} to {otherParentLabel}
+              </option>
+            </select>
+          </Field>
+          <Field label="Location">
+            <input
+              name="location"
+              className="input"
+              defaultValue={editingRule?.location || ""}
+            />
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Starts">
+              <input
+                name="effectiveStartDate"
+                type="date"
+                className="input"
+                required
+                defaultValue={editingRule?.effectiveStartDate || ""}
+              />
+            </Field>
+            <Field label="Ends (optional)">
+              <input
+                name="effectiveEndDate"
+                type="date"
+                className="input"
+                defaultValue={editingRule?.effectiveEndDate || ""}
+              />
+            </Field>
+          </div>
+          <Field label="Schedule notes">
+            <textarea
+              name="orderProvisionNotes"
+              className="input min-h-20"
+              defaultValue={editingRule?.orderProvisionNotes || ""}
+            />
+          </Field>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn-primary" type="submit">
+              {editingRule ? "Update recurring exchange" : "Save recurring exchange"}
+            </button>
+            {editingRule && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setEditingRuleId("")}
+              >
+                Cancel editing
+              </button>
+            )}
+          </div>
+        </form>
+      </Panel>
+
+      <Panel title="Saved recurring exchanges" action={`${exchangeRules.length} saved`}>
+        {exchangeRules.length === 0 ? (
+          <p className="text-sm leading-6 text-slate-600">
+            No recurring exchanges are configured. You can still log every exchange manually.
+          </p>
+        ) : (
+          <Table
+            headers={["Schedule", "Day", "Time", "Direction", "Action"]}
+            rows={exchangeRules.map((rule) => [
+              rule.ruleName,
+              ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][rule.dayOfWeek],
+              rule.orderedExchangeTime,
+              rule.direction === "other_parent_to_me"
+                ? `${otherParentLabel} to ${userRoleLabel}`
+                : `${userRoleLabel} to ${otherParentLabel}`,
+              <div key={rule.id} className="flex flex-wrap gap-2">
+                <EditButton
+                  ariaLabel={`Edit recurring exchange ${rule.ruleName}`}
+                  onClick={() => {
+                    setEditingRuleId(rule.id);
+                    window.requestAnimationFrame(() =>
+                      document
+                        .getElementById("exchange-rule-form")
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                    );
+                  }}
+                />
+                <DeleteButton
+                  label="Delete"
+                  ariaLabel={`Delete recurring exchange ${rule.ruleName}`}
+                  onClick={() => deleteRule(rule.id)}
+                />
+              </div>,
+            ])}
+          />
+        )}
+      </Panel>
     </div>
   );
 }
@@ -3201,6 +3546,24 @@ function TimelineView({
   );
 }
 
+type ExchangeLogDraft = {
+  orderedDate: string;
+  orderedTime: string;
+  actualDate: string;
+  actualTime: string;
+  direction: "other_parent_to_me" | "me_to_other_parent";
+  location: string;
+};
+
+const defaultExchangeLogDraft: ExchangeLogDraft = {
+  orderedDate: "2026-06-12",
+  orderedTime: "18:00",
+  actualDate: "2026-06-12",
+  actualTime: "18:18",
+  direction: "other_parent_to_me",
+  location: "",
+};
+
 function ExchangesView({
   updateDataset,
   userId,
@@ -3210,6 +3573,7 @@ function ExchangesView({
   expectedExchanges,
   sectionExport,
   onExportSection,
+  onOpenCalendar,
   flash,
 }: {
   updateDataset: ReturnType<typeof useRecordsStore>["updateDataset"];
@@ -3220,74 +3584,32 @@ function ExchangesView({
   expectedExchanges: ReturnType<typeof generateExpectedExchangeEvents>;
   sectionExport: SectionExportPacket;
   onExportSection: (packet: SectionExportPacket, format: SectionExportFormat) => void;
+  onOpenCalendar: () => void;
   flash: (message: string) => void;
 }) {
-  const [editingRuleId, setEditingRuleId] = useState("");
   const [editingExchangeId, setEditingExchangeId] = useState("");
-  const editingRule = selected.exchangeRules.find((rule) => rule.id === editingRuleId) || null;
+  const [selectedExpectedExchangeId, setSelectedExpectedExchangeId] = useState("");
+  const [exchangeLogDraft, setExchangeLogDraft] = useState(defaultExchangeLogDraft);
   const editingExchange = selected.exchangeLogs.find((log) => log.id === editingExchangeId) || null;
   const userRoleLabel = selected.matter?.userRoleLabel || "Me";
   const otherParentLabel = selected.matter?.otherParentLabel || "Other parent";
 
-  async function saveRule(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const parsed = exchangeRuleSchema.safeParse({
-      ruleName: text(formData, "ruleName"),
-      dayOfWeek: text(formData, "dayOfWeek"),
-      orderedExchangeTime: text(formData, "orderedExchangeTime"),
-      direction: text(formData, "direction"),
-      location: text(formData, "location"),
-      effectiveStartDate: text(formData, "effectiveStartDate"),
-      effectiveEndDate: text(formData, "effectiveEndDate"),
-      orderProvisionNotes: text(formData, "orderProvisionNotes"),
-    });
-    if (!parsed.success) return flash(parsed.error.issues[0]?.message || "Check the exchange rule form.");
+  function selectExpectedExchange(expectedExchangeId: string) {
+    setSelectedExpectedExchangeId(expectedExchangeId);
+    const expectedExchange = expectedExchanges.find(
+      (event) => event.id === expectedExchangeId
+    );
+    if (!expectedExchange) return;
 
-    const now = nowIso();
-    const ruleId = editingRule?.id || createId("rule");
-    try {
-      await updateDataset((current) =>
-        withAudit(
-        {
-          ...current,
-          exchangeRules: editingRule
-            ? current.exchangeRules.map((rule) =>
-                rule.id === editingRule.id && rule.userId === userId && rule.caseId === caseId
-                  ? { ...rule, ...emptyToUndefined(parsed.data), updatedAt: now }
-                  : rule
-              )
-            : [
-                {
-                  id: ruleId,
-                  caseId,
-                  userId,
-                  createdAt: now,
-                  updatedAt: now,
-                  ...emptyToUndefined(parsed.data),
-                },
-                ...current.exchangeRules,
-              ],
-        },
-        {
-          userId,
-          caseId,
-          action: editingRule ? "updated" : "created",
-          entityType: "custodyExchangeRule",
-          entityId: ruleId,
-          metadataSummary: editingRule
-            ? "Exchange rule updated without court detail in audit metadata."
-            : "Exchange rule created without court detail in audit metadata.",
-        }
-        )
-      );
-      setEditingRuleId("");
-      form.reset();
-      flash(editingRule ? "Exchange rule updated and saved." : "Exchange rule saved. It appears below.");
-    } catch (error) {
-      flash(error instanceof Error ? error.message : "Exchange rule save failed.");
-    }
+    const orderedDate = getIsoDateFromDateTime(expectedExchange.orderedExchangeAt);
+    setExchangeLogDraft((current) => ({
+      ...current,
+      orderedDate,
+      orderedTime: expectedExchange.orderedExchangeAt.slice(11, 16),
+      actualDate: orderedDate,
+      direction: expectedExchange.direction,
+      location: expectedExchange.location || "",
+    }));
   }
 
   async function addExchangeLog(event: FormEvent<HTMLFormElement>) {
@@ -3312,6 +3634,9 @@ function ExchangesView({
     });
     if (!parsed.success) return flash(parsed.error.issues[0]?.message || "Check the exchange log form.");
 
+    const selectedExpectedExchange = expectedExchanges.find(
+      (expectedExchange) => expectedExchange.id === selectedExpectedExchangeId
+    );
     try {
       await updateDataset((current) =>
         withAudit(
@@ -3322,6 +3647,7 @@ function ExchangesView({
               id: createId("exchange"),
               caseId,
               userId,
+              custodyExchangeRuleId: selectedExpectedExchange?.custodyExchangeRuleId,
               createdAt: nowIso(),
               updatedAt: nowIso(),
               ...emptyToUndefined(parsed.data),
@@ -3340,6 +3666,8 @@ function ExchangesView({
         )
       );
       form.reset();
+      setSelectedExpectedExchangeId("");
+      setExchangeLogDraft(defaultExchangeLogDraft);
       flash("Exchange outcome saved. It appears below.");
     } catch (error) {
       flash(error instanceof Error ? error.message : "Exchange outcome save failed.");
@@ -3400,37 +3728,6 @@ function ExchangesView({
     }
   }
 
-  function deleteExchangeRule(ruleId: string) {
-    if (editingRuleId === ruleId) setEditingRuleId("");
-    updateDataset((current) =>
-      withAudit(
-        {
-          ...current,
-          exchangeRules: current.exchangeRules.filter(
-            (item) => !(item.id === ruleId && item.userId === userId && item.caseId === caseId)
-          ),
-          scheduleExceptions: current.scheduleExceptions.filter(
-            (item) =>
-              !(
-                item.custodyExchangeRuleId === ruleId &&
-                item.userId === userId &&
-                item.caseId === caseId
-              )
-          ),
-        },
-        {
-          userId,
-          caseId,
-          action: "deleted",
-          entityType: "custodyExchangeRule",
-          entityId: ruleId,
-          metadataSummary: "Exchange rule deleted with matching schedule exceptions.",
-        }
-      )
-    );
-    flash("Exchange rule deleted.");
-  }
-
   function deleteExchangeLog(logId: string) {
     if (editingExchangeId === logId) setEditingExchangeId("");
     updateDataset((current) =>
@@ -3459,84 +3756,93 @@ function ExchangesView({
   return (
     <div className="grid min-w-0 gap-4 xl:grid-cols-[420px_1fr]">
       <div className="min-w-0 space-y-4">
-        <Panel
-          title={editingRule ? "Edit exchange expectation" : "Court ordered exchange expectation"}
-          action={editingRule ? "Editing saved rule" : "Simple recurring rule"}
-        >
-          <form
-            id="exchange-rule-form"
-            key={editingRule?.id || "new-exchange-rule"}
-            onSubmit={saveRule}
-            className="grid min-w-0 gap-3"
-          >
-            <Field label="Rule name">
-              <input name="ruleName" className="input" defaultValue={editingRule?.ruleName || "Friday evening exchange"} />
-            </Field>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Day">
-                <select name="dayOfWeek" className="input" defaultValue={String(editingRule?.dayOfWeek ?? 5)}>
-                  <option value="0">Sunday</option>
-                  <option value="1">Monday</option>
-                  <option value="2">Tuesday</option>
-                  <option value="3">Wednesday</option>
-                  <option value="4">Thursday</option>
-                  <option value="5">Friday</option>
-                  <option value="6">Saturday</option>
-                </select>
-              </Field>
-              <Field label="Ordered time">
-                <input name="orderedExchangeTime" type="time" className="input" defaultValue={editingRule?.orderedExchangeTime || "18:00"} />
-              </Field>
+        <Panel title="Log exchange outcome" action="Primary action">
+          <form onSubmit={addExchangeLog} className="grid min-w-0 gap-3">
+            <div className="rounded-md border border-teal-200 bg-teal-50 p-3 text-sm leading-6 text-teal-950">
+              <p>
+                Record what happened at an exchange. Choose a scheduled exchange to fill its
+                expected details, or enter them manually.
+              </p>
+              <button
+                type="button"
+                className="mt-2 font-semibold text-teal-800 underline underline-offset-4"
+                onClick={onOpenCalendar}
+              >
+                Manage recurring exchange schedule
+              </button>
             </div>
-            <Field label="Direction">
-              <select name="direction" className="input" defaultValue={editingRule?.direction || "other_parent_to_me"}>
-                <option value="other_parent_to_me">{otherParentLabel} to {userRoleLabel}</option>
-                <option value="me_to_other_parent">{userRoleLabel} to {otherParentLabel}</option>
+            <Field label="Scheduled exchange (optional)">
+              <select
+                className="input"
+                value={selectedExpectedExchangeId}
+                onChange={(event) => selectExpectedExchange(event.target.value)}
+              >
+                <option value="">Enter scheduled details manually</option>
+                {expectedExchanges.map((expectedExchange) => (
+                  <option key={expectedExchange.id} value={expectedExchange.id}>
+                    {getIsoDateFromDateTime(expectedExchange.orderedExchangeAt)} ·{" "}
+                    {expectedExchange.orderedExchangeAt.slice(11, 16)} ·{" "}
+                    {expectedExchange.ruleName}
+                  </option>
+                ))}
               </select>
             </Field>
-            <Field label="Location">
-              <input name="location" className="input" defaultValue={editingRule?.location || "Community center entrance"} />
-            </Field>
-            <Field label="Effective start">
-              <input name="effectiveStartDate" type="date" className="input" defaultValue={editingRule?.effectiveStartDate || "2026-06-01"} />
-            </Field>
-            <Field label="Effective end">
-              <input name="effectiveEndDate" type="date" className="input" defaultValue={editingRule?.effectiveEndDate || ""} />
-            </Field>
-            <Field label="Order provision notes">
-              <textarea
-                name="orderProvisionNotes"
-                className="input min-h-20"
-                defaultValue={editingRule?.orderProvisionNotes || ""}
-              />
-            </Field>
-            <div className="flex flex-wrap gap-2">
-              <button className="btn-primary" type="submit">
-                {editingRule ? "Update exchange rule" : "Save exchange rule"}
-              </button>
-              {editingRule && (
-                <button type="button" className="btn-secondary" onClick={() => setEditingRuleId("")}>
-                  Cancel editing
-                </button>
-              )}
-            </div>
-          </form>
-        </Panel>
-
-        <Panel title="Log actual exchange outcome" action="Factual record">
-          <form onSubmit={addExchangeLog} className="grid min-w-0 gap-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Scheduled exchange date">
-                <input name="orderedDate" type="date" className="input" defaultValue="2026-06-12" />
+                <input
+                  name="orderedDate"
+                  type="date"
+                  className="input"
+                  value={exchangeLogDraft.orderedDate}
+                  onChange={(event) =>
+                    setExchangeLogDraft((current) => ({
+                      ...current,
+                      orderedDate: event.target.value,
+                    }))
+                  }
+                />
               </Field>
               <Field label="Scheduled exchange time">
-                <input name="orderedTime" type="time" className="input" defaultValue="18:00" />
+                <input
+                  name="orderedTime"
+                  type="time"
+                  className="input"
+                  value={exchangeLogDraft.orderedTime}
+                  onChange={(event) =>
+                    setExchangeLogDraft((current) => ({
+                      ...current,
+                      orderedTime: event.target.value,
+                    }))
+                  }
+                />
               </Field>
               <Field label="Actual date">
-                <input name="actualDate" type="date" className="input" defaultValue="2026-06-12" />
+                <input
+                  name="actualDate"
+                  type="date"
+                  className="input"
+                  value={exchangeLogDraft.actualDate}
+                  onChange={(event) =>
+                    setExchangeLogDraft((current) => ({
+                      ...current,
+                      actualDate: event.target.value,
+                    }))
+                  }
+                />
               </Field>
               <Field label="Actual time">
-                <input name="actualTime" type="time" className="input" defaultValue="18:18" />
+                <input
+                  name="actualTime"
+                  type="time"
+                  className="input"
+                  value={exchangeLogDraft.actualTime}
+                  onChange={(event) =>
+                    setExchangeLogDraft((current) => ({
+                      ...current,
+                      actualTime: event.target.value,
+                    }))
+                  }
+                />
               </Field>
             </div>
             <Field label="Status">
@@ -3549,7 +3855,17 @@ function ExchangesView({
               </select>
             </Field>
             <Field label="Direction">
-              <select name="direction" className="input" defaultValue="other_parent_to_me">
+              <select
+                name="direction"
+                className="input"
+                value={exchangeLogDraft.direction}
+                onChange={(event) =>
+                  setExchangeLogDraft((current) => ({
+                    ...current,
+                    direction: event.target.value as ExchangeLogDraft["direction"],
+                  }))
+                }
+              >
                 <option value="other_parent_to_me">{otherParentLabel} to {userRoleLabel}</option>
                 <option value="me_to_other_parent">{userRoleLabel} to {otherParentLabel}</option>
               </select>
@@ -3583,7 +3899,17 @@ function ExchangesView({
               </select>
             </Field>
             <Field label="Location">
-              <input name="location" className="input" />
+              <input
+                name="location"
+                className="input"
+                value={exchangeLogDraft.location}
+                onChange={(event) =>
+                  setExchangeLogDraft((current) => ({
+                    ...current,
+                    location: event.target.value,
+                  }))
+                }
+              />
             </Field>
             <Field label="Reason given">
               <input name="reasonGiven" className="input" />
@@ -3601,7 +3927,7 @@ function ExchangesView({
               <input name="witnesses" className="input" />
             </Field>
             <button className="btn-primary" type="submit">
-              Save exchange log
+              Save exchange outcome
             </button>
           </form>
         </Panel>
@@ -3751,36 +4077,6 @@ function ExchangesView({
 
         <Panel title="Exchange timing graph" action={`${range.from} to ${range.to}`}>
           <ExchangeTimingChart rows={exchangeTimingRows} />
-        </Panel>
-
-        <Panel title="Exchange rules" action={`${selected.exchangeRules.length} saved`}>
-          <Table
-            headers={["Rule", "Day", "Time", "Direction", "Action"]}
-            rows={selected.exchangeRules.map((rule) => [
-              rule.ruleName,
-              ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][rule.dayOfWeek],
-              rule.orderedExchangeTime,
-              rule.direction === "other_parent_to_me"
-                ? `${otherParentLabel} to ${userRoleLabel}`
-                : `${userRoleLabel} to ${otherParentLabel}`,
-              <div key={rule.id} className="flex flex-wrap gap-2">
-                <EditButton
-                  ariaLabel={`Edit exchange rule ${rule.ruleName}`}
-                  onClick={() => {
-                    setEditingRuleId(rule.id);
-                    window.requestAnimationFrame(() =>
-                      document.getElementById("exchange-rule-form")?.scrollIntoView({ behavior: "smooth", block: "start" })
-                    );
-                  }}
-                />
-                <DeleteButton
-                  label="Delete"
-                  ariaLabel={`Delete exchange rule ${rule.ruleName}`}
-                  onClick={() => deleteExchangeRule(rule.id)}
-                />
-              </div>,
-            ])}
-          />
         </Panel>
 
         <Panel title="Scheduled exchanges" action={`${expectedExchanges.length} expected in range`}>
@@ -4510,56 +4806,6 @@ function ImportView({
     }
   }
 
-  async function saveExchangeRule(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const parsed = exchangeRuleSchema.safeParse({
-      ruleName: text(formData, "ruleName"),
-      dayOfWeek: text(formData, "dayOfWeek"),
-      orderedExchangeTime: text(formData, "orderedExchangeTime"),
-      direction: text(formData, "direction"),
-      location: text(formData, "location"),
-      effectiveStartDate: text(formData, "effectiveStartDate"),
-      effectiveEndDate: text(formData, "effectiveEndDate"),
-      orderProvisionNotes: text(formData, "orderProvisionNotes"),
-    });
-    if (!parsed.success) return flash(parsed.error.issues[0]?.message || "Check the exchange rule.");
-
-    try {
-      await updateDataset((current) =>
-        withAudit(
-        {
-          ...current,
-          exchangeRules: [
-            {
-              id: createId("rule"),
-              caseId,
-              userId,
-              createdAt: nowIso(),
-              updatedAt: nowIso(),
-              ...emptyToUndefined(parsed.data),
-            },
-            ...current.exchangeRules,
-          ],
-        },
-        {
-          userId,
-          caseId,
-          action: "created",
-          entityType: "custodyExchangeRule",
-          entityId: "imported-rule",
-          metadataSummary: "Exchange rule created from import setup without court text in audit metadata.",
-        }
-        )
-      );
-      form.reset();
-      flash("Exchange rule saved. It appears under Exchanges.");
-    } catch (error) {
-      flash(error instanceof Error ? error.message : "Exchange rule save failed.");
-    }
-  }
-
   async function saveCustodyScheduleSetup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
@@ -4919,52 +5165,6 @@ function ImportView({
               </div>
               <button className="btn-primary" type="submit">
                 Generate custody calendar
-              </button>
-            </form>
-
-            <form onSubmit={saveExchangeRule} className="grid gap-3 border-t border-slate-200 pt-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Optional manual exchange rule
-              </p>
-              <Field label="Rule name">
-                <input name="ruleName" className="input" />
-              </Field>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Day">
-                  <select name="dayOfWeek" className="input" defaultValue="5">
-                    <option value="0">Sunday</option>
-                    <option value="1">Monday</option>
-                    <option value="2">Tuesday</option>
-                    <option value="3">Wednesday</option>
-                    <option value="4">Thursday</option>
-                    <option value="5">Friday</option>
-                    <option value="6">Saturday</option>
-                  </select>
-                </Field>
-                <Field label="Ordered time">
-                  <input name="orderedExchangeTime" type="time" className="input" defaultValue="17:00" />
-                </Field>
-              </div>
-              <Field label="Direction">
-                <select name="direction" className="input" defaultValue="other_parent_to_me">
-                  <option value="other_parent_to_me">Other Parent to Me</option>
-                  <option value="me_to_other_parent">Me to Other Parent</option>
-                </select>
-              </Field>
-              <Field label="Effective start">
-                <input name="effectiveStartDate" type="date" className="input" />
-              </Field>
-              <Field label="Effective end">
-                <input name="effectiveEndDate" type="date" className="input" />
-              </Field>
-              <Field label="Location">
-                <input name="location" className="input" />
-              </Field>
-              <Field label="Schedule notes">
-                <textarea name="orderProvisionNotes" className="input min-h-20" />
-              </Field>
-              <button className="btn-secondary" type="submit">
-                Save exchange rule
               </button>
             </form>
 
@@ -5543,8 +5743,10 @@ function ChildSupportView({
   updateDataset,
   userId,
   caseId,
+  timezone,
   orders,
   payments,
+  obligations,
   supportRows,
   supportStats,
   sectionExport,
@@ -5554,19 +5756,31 @@ function ChildSupportView({
   updateDataset: ReturnType<typeof useRecordsStore>["updateDataset"];
   userId: string;
   caseId: string;
+  timezone: string;
   orders: ReturnType<typeof useSelectedRecords>["childSupportOrders"];
   payments: ReturnType<typeof useSelectedRecords>["childSupportPayments"];
+  obligations: ChildSupportObligation[];
   supportRows: Array<{ month: string; amountDue: number; amountPaid: number; unpaidBalance: number }>;
-  supportStats: ReturnType<typeof calculateChildSupportStats>;
+  supportStats: ReturnType<typeof calculateChildSupportObligationStats>;
   sectionExport: SectionExportPacket;
   onExportSection: (packet: SectionExportPacket, format: SectionExportFormat) => void;
   flash: (message: string) => void;
 }) {
   const [editingOrderId, setEditingOrderId] = useState("");
   const [editingPaymentId, setEditingPaymentId] = useState("");
+  const [paymentOrderId, setPaymentOrderId] = useState("");
   const firstOrder = orders[0];
   const editingOrder = orders.find((order) => order.id === editingOrderId) || null;
   const editingPayment = payments.find((payment) => payment.id === editingPaymentId) || null;
+  const today = formatLocalDate(new Date(), timezone);
+  const activePaymentOrderId =
+    editingPayment?.childSupportOrderId || paymentOrderId || firstOrder?.id || "";
+  const activePaymentOrder =
+    orders.find((order) => order.id === activePaymentOrderId) || firstOrder;
+  const activeOrderObligations = obligations.filter(
+    (obligation) => obligation.childSupportOrderId === activePaymentOrderId
+  );
+  const defaultPaymentDueDate = editingPayment?.dueDate || "";
 
   async function saveOrder(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -5580,6 +5794,8 @@ function ChildSupportView({
       dueDayOrSchedule: text(formData, "dueDayOrSchedule"),
       effectiveStartDate: text(formData, "effectiveStartDate"),
       effectiveEndDate: text(formData, "effectiveEndDate"),
+      firstPaymentDueDate: text(formData, "firstPaymentDueDate"),
+      secondPaymentDueDate: text(formData, "secondPaymentDueDate"),
       payerLabel: text(formData, "payerLabel"),
       recipientLabel: text(formData, "recipientLabel"),
       paymentMethodExpected: text(formData, "paymentMethodExpected"),
@@ -5702,6 +5918,7 @@ function ChildSupportView({
     }
 
     if (editingOrderId === orderId) setEditingOrderId("");
+    if (paymentOrderId === orderId) setPaymentOrderId("");
     updateDataset((current) =>
       withAudit(
         {
@@ -5749,11 +5966,26 @@ function ChildSupportView({
   return (
     <div className="space-y-4">
       <section className="grid gap-3 md:grid-cols-4">
-        <StatCard label="Total due" value={formatMoney(supportStats.totalDue)} detail="Selected range" />
-        <StatCard label="Total paid" value={formatMoney(supportStats.totalPaid)} detail="User entered records" />
-        <StatCard label="Payments marked partial" value={supportStats.partialCount} detail="Selected range" tone="amber" />
-        <StatCard label="Payments marked unpaid" value={supportStats.unpaidCount} detail={formatMoney(supportStats.unpaidBalance)} tone="amber" />
+        <StatCard label="Scheduled due to date" value={formatMoney(supportStats.totalDue)} detail="Calculated from saved order terms" />
+        <StatCard label="Recorded paid" value={formatMoney(supportStats.totalPaid)} detail="Matched by obligation due date" />
+        <StatCard label="Calculated outstanding" value={formatMoney(supportStats.unpaidBalance)} detail="Due through today" tone="amber" />
+        <StatCard label="Past-due periods" value={supportStats.pastDueCount} detail={formatMoney(supportStats.pastDueBalance)} tone="amber" />
       </section>
+
+      <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-950">
+        Custody Folio calculates scheduled obligations from the order amount, frequency, first due
+        date, and effective dates entered below. Payments are matched to the obligation due date.
+        These are app-calculated records based on user-entered terms and should be checked against
+        the signed order and official agency history before being shared.
+      </div>
+      {orders.some(
+        (order) => order.paymentFrequency !== "custom" && !order.firstPaymentDueDate
+      ) ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
+          At least one saved order predates automatic schedule tracking. Edit that order and confirm
+          its first payment due date before relying on the calculated obligation ledger.
+        </div>
+      ) : null}
 
       <section className="grid min-w-0 gap-4 xl:grid-cols-[420px_1fr]">
         <div className="min-w-0 space-y-4">
@@ -5771,7 +6003,7 @@ function ChildSupportView({
                 <input name="orderNickname" className="input" defaultValue={editingOrder?.orderNickname || "Current support order"} />
               </Field>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Ordered amount">
+                <Field label="Amount due each payment">
                   <input name="orderedAmount" type="number" step="0.01" className="input" defaultValue={editingOrder?.orderedAmount ?? 450} />
                 </Field>
                 <Field label="Currency">
@@ -5790,12 +6022,35 @@ function ChildSupportView({
               <Field label="Due day or schedule">
                 <input name="dueDayOrSchedule" className="input" defaultValue={editingOrder?.dueDayOrSchedule || "1st day of each month"} />
               </Field>
-              <Field label="Effective start">
-                <input name="effectiveStartDate" type="date" className="input" defaultValue={editingOrder?.effectiveStartDate || "2026-06-01"} />
-              </Field>
-              <Field label="Effective end">
-                <input name="effectiveEndDate" type="date" className="input" defaultValue={editingOrder?.effectiveEndDate || ""} />
-              </Field>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Order start date">
+                  <input name="effectiveStartDate" type="date" className="input" defaultValue={editingOrder?.effectiveStartDate || today} required />
+                </Field>
+                <Field label="Order end date (optional)">
+                  <input name="effectiveEndDate" type="date" className="input" defaultValue={editingOrder?.effectiveEndDate || ""} />
+                </Field>
+                <Field label="First payment due">
+                  <input
+                    name="firstPaymentDueDate"
+                    type="date"
+                    className="input"
+                    defaultValue={editingOrder?.firstPaymentDueDate || editingOrder?.effectiveStartDate || today}
+                  />
+                </Field>
+                <Field label="Second monthly due (semi monthly only)">
+                  <input
+                    name="secondPaymentDueDate"
+                    type="date"
+                    className="input"
+                    defaultValue={editingOrder?.secondPaymentDueDate || ""}
+                  />
+                </Field>
+              </div>
+              <p className="text-xs leading-5 text-slate-500">
+                Weekly and biweekly schedules repeat from the first payment due date. Monthly
+                schedules repeat on that day of the month. Semi monthly schedules repeat both due
+                dates each month. Custom schedules remain manually tracked.
+              </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Payer label">
                   <input name="payerLabel" className="input" defaultValue={editingOrder?.payerLabel || "Other Parent"} />
@@ -5840,12 +6095,17 @@ function ChildSupportView({
           >
             <form
               id="child-support-payment-form"
-              key={editingPayment?.id || `new-support-payment-${firstOrder?.id || "none"}`}
+              key={editingPayment?.id || `new-support-payment-${activePaymentOrderId || "none"}`}
               onSubmit={savePayment}
               className="grid gap-3"
             >
               <Field label="Order">
-                <select name="childSupportOrderId" className="input" defaultValue={editingPayment?.childSupportOrderId || firstOrder?.id}>
+                <select
+                  name="childSupportOrderId"
+                  className="input"
+                  value={activePaymentOrderId}
+                  onChange={(event) => setPaymentOrderId(event.target.value)}
+                >
                   {orders.map((order) => (
                     <option key={order.id} value={order.id}>
                       {order.orderNickname}
@@ -5854,19 +6114,40 @@ function ChildSupportView({
                 </select>
               </Field>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Due date">
-                  <input name="dueDate" type="date" className="input" defaultValue={editingPayment?.dueDate || "2026-06-01"} />
+                <Field label="Applies to obligation due date">
+                  <input
+                    name="dueDate"
+                    type="date"
+                    className="input"
+                    list="child-support-obligation-dates"
+                    defaultValue={defaultPaymentDueDate}
+                    required
+                  />
+                  <datalist id="child-support-obligation-dates">
+                    {activeOrderObligations.map((obligation) => (
+                      <option key={obligation.id} value={obligation.dueDate}>
+                        {labelChildSupportObligationStatus(obligation.status)} · balance{" "}
+                        {formatMoney(obligation.balance, obligation.currency)}
+                      </option>
+                    ))}
+                  </datalist>
                 </Field>
                 <Field label="Payment date">
                   <input name="paymentDate" type="date" className="input" defaultValue={editingPayment?.paymentDate || ""} />
                 </Field>
                 <Field label="Amount due">
-                  <input name="amountDue" type="number" step="0.01" className="input" defaultValue={editingPayment?.amountDue ?? firstOrder?.orderedAmount ?? 0} />
+                  <input name="amountDue" type="number" step="0.01" className="input" defaultValue={editingPayment?.amountDue ?? activePaymentOrder?.orderedAmount ?? 0} />
                 </Field>
                 <Field label="Amount paid">
                   <input name="amountPaid" type="number" step="0.01" className="input" defaultValue={editingPayment?.amountPaid ?? 0} />
                 </Field>
               </div>
+              <p className="text-xs leading-5 text-slate-500">
+                Select the obligation this payment applies to; Custody Folio will not infer that
+                allocation. An August payment for July should use July&apos;s due date and the
+                actual August payment date. Split a payment into separate records if it covers more
+                than one obligation.
+              </p>
               <Field label="Status">
                 <select name="paymentStatus" className="input" defaultValue={editingPayment?.paymentStatus || "unpaid"}>
                   {paymentStatuses.map((status) => (
@@ -5936,6 +6217,7 @@ function ChildSupportView({
           <Panel title="Payment history by month" action="Due vs paid">
             <SupportTrendLine rows={supportRows} />
           </Panel>
+          <SupportObligationsPanel obligations={obligations} />
           <SupportPaymentsPanel
             className="hidden xl:block"
             payments={payments}
@@ -5972,11 +6254,13 @@ function SupportOrdersPanel({
     <div className={className} data-testid={testId}>
     <Panel title="Support orders" action={`${orders.length} saved`}>
       <Table
-        headers={["Order", "Amount", "Frequency", "Payer", "Recipient", "Actions"]}
+        headers={["Order", "Amount", "Frequency", "Starts", "First due", "Payer", "Recipient", "Actions"]}
         rows={orders.map((order) => [
           order.orderNickname,
           formatMoney(order.orderedAmount, order.currency),
           order.paymentFrequency.replaceAll("_", " "),
+          order.effectiveStartDate,
+          order.firstPaymentDueDate || "Manual tracking",
           order.payerLabel,
           order.recipientLabel,
           <div key={order.id} className="flex flex-wrap gap-2">
@@ -5994,6 +6278,43 @@ function SupportOrdersPanel({
       />
     </Panel>
     </div>
+  );
+}
+
+function labelChildSupportObligationStatus(status: ChildSupportObligation["status"]) {
+  if (status === "upcoming") return "Upcoming";
+  if (status === "due") return "Due today";
+  return labelPaymentStatus(status);
+}
+
+function SupportObligationsPanel({
+  obligations,
+}: {
+  obligations: ChildSupportObligation[];
+}) {
+  return (
+    <Panel title="Calculated obligation ledger" action={`${obligations.length} scheduled periods`}>
+      <p className="mb-3 text-xs leading-5 text-slate-500">
+        Scheduled rows are calculated from saved order terms. Payment amounts and dates come from
+        user-entered payment records matched to each due date.
+      </p>
+      <Table
+        headers={["Order", "Due date", "Scheduled due", "Recorded paid", "Balance", "Payment date", "Status", "Source"]}
+        rows={obligations.map((obligation) => [
+          obligation.orderNickname,
+          obligation.dueDate,
+          formatMoney(obligation.amountDue, obligation.currency),
+          formatMoney(obligation.amountPaid, obligation.currency),
+          formatMoney(obligation.balance, obligation.currency),
+          obligation.paymentDate || "",
+          <StatusPill
+            key={`${obligation.id}-status`}
+            label={labelChildSupportObligationStatus(obligation.status)}
+          />,
+          obligation.source === "order_schedule" ? "Calculated schedule" : "Manual due date",
+        ])}
+      />
+    </Panel>
   );
 }
 
@@ -6523,6 +6844,29 @@ function ReportsView({
   );
 }
 
+function RecordsTimezoneSelect({
+  defaultValue,
+}: {
+  defaultValue: string;
+}) {
+  const hasSavedOption = recordsTimezoneOptions.some(
+    (option) => option.value === defaultValue
+  );
+
+  return (
+    <select name="timezone" className="input" defaultValue={defaultValue}>
+      {!hasSavedOption ? (
+        <option value={defaultValue}>{defaultValue} — currently saved</option>
+      ) : null}
+      {recordsTimezoneOptions.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function SettingsView({
   dataset,
   updateDataset,
@@ -6732,11 +7076,6 @@ function SettingsView({
 
   return (
     <div className="grid min-w-0 gap-4 xl:grid-cols-[420px_1fr]">
-      <datalist id="records-timezone-options">
-        {recordsTimezoneOptions.map((timezone) => (
-          <option key={timezone} value={timezone} />
-        ))}
-      </datalist>
       <div className="min-w-0 space-y-4">
         <Panel title="Account settings" action="Profile">
           <form onSubmit={updateProfile} className="grid gap-3">
@@ -6746,12 +7085,9 @@ function SettingsView({
             <Field label="Email">
               <input className="input bg-slate-100" value={profile?.email || ""} readOnly />
             </Field>
-            <Field label="Timezone">
-              <input
-                name="timezone"
-                className="input"
+            <Field label="Time zone">
+              <RecordsTimezoneSelect
                 defaultValue={profile?.timezone || defaultRecordsTimezone}
-                list="records-timezone-options"
               />
             </Field>
             <button className="btn-primary" type="submit">
@@ -6815,12 +7151,13 @@ function SettingsView({
                   defaultValue={selectedMatter.defaultExchangeLocation || ""}
                 />
               </Field>
-              <Field label="Case timezone">
-                <input
-                  name="timezone"
-                  className="input"
-                  defaultValue={selectedMatter.timezone || profile?.timezone || defaultRecordsTimezone}
-                  list="records-timezone-options"
+              <Field label="Case time zone">
+                <RecordsTimezoneSelect
+                  defaultValue={
+                    selectedMatter.timezone ||
+                    profile?.timezone ||
+                    defaultRecordsTimezone
+                  }
                 />
               </Field>
               <Field label="Notes">
@@ -6868,12 +7205,9 @@ function SettingsView({
             <Field label="Default exchange location">
               <input name="defaultExchangeLocation" className="input" />
             </Field>
-            <Field label="Timezone">
-              <input
-                name="timezone"
-                className="input"
+            <Field label="Time zone">
+              <RecordsTimezoneSelect
                 defaultValue={profile?.timezone || defaultRecordsTimezone}
-                list="records-timezone-options"
               />
             </Field>
             <Field label="Notes">
@@ -6976,7 +7310,7 @@ function SettingsView({
         <Panel title="Workspace setup" action="Recommended order">
           <ol className="list-decimal space-y-3 pl-5 text-sm leading-6 text-slate-600">
             <li>Create a custody matter with neutral labels for the children and parents.</li>
-            <li>Add the standing exchange rules and any schedule exceptions from the order.</li>
+            <li>Add any recurring exchange schedule from the Calendar setup when needed.</li>
             <li>Use the calendar to color custody days and log exchanges as they happen.</li>
             <li>Attach files only when they support a specific date, note, expense, or exchange.</li>
             <li>Review the Reports tab before exporting anything for another person or agency.</li>

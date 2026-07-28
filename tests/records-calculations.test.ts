@@ -7,11 +7,13 @@ import {
   buildEvidenceIndex,
   buildNeutralExchangeSummary,
   calculateChildSupportStats,
+  calculateChildSupportObligationStats,
   calculateExchangeStats,
   calculateExchangeTiming,
   calculateExpenseStats,
   containsForbiddenGeneratedTerm,
   filterOwnedCaseRecords,
+  generateChildSupportObligations,
   generateExpectedExchangeEvents,
   isLateExchangeTimelineEvent,
   isNoFaceTimeTimelineEvent,
@@ -30,7 +32,10 @@ import {
   sectionExportToCsv,
 } from "@/lib/records/reports";
 import type { CalendarEvent, ReportType } from "@/lib/records/types";
-import { validateEvidenceFile } from "@/lib/records/validation";
+import {
+  childSupportOrderSchema,
+  validateEvidenceFile,
+} from "@/lib/records/validation";
 
 const range = { from: "2026-05-01", to: "2026-05-31" };
 
@@ -92,6 +97,140 @@ describe("records calculations", () => {
     expect(stats.lateCount).toBeGreaterThanOrEqual(1);
   });
 
+  it("derives a missed July obligation when the first recorded payment applies to August", () => {
+    const dataset = createRecordsSeed();
+    const seededOrder = dataset.childSupportOrders[0];
+    const seededPayment = dataset.childSupportPayments[0];
+    if (!seededOrder || !seededPayment) throw new Error("Child support seed records are missing.");
+
+    const order = {
+      ...seededOrder,
+      id: "support-order-july-start",
+      orderedAmount: 500,
+      effectiveStartDate: "2026-07-01",
+      firstPaymentDueDate: "2026-07-01",
+    };
+    const augustPayment = {
+      ...seededPayment,
+      id: "support-payment-august",
+      childSupportOrderId: order.id,
+      dueDate: "2026-08-01",
+      amountDue: 500,
+      amountPaid: 500,
+      paymentDate: "2026-08-01",
+      paymentStatus: "paid" as const,
+    };
+
+    const obligations = generateChildSupportObligations(
+      [order],
+      [augustPayment],
+      { from: "2026-07-01", to: "2026-08-31" },
+      "2026-08-31"
+    );
+    const stats = calculateChildSupportObligationStats(obligations, "2026-08-31");
+
+    expect(obligations).toMatchObject([
+      {
+        dueDate: "2026-07-01",
+        amountDue: 500,
+        amountPaid: 0,
+        balance: 500,
+        status: "unpaid",
+        source: "order_schedule",
+      },
+      {
+        dueDate: "2026-08-01",
+        amountDue: 500,
+        amountPaid: 500,
+        balance: 0,
+        status: "paid",
+        source: "order_schedule",
+      },
+    ]);
+    expect(stats).toMatchObject({
+      totalDue: 1000,
+      totalPaid: 500,
+      unpaidBalance: 500,
+      pastDueBalance: 500,
+      pastDueCount: 1,
+    });
+  });
+
+  it("keeps monthly and semi monthly obligation dates anchored to the entered due dates", () => {
+    const dataset = createRecordsSeed();
+    const seededOrder = dataset.childSupportOrders[0];
+    if (!seededOrder) throw new Error("Child support seed order is missing.");
+
+    const monthly = {
+      ...seededOrder,
+      id: "month-end-order",
+      effectiveStartDate: "2026-01-31",
+      firstPaymentDueDate: "2026-01-31",
+    };
+    const semiMonthly = {
+      ...seededOrder,
+      id: "semi-monthly-order",
+      paymentFrequency: "semi_monthly" as const,
+      effectiveStartDate: "2026-01-01",
+      firstPaymentDueDate: "2026-01-01",
+      secondPaymentDueDate: "2026-01-15",
+    };
+
+    const monthlyDates = generateChildSupportObligations(
+      [monthly],
+      [],
+      { from: "2026-01-01", to: "2026-03-31" },
+      "2026-03-31"
+    ).map((obligation) => obligation.dueDate);
+    const semiMonthlyDates = generateChildSupportObligations(
+      [semiMonthly],
+      [],
+      { from: "2026-01-01", to: "2026-02-28" },
+      "2026-02-28"
+    ).map((obligation) => obligation.dueDate);
+
+    expect(monthlyDates).toEqual(["2026-01-31", "2026-02-28", "2026-03-31"]);
+    expect(semiMonthlyDates).toEqual([
+      "2026-01-01",
+      "2026-01-15",
+      "2026-02-01",
+      "2026-02-15",
+    ]);
+  });
+
+  it("requires structured due dates and rejects child support dates outside the order term", () => {
+    const baseOrder = {
+      orderNickname: "Test support order",
+      orderedAmount: "500",
+      currency: "USD",
+      paymentFrequency: "monthly",
+      dueDayOrSchedule: "First of each month",
+      effectiveStartDate: "2026-07-01",
+      effectiveEndDate: "2026-12-31",
+      firstPaymentDueDate: "",
+      secondPaymentDueDate: "",
+      payerLabel: "Parent B",
+      recipientLabel: "Parent A",
+      paymentMethodExpected: "",
+      agencyOrCaseNumber: "",
+      notes: "",
+    };
+
+    expect(childSupportOrderSchema.safeParse(baseOrder).success).toBe(false);
+    expect(
+      childSupportOrderSchema.safeParse({
+        ...baseOrder,
+        firstPaymentDueDate: "2027-01-01",
+      }).success
+    ).toBe(false);
+    expect(
+      childSupportOrderSchema.safeParse({
+        ...baseOrder,
+        firstPaymentDueDate: "2026-07-01",
+      }).success
+    ).toBe(true);
+  });
+
   it("calculates expense reimbursement totals by date range", () => {
     const dataset = createRecordsSeed();
     const expenses = filterOwnedCaseRecords(dataset.expenseItems, demoUserId, demoCaseId);
@@ -142,7 +281,9 @@ describe("records calculations", () => {
     const lateExchange = events.find((event) => event.id === "log-exchange-2026-05-08");
     const schoolNote = events.find((event) => event.id === "note-note-school-2026-05-05");
     const evidence = events.find((event) => event.id === "evidence-evidence-exchange-2026-05-08");
-    const supportDue = events.find((event) => event.id === "payment-due-support-payment-2026-05-01");
+    const supportDue = events.find(
+      (event) => event.id === "support-obligation-support-order-current-2026-05-01"
+    );
     const expense = events.find((event) => event.id === "expense-expense-school-2026-05-03");
 
     expect(lateExchange).toMatchObject({
@@ -413,7 +554,16 @@ describe("privacy and safety helpers", () => {
       ],
       [
         "child_support_payment",
-        ["Due date", "Amount due", "Amount paid", "Payment date", "Status", "Method", "Notes"],
+        [
+          "Order",
+          "Due date",
+          "Scheduled due",
+          "Recorded paid",
+          "Calculated balance",
+          "Payment date",
+          "Status",
+          "Source",
+        ],
       ],
       [
         "expense_reimbursement",

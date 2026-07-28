@@ -40,8 +40,10 @@ Open Supabase Dashboard for project `cieuilbpnwuvnrxrlczj`.
 2. Custom SMTP
    - Go to Authentication > Emails > SMTP Settings.
    - Configure a production sender on the `custodyfolio.com` domain or an approved transactional email domain.
+   - Set **Sender name** exactly to `Custody Folio`; do not use the retired `My Custody Case` name.
    - Disable provider link tracking for auth links if the provider offers it.
    - Send and receive a test confirmation/reset email using a synthetic account.
+   - Confirm the received confirmation/reset email displays `Custody Folio` as the sender name.
    - Confirm the Invite user template retains `{{ .ConfirmationURL }}` so server-admin attorney invitations deliver the mailbox-verification link.
    - After verification, set Listhaus repo variable `LOSTTOFOUND_SUPABASE_CUSTOM_SMTP_ENABLED=true`.
 

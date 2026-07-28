@@ -48,7 +48,6 @@ export default function ContactPage() {
     <PolicyPage
       title="Contact"
       description="Use this page to reach support for account, privacy, security, accessibility, file, import, export, and product issues."
-      notice="Use the support address below instead of a personal email. Keep sensitive case details out of the initial subject line and message unless they are needed to understand the issue."
       sections={sections}
     >
       <section className="rounded-lg border border-slate-200 bg-white p-6 text-sm leading-6 text-slate-600">
