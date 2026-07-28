@@ -110,13 +110,15 @@ Use this deploy path for Custody Folio changes:
 1. Commit and push the Custody Folio change to the `main` branch of the configured GitHub repository.
 2. Confirm that the `Validate Custody Folio` workflow passes lint, typecheck, unit tests, secret scanning, production env template validation, dependency audit, and build.
 3. From a trusted administrator Mac with the pinned SSH host key at `~/.ssh/losttofound_known_hosts`, run `deploy/production/deploy-from-mac.sh <host> <validated-commit-sha>`.
-4. The remote deploy builds a release-tagged image, starts the isolated stack, verifies readiness, verifies clean/EICAR malware scanning, verifies security headers, and rolls back to the prior image if validation fails.
+4. The remote deploy builds a release-tagged image, replaces the application container, reloads Caddy in place without disconnecting Cloudflare Tunnel, verifies readiness, verifies clean/EICAR malware scanning, verifies security headers, and rolls back to the prior image if validation fails.
 5. Verify production after deploy:
    - `https://custodyfolio.com/records` serves the expected bundle/UI.
    - A fake login to `POST https://custodyfolio.com/api/records/auth/login` returns a handled `400` or `401` JSON response, not a blank `500`.
    - `https://custodyfolio.com/api/records/readiness` returns a structured `ready` or `not_ready` result with no unexpected infrastructure blocker. Policy and dashboard attestations remain visible and must not be marked complete without evidence.
 
 Production deployment is intentionally not triggered by GitHub Actions. This keeps the production SSH key and host environment out of GitHub and removes the cross-repository `LISTHAUS_DEPLOY_TOKEN`. Run `npm run check:production` with the real host environment before accepting real records.
+
+Routine application deployments must not force-recreate Caddy or cloudflared. Caddy configuration is applied through its admin API with `caddy reload`, which validates and swaps configuration without dropping the Tunnel origin. The public smoke check allows up to two minutes by default for an application-container replacement and suppresses expected transient connection noise until the final failed attempt. A healthy deployment with incomplete legal or operational launch attestations is recorded as `current-deployment=healthy` and `current-readiness=launch-approval-pending`; those launch checks do not make a TestFlight testing deployment fail.
 
 The dedicated host is bootstrapped once with `deploy/production/bootstrap-host.sh`. The host must use key-only SSH, disabled root login, UFW, fail2ban, unattended security updates, rootless Docker, and `/srv/losttofound/config/app.env` owned by `losttofound:losttofound` with mode `0600`. The config directory is separate from the rsynced application tree and is never stored in GitHub.
 

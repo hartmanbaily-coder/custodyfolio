@@ -40,6 +40,34 @@ export COMPOSE_PROJECT_NAME=losttofound
 export LOSTTOFOUND_ENV_FILE="${env_file}"
 export LOSTTOFOUND_IMAGE_TAG="${release_tag}"
 
+reload_caddy() {
+  local attempts="${CADDY_RELOAD_ATTEMPTS:-12}"
+  local sleep_seconds="${CADDY_RELOAD_SLEEP_SECONDS:-2}"
+
+  if [[ ! ${attempts} =~ ^[1-9][0-9]*$ ]]; then
+    echo "CADDY_RELOAD_ATTEMPTS must be a positive integer." >&2
+    return 1
+  fi
+  if [[ ! ${sleep_seconds} =~ ^[0-9]+$ ]]; then
+    echo "CADDY_RELOAD_SLEEP_SECONDS must be a non-negative integer." >&2
+    return 1
+  fi
+
+  for attempt in $(seq 1 "${attempts}"); do
+    if docker compose --env-file "${env_file}" -f "${compose_file}" exec -T caddy \
+      caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1; then
+      echo "Caddy configuration reloaded in place; the Cloudflare origin stayed online."
+      return 0
+    fi
+    if [[ ${attempt} -lt ${attempts} ]]; then
+      sleep "${sleep_seconds}"
+    fi
+  done
+
+  echo "Caddy configuration could not be reloaded without restarting the origin." >&2
+  return 1
+}
+
 if ! docker info --format '{{json .SecurityOptions}}' | grep -q rootless; then
   echo "Refusing to deploy: Docker is not running in rootless mode." >&2
   exit 1
@@ -56,11 +84,16 @@ cd "${app_root}"
 docker compose --env-file "${env_file}" -f "${compose_file}" config --quiet
 docker compose --env-file "${env_file}" -f "${compose_file}" build --pull losttofound
 docker compose --env-file "${env_file}" -f "${compose_file}" up -d --remove-orphans
-docker compose --env-file "${env_file}" -f "${compose_file}" up -d --force-recreate caddy
 
 set +e
-"${script_dir}/smoke-test.sh"
-smoke_status=$?
+reload_caddy
+caddy_reload_status=$?
+if [[ ${caddy_reload_status} -eq 0 ]]; then
+  "${script_dir}/smoke-test.sh"
+  smoke_status=$?
+else
+  smoke_status=1
+fi
 set -e
 
 if [[ ${smoke_status} -ne 0 && ${smoke_status} -ne 2 ]]; then
@@ -71,7 +104,7 @@ if [[ ${smoke_status} -ne 0 && ${smoke_status} -ne 2 ]]; then
     export LOSTTOFOUND_IMAGE_TAG="${previous_image#losttofound:}"
     echo "Rolling back to ${previous_image}." >&2
     docker compose --env-file "${env_file}" -f "${compose_file}" up -d --no-build --remove-orphans
-    docker compose --env-file "${env_file}" -f "${compose_file}" up -d --force-recreate caddy
+    reload_caddy || true
     "${script_dir}/smoke-test.sh" || true
   else
     echo "No previous release is available; stopping the failed first-deployment stack." >&2
@@ -82,11 +115,12 @@ fi
 
 "${script_dir}/install-health-watchdog.sh"
 printf '%s\n' "${release_tag}" >"${state_dir}/current-release"
+printf '%s\n' "healthy" >"${state_dir}/current-deployment"
 docker image prune --force >/dev/null
 if [[ ${smoke_status} -eq 2 ]]; then
-  printf '%s\n' "blocked" >"${state_dir}/current-readiness"
-  echo "Custody Folio release ${release_tag} is running, but customer readiness remains BLOCKED." >&2
+  printf '%s\n' "launch-approval-pending" >"${state_dir}/current-readiness"
+  echo "Custody Folio release ${release_tag} deployed successfully for testing. Customer launch approval checks remain pending."
 else
-  printf '%s\n' "ready" >"${state_dir}/current-readiness"
+  printf '%s\n' "customer-ready" >"${state_dir}/current-readiness"
   echo "Custody Folio release ${release_tag} deployed successfully and is customer-ready."
 fi

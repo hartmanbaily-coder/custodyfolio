@@ -11,33 +11,76 @@ export DOCKER_HOST="${DOCKER_HOST:-unix://${XDG_RUNTIME_DIR}/docker.sock}"
 export COMPOSE_PROJECT_NAME=losttofound
 export LOSTTOFOUND_ENV_FILE="${env_file}"
 public_url="${LOSTTOFOUND_PUBLIC_URL:-https://custodyfolio.com}"
+local_health_attempts="${LOCAL_HEALTH_ATTEMPTS:-30}"
+local_health_sleep_seconds="${LOCAL_HEALTH_SLEEP_SECONDS:-5}"
+public_health_attempts="${PUBLIC_HEALTH_ATTEMPTS:-24}"
+public_health_sleep_seconds="${PUBLIC_HEALTH_SLEEP_SECONDS:-5}"
 
-for attempt in $(seq 1 30); do
-  if curl --fail --silent --show-error http://127.0.0.1:8080/caddy-health >/dev/null && \
-    curl --fail --silent --show-error http://127.0.0.1:8080/records >/dev/null; then
+validate_positive_integer() {
+  local name="$1"
+  local value="$2"
+  if [[ ! ${value} =~ ^[1-9][0-9]*$ ]]; then
+    echo "${name} must be a positive integer." >&2
+    exit 1
+  fi
+}
+
+validate_non_negative_integer() {
+  local name="$1"
+  local value="$2"
+  if [[ ! ${value} =~ ^[0-9]+$ ]]; then
+    echo "${name} must be a non-negative integer." >&2
+    exit 1
+  fi
+}
+
+validate_positive_integer "LOCAL_HEALTH_ATTEMPTS" "${local_health_attempts}"
+validate_positive_integer "PUBLIC_HEALTH_ATTEMPTS" "${public_health_attempts}"
+validate_non_negative_integer \
+  "LOCAL_HEALTH_SLEEP_SECONDS" "${local_health_sleep_seconds}"
+validate_non_negative_integer \
+  "PUBLIC_HEALTH_SLEEP_SECONDS" "${public_health_sleep_seconds}"
+
+curl_probe=(
+  --fail
+  --silent
+  --output /dev/null
+  --connect-timeout 5
+  --max-time 15
+)
+
+for attempt in $(seq 1 "${local_health_attempts}"); do
+  if curl "${curl_probe[@]}" http://127.0.0.1:8080/caddy-health && \
+    curl "${curl_probe[@]}" http://127.0.0.1:8080/records; then
     break
   fi
-  if [[ ${attempt} -eq 30 ]]; then
+  if [[ ${attempt} -eq ${local_health_attempts} ]]; then
+    curl --fail --silent --show-error --output /dev/null \
+      --connect-timeout 5 --max-time 15 \
+      http://127.0.0.1:8080/records || true
     echo "Local Caddy/app health checks did not become ready." >&2
     exit 1
   fi
-  sleep 5
+  sleep "${local_health_sleep_seconds}"
 done
 
-for attempt in $(seq 1 12); do
+for attempt in $(seq 1 "${public_health_attempts}"); do
   cloudflared_container="$(docker compose --env-file "${env_file}" -f "${compose_file}" ps -q cloudflared)"
   if [[ -n ${cloudflared_container} ]] && \
     [[ $(docker inspect --format '{{.State.Running}}' "${cloudflared_container}") == "true" ]] && \
     docker compose --env-file "${env_file}" -f "${compose_file}" logs --no-color cloudflared 2>&1 | \
       grep -q 'Registered tunnel connection' && \
-    curl --fail --silent --show-error "${public_url}/records" >/dev/null; then
+    curl "${curl_probe[@]}" "${public_url}/records"; then
     break
   fi
-  if [[ ${attempt} -eq 12 ]]; then
+  if [[ ${attempt} -eq ${public_health_attempts} ]]; then
+    curl --fail --silent --show-error --output /dev/null \
+      --connect-timeout 5 --max-time 15 \
+      "${public_url}/records" || true
     echo "Cloudflare Tunnel did not become reachable at ${public_url}." >&2
     exit 1
   fi
-  sleep 5
+  sleep "${public_health_sleep_seconds}"
 done
 
 readiness_file="$(mktemp)"
@@ -79,7 +122,7 @@ fi
 readiness_blocked=false
 if [[ ${readiness_status} == "not_ready" ]]; then
   readiness_blocked=true
-  echo "Customer readiness remains BLOCKED: ${readiness_blockers[*]}" >&2
+  echo "Customer launch approval checks remain pending: ${readiness_blockers[*]}" >&2
 fi
 
 login_status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
@@ -103,7 +146,7 @@ docker compose --env-file "${env_file}" -f "${compose_file}" exec -T losttofound
   node scripts/verify-security-headers.mjs
 
 if [[ ${readiness_blocked} == "true" ]]; then
-  echo "Application health checks passed, but customer readiness is blocked." >&2
+  echo "Application health checks passed; this release is ready for testing while customer launch approval remains pending." >&2
   exit 2
 fi
 

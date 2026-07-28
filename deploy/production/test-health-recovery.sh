@@ -143,8 +143,32 @@ grep -q 'verify-supabase-auth-public-settings.mjs' "${script_dir}/../../Dockerfi
 grep -q 'exit 2' "${script_dir}/smoke-test.sh"
 grep -q 'smoke_status.*-ne 2' "${script_dir}/deploy.sh"
 grep -q 'down --remove-orphans' "${script_dir}/deploy.sh"
+grep -q 'caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile' \
+  "${script_dir}/deploy.sh"
+if grep -q -- '--force-recreate caddy' "${script_dir}/deploy.sh"; then
+  echo "Routine deployments must not restart the Cloudflare origin." >&2
+  exit 1
+fi
+grep -q 'PUBLIC_HEALTH_ATTEMPTS:-24' "${script_dir}/smoke-test.sh"
+grep -q 'PUBLIC_HEALTH_SLEEP_SECONDS:-5' "${script_dir}/smoke-test.sh"
+grep -q -- '--connect-timeout 5' "${script_dir}/smoke-test.sh"
+grep -q -- '--max-time 15' "${script_dir}/smoke-test.sh"
+smoke_error="${tmp_dir}/smoke-error"
+if PUBLIC_HEALTH_ATTEMPTS=0 "${script_dir}/smoke-test.sh" 2>"${smoke_error}"; then
+  echo "Smoke test must reject a zero public-health attempt count." >&2
+  exit 1
+fi
+grep -q 'PUBLIC_HEALTH_ATTEMPTS must be a positive integer' "${smoke_error}"
+if PUBLIC_HEALTH_SLEEP_SECONDS=invalid \
+  "${script_dir}/smoke-test.sh" 2>"${smoke_error}"; then
+  echo "Smoke test must reject an invalid public-health sleep interval." >&2
+  exit 1
+fi
+grep -q 'PUBLIC_HEALTH_SLEEP_SECONDS must be a non-negative integer' "${smoke_error}"
 grep -q 'current-readiness' "${script_dir}/deploy.sh"
-grep -q 'customer readiness remains BLOCKED' "${script_dir}/deploy.sh"
+grep -q 'current-deployment' "${script_dir}/deploy.sh"
+grep -q 'launch-approval-pending' "${script_dir}/deploy.sh"
+grep -q 'deployed successfully for testing' "${script_dir}/deploy.sh"
 grep -q -- "--exclude '.mcp.json'" "${script_dir}/deploy-from-mac.sh"
 grep -q -- "--exclude '.codex/'" "${script_dir}/deploy-from-mac.sh"
 grep -q -- "--exclude '.agents/'" "${script_dir}/deploy-from-mac.sh"
