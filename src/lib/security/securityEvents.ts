@@ -41,6 +41,8 @@ export type SecurityEventType =
   | "evidence_upload_scanner_blocked"
   | "evidence_upload_scanner_failed"
   | "evidence_storage_failed"
+  | "records_evidence_account_binding_blocked"
+  | "records_evidence_case_boundary_blocked"
   | "evidence_download_denied"
   | "evidence_delete_denied"
   | "records_dataset_account_binding_blocked"

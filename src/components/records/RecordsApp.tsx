@@ -85,7 +85,10 @@ import {
   type DateRangePreset,
 } from "@/lib/records/dateRanges";
 import { demoCaseId, demoUserId } from "@/lib/records/seed";
-import { defaultCaseIdForUser } from "@/lib/records/accountBoundary";
+import {
+  defaultCaseIdForUser,
+  recordsAccountBindingHeaderName,
+} from "@/lib/records/accountBoundary";
 import type {
   CalendarEvent,
   CustodyDayAssignment,
@@ -321,6 +324,11 @@ const timelineDesignationOptions: Array<{ value: TimelineSeverity; label: string
   { value: "attention", label: "Recorded issue" },
   { value: "critical", label: "Critical" },
 ];
+
+const custodyDayColorOptions = custodyDayColors.map((value, index) => ({
+  value,
+  label: ["Teal", "Blue", "Purple", "Amber", "Slate", "Rose"][index],
+}));
 
 const directTimelineDeleteTypes = new Set<CalendarEvent["type"]>([
   "logged_exchange",
@@ -1930,12 +1938,14 @@ function CalendarView({
     startDate: string;
     endDate: string;
     caregiverLabel: string;
+    color: string;
     exchangeBoundary: "none" | "start" | "end" | "both";
   }>(() => ({
     sourceDay: "",
     startDate: selectedDay,
     endDate: selectedDay,
     caregiverLabel: userRoleLabel,
+    color: custodyDayColors[0],
     exchangeBoundary: "none",
   }));
   const [multiDayPaintEnabled, setMultiDayPaintEnabled] = useState(false);
@@ -1975,6 +1985,14 @@ function CalendarView({
           startDate: selectedDay,
           endDate: selectedDay,
           caregiverLabel: selectedAssignment?.caregiverLabel || userRoleLabel,
+          color:
+            selectedAssignment?.color ||
+            calendarColorForCaregiver(
+              selectedAssignment?.caregiverLabel || userRoleLabel,
+              userRoleLabel,
+              otherParentLabel,
+              custodyDayAssignments
+            ),
           exchangeBoundary:
             selectedAssignment?.exchangeTime || selectedAssignment?.exchangeDirection
               ? ("start" as const)
@@ -1984,14 +2002,9 @@ function CalendarView({
     startDate: rangeStartDate,
     endDate: rangeEndDate,
     caregiverLabel: rangeCaregiverLabel,
+    color: rangeColor,
     exchangeBoundary,
   } = rangeDraft;
-  const rangeColor = calendarColorForCaregiver(
-    rangeCaregiverLabel,
-    userRoleLabel,
-    otherParentLabel,
-    custodyDayAssignments
-  );
 
   function showCalendarMonth(nextMonthKey: string) {
     const nextRange = getMonthBounds(nextMonthKey, timezone);
@@ -2278,12 +2291,7 @@ function CalendarView({
     const exchangeDirection = hasExchange ? text(formData, "exchangeDirection") : "";
     const exchangeLocation = hasExchange ? text(formData, "exchangeLocation") : "";
     const caregiverLabel = text(formData, "caregiverLabel");
-    const color = calendarColorForCaregiver(
-      caregiverLabel,
-      userRoleLabel,
-      otherParentLabel,
-      custodyDayAssignments
-    );
+    const color = rangeColor;
     const parsed = custodyDayAssignmentSchema.safeParse({
       date: startDate,
       caregiverLabel,
@@ -2543,7 +2551,7 @@ function CalendarView({
                 <span className="hidden text-xs font-medium text-slate-500 group-open:inline">Hide tools</span>
               </summary>
               <div className="grid gap-3 border-t border-slate-200 p-3 2xl:grid-cols-[minmax(360px,1fr)_auto] 2xl:items-end">
-                <div className="grid gap-3 grid-cols-[minmax(0,1fr)_88px] sm:grid-cols-[minmax(0,1fr)_160px]">
+                <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Caregiver">
                   <select
                     aria-label="Caregiver for color tools"
@@ -2569,16 +2577,12 @@ function CalendarView({
                     ))}
                   </select>
                 </Field>
-                <Field label="Automatic color">
-                  <div className="flex h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-600">
-                    <span
-                      aria-hidden="true"
-                      className="h-5 w-5 shrink-0 rounded-full"
-                      style={{ backgroundColor: paintColor }}
-                    />
-                    Coordinated
-                  </div>
-                </Field>
+                <CalendarColorPicker
+                  label="Calendar color"
+                  ariaLabelPrefix="Paint calendar color"
+                  value={paintColor}
+                  onChange={setPaintColor}
+                />
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -2879,6 +2883,12 @@ function CalendarView({
                       setRangeDraftState({
                         ...rangeDraft,
                         caregiverLabel: event.target.value,
+                        color: calendarColorForCaregiver(
+                          event.target.value,
+                          userRoleLabel,
+                          otherParentLabel,
+                          custodyDayAssignments
+                        ),
                       })
                     }
                   >
@@ -2889,16 +2899,18 @@ function CalendarView({
                     ))}
                   </select>
                 </Field>
-                <Field label="Calendar color">
-                  <div className="flex h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700">
-                    <span
-                      aria-hidden="true"
-                      className="h-5 w-5 rounded-full"
-                      style={{ backgroundColor: rangeColor }}
-                    />
-                    Assigned automatically for {rangeCaregiverLabel}
-                  </div>
-                </Field>
+                <CalendarColorPicker
+                  label="Calendar color"
+                  ariaLabelPrefix="Date range calendar color"
+                  name="color"
+                  value={rangeColor}
+                  onChange={(color) =>
+                    setRangeDraftState({
+                      ...rangeDraft,
+                      color,
+                    })
+                  }
+                />
                 <Field label="Exchange day">
                   <select
                     name="exchangeBoundary"
@@ -4332,6 +4344,9 @@ function ImportView({
     const response = await fetch("/api/records/dataset?caseId=default", {
       cache: "no-store",
       credentials: "same-origin",
+      headers: {
+        [recordsAccountBindingHeaderName]: userId,
+      },
     });
     const parsed = (await response.json().catch(() => ({}))) as {
       dataset?: Partial<RecordsDataset> | null;
@@ -4657,6 +4672,9 @@ function ImportView({
     const response = await fetch("/api/records/evidence/upload", {
       method: "POST",
       credentials: "same-origin",
+      headers: {
+        [recordsAccountBindingHeaderName]: userId,
+      },
       body,
     });
     const parsed = (await response.json().catch(() => ({}))) as {
@@ -7268,6 +7286,51 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+function CalendarColorPicker({
+  label,
+  ariaLabelPrefix,
+  name,
+  value,
+  onChange,
+}: {
+  label: string;
+  ariaLabelPrefix: string;
+  name?: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const selected =
+    custodyDayColorOptions.find((option) => option.value === value) ||
+    custodyDayColorOptions[0];
+
+  return (
+    <fieldset className="grid min-w-0 max-w-full gap-1.5">
+      <legend className="text-sm font-medium text-slate-700">{label}</legend>
+      {name && <input name={name} type="hidden" value={value} />}
+      <div className="flex min-h-10 min-w-0 max-w-full flex-wrap items-center gap-2 rounded-md border border-slate-300 bg-white px-2 py-1.5">
+        {custodyDayColorOptions.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            aria-label={`${ariaLabelPrefix}: ${option.label}`}
+            aria-pressed={value === option.value}
+            onClick={() => onChange(option.value)}
+            className={`h-7 w-7 shrink-0 rounded-full border-2 transition focus:outline-none focus:ring-2 focus:ring-blue-200 ${
+              value === option.value
+                ? "border-slate-950 ring-2 ring-slate-300"
+                : "border-white ring-1 ring-slate-200"
+            }`}
+            style={{ backgroundColor: option.value }}
+          />
+        ))}
+        <span className="min-w-0 text-xs font-medium text-slate-600">
+          {selected.label}
+        </span>
+      </div>
+    </fieldset>
+  );
+}
+
 function StatCard({
   label,
   value,
@@ -8377,11 +8440,12 @@ function calendarColorForCaregiver(
   otherParentLabel: string,
   assignments: CustodyDayAssignment[] = []
 ) {
+  const savedColor = assignments.find(
+    (assignment) => assignment.caregiverLabel === caregiverLabel
+  )?.color;
+  if (savedColor) return savedColor;
   if (caregiverLabel === userRoleLabel) return custodyDayColors[0];
   if (caregiverLabel === otherParentLabel) return custodyDayColors[1];
   if (caregiverLabel === "Alternate caregiver") return custodyDayColors[2];
-  return (
-    assignments.find((assignment) => assignment.caregiverLabel === caregiverLabel)?.color ||
-    custodyDayColors[2]
-  );
+  return custodyDayColors[2];
 }
