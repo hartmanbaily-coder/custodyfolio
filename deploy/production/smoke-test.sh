@@ -62,6 +62,7 @@ for blocker in "${readiness_blockers[@]}"; do
       supabase-auth-redirects | \
       supabase-leaked-passwords | \
       supabase-auth-hardening-verified | \
+      malware-scanner-tested | \
       security-monitoring | \
       backup-restore-tested | \
       data-retention-policy | \
