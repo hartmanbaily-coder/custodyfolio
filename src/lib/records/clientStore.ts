@@ -720,6 +720,34 @@ type NativeDownloadHandler = {
   }) => void;
 };
 
+type NativeChunkedDownloadHandler = {
+  postMessage: (
+    message:
+      | {
+          action: "start";
+          transferId: string;
+          fileName: string;
+          contentType: string;
+          byteCount: number;
+        }
+      | {
+          action: "chunk";
+          transferId: string;
+          sequence: number;
+          body: string;
+        }
+      | {
+          action: "complete";
+          transferId: string;
+          chunks: number;
+        }
+      | {
+          action: "cancel";
+          transferId: string;
+        }
+  ) => void;
+};
+
 type NativeSessionHandler = {
   postMessage: (message: { action: "clearLocalSession" }) => void;
 };
@@ -737,6 +765,7 @@ declare global {
     webkit?: {
       messageHandlers?: {
         lostToFoundDownload?: NativeDownloadHandler;
+        lostToFoundDownloadV2?: NativeChunkedDownloadHandler;
         lostToFoundNavigation?: NativeNavigationHandler;
         lostToFoundSession?: NativeSessionHandler;
       };
@@ -747,6 +776,11 @@ declare global {
 function nativeDownloadHandler() {
   if (typeof window === "undefined") return undefined;
   return window.webkit?.messageHandlers?.lostToFoundDownload;
+}
+
+function nativeChunkedDownloadHandler() {
+  if (typeof window === "undefined") return undefined;
+  return window.webkit?.messageHandlers?.lostToFoundDownloadV2;
 }
 
 export function notifyNativeSessionInvalidated() {
@@ -811,9 +845,74 @@ function bytesToBase64(bytes: Uint8Array) {
   return btoa(binary);
 }
 
+const nativeDownloadChunkBytes = 64 * 1024;
+const maximumLegacyNativeDownloadBytes = 4 * 1024 * 1024;
+const maximumChunkedNativeDownloadBytes = 25 * 1024 * 1024;
+
+function yieldNativeDownloadTurn() {
+  return new Promise<void>((resolve) => {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => resolve());
+      return;
+    }
+    setTimeout(resolve, 0);
+  });
+}
+
+async function downloadBlobFileInChunks(
+  handler: NativeChunkedDownloadHandler,
+  fileName: string,
+  blob: Blob
+) {
+  if (blob.size > maximumChunkedNativeDownloadBytes) {
+    throw new Error("This file exceeds the 25 MB protected-share limit.");
+  }
+
+  const transferId = createId("native-export");
+  let chunks = 0;
+  handler.postMessage({
+    action: "start",
+    transferId,
+    fileName,
+    contentType: blob.type || "application/octet-stream",
+    byteCount: blob.size,
+  });
+
+  try {
+    for (let offset = 0; offset < blob.size; offset += nativeDownloadChunkBytes) {
+      const bytes = new Uint8Array(
+        await blob.slice(offset, offset + nativeDownloadChunkBytes).arrayBuffer()
+      );
+      handler.postMessage({
+        action: "chunk",
+        transferId,
+        sequence: chunks,
+        body: bytesToBase64(bytes),
+      });
+      chunks += 1;
+      await yieldNativeDownloadTurn();
+    }
+    handler.postMessage({ action: "complete", transferId, chunks });
+  } catch (error) {
+    handler.postMessage({ action: "cancel", transferId });
+    throw error;
+  }
+}
+
 export async function downloadBlobFile(fileName: string, blob: Blob) {
+  const chunkedHandler = nativeChunkedDownloadHandler();
+  if (chunkedHandler) {
+    await downloadBlobFileInChunks(chunkedHandler, fileName, blob);
+    return;
+  }
+
   const nativeHandler = nativeDownloadHandler();
   if (nativeHandler) {
+    if (blob.size > maximumLegacyNativeDownloadBytes) {
+      throw new Error(
+        "This file is too large for the installed TestFlight build. Update Custody Folio, or save it to Files instead."
+      );
+    }
     const bytes = new Uint8Array(await blob.arrayBuffer());
     nativeHandler.postMessage({
       fileName,
