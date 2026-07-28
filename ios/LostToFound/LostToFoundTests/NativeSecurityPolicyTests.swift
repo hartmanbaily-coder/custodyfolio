@@ -88,6 +88,50 @@ final class NativeSecurityPolicyTests: XCTestCase {
         )
     }
 
+    func testChunkedExportAccumulatorReassemblesStrictlyOrderedData() throws {
+        let first = Data("first".utf8)
+        let second = Data("-second".utf8)
+        var accumulator = try XCTUnwrap(
+            ChunkedExportAccumulator(expectedBytes: first.count + second.count)
+        )
+
+        XCTAssertTrue(
+            accumulator.append(base64Body: first.base64EncodedString(), sequence: 0)
+        )
+        XCTAssertFalse(accumulator.isComplete(reportedChunks: 1))
+        XCTAssertTrue(
+            accumulator.append(base64Body: second.base64EncodedString(), sequence: 1)
+        )
+        XCTAssertTrue(accumulator.isComplete(reportedChunks: 2))
+        XCTAssertEqual(accumulator.data, first + second)
+    }
+
+    func testChunkedExportAccumulatorRejectsInvalidSequenceAndSize() throws {
+        let chunk = Data("protected evidence".utf8)
+        var outOfOrder = try XCTUnwrap(
+            ChunkedExportAccumulator(expectedBytes: chunk.count)
+        )
+        XCTAssertFalse(
+            outOfOrder.append(base64Body: chunk.base64EncodedString(), sequence: 1)
+        )
+
+        let oversizedChunk = Data(
+            repeating: 0x41,
+            count: ExportSecurityPolicy.maximumBinaryChunkBytes + 1
+        )
+        var oversized = try XCTUnwrap(
+            ChunkedExportAccumulator(expectedBytes: oversizedChunk.count)
+        )
+        XCTAssertFalse(
+            oversized.append(base64Body: oversizedChunk.base64EncodedString(), sequence: 0)
+        )
+        XCTAssertNil(
+            ChunkedExportAccumulator(
+                expectedBytes: ExportSecurityPolicy.maximumBinaryExportBytes + 1
+            )
+        )
+    }
+
     func testNavigationPolicyKeepsOnlyProductHTTPSInsideWorkspace() throws {
         XCTAssertEqual(
             WorkspaceNavigationPolicy.decision(for: try XCTUnwrap(URL(string: "https://custodyfolio.com/records"))),

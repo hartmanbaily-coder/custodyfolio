@@ -107,6 +107,14 @@ final class WebViewModel {
         loadErrorMessage = "The records workspace could not be loaded. Please try again."
     }
 
+    fileprivate func webContentProcessTerminated() {
+        isLoading = false
+        loadErrorMessage = """
+        The iPhone stopped the workspace while processing a large export. Reopen the workspace \
+        and choose fewer screenshots, or update to the latest TestFlight build.
+        """
+    }
+
     fileprivate func updateNavigationState(from webView: WKWebView) {
         canGoBack = webView.canGoBack || workspaceCanGoBack
         canGoForward = webView.canGoForward || workspaceCanGoForward
@@ -245,6 +253,10 @@ struct WorkspaceWebView: UIViewRepresentable {
         )
         configuration.userContentController.add(
             WeakScriptMessageHandler(delegate: context.coordinator),
+            name: Coordinator.nativeChunkedDownloadHandlerName
+        )
+        configuration.userContentController.add(
+            WeakScriptMessageHandler(delegate: context.coordinator),
             name: Coordinator.nativeSessionHandlerName
         )
         configuration.userContentController.add(
@@ -281,6 +293,9 @@ struct WorkspaceWebView: UIViewRepresentable {
             forName: Coordinator.nativeDownloadHandlerName
         )
         webView.configuration.userContentController.removeScriptMessageHandler(
+            forName: Coordinator.nativeChunkedDownloadHandlerName
+        )
+        webView.configuration.userContentController.removeScriptMessageHandler(
             forName: Coordinator.nativeSessionHandlerName
         )
         webView.configuration.userContentController.removeScriptMessageHandler(
@@ -290,11 +305,19 @@ struct WorkspaceWebView: UIViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         static let nativeDownloadHandlerName = "lostToFoundDownload"
+        static let nativeChunkedDownloadHandlerName = "lostToFoundDownloadV2"
         static let nativeSessionHandlerName = "lostToFoundSession"
         static let nativeNavigationHandlerName = "lostToFoundNavigation"
 
+        private struct BinaryExportTransfer {
+            let requestedFileName: String
+            var accumulator: ChunkedExportAccumulator
+        }
+
         private let allowedTextExportContentTypes = Set(["text/csv", "application/json"])
+        private let maximumActiveBinaryTransfers = 2
         private let model: WebViewModel
+        private var binaryExportTransfers: [String: BinaryExportTransfer] = [:]
 
         init(model: WebViewModel) {
             self.model = model
@@ -337,6 +360,11 @@ struct WorkspaceWebView: UIViewRepresentable {
                 return
             }
 
+            if message.name == Self.nativeChunkedDownloadHandlerName {
+                handleChunkedDownload(message.body as? [String: Any])
+                return
+            }
+
             let payload = message.body as? [String: Any]
             let renderAsPDF = payload?["renderAsPDF"] as? Bool ?? false
             let base64Encoded = payload?["base64Encoded"] as? Bool ?? false
@@ -360,6 +388,69 @@ struct WorkspaceWebView: UIViewRepresentable {
             }
 
             presentShareSheet(for: fileURL)
+        }
+
+        private func handleChunkedDownload(_ payload: [String: Any]?) {
+            guard let payload,
+                  let action = payload["action"] as? String,
+                  let transferId = payload["transferId"] as? String,
+                  !transferId.isEmpty,
+                  transferId.count <= 160
+            else {
+                return
+            }
+
+            switch action {
+            case "start":
+                guard binaryExportTransfers[transferId] == nil,
+                      binaryExportTransfers.count < maximumActiveBinaryTransfers,
+                      let requestedFileName = payload["fileName"] as? String,
+                      ExportSecurityPolicy.sanitizedFileName(requestedFileName) != nil,
+                      let contentType = payload["contentType"] as? String,
+                      !contentType.isEmpty,
+                      contentType.count <= 160,
+                      let byteCount = payload["byteCount"] as? Int,
+                      let accumulator = ChunkedExportAccumulator(expectedBytes: byteCount)
+                else {
+                    return
+                }
+
+                binaryExportTransfers[transferId] = BinaryExportTransfer(
+                    requestedFileName: requestedFileName,
+                    accumulator: accumulator
+                )
+
+            case "chunk":
+                guard let sequence = payload["sequence"] as? Int,
+                      let body = payload["body"] as? String,
+                      var transfer = binaryExportTransfers[transferId],
+                      transfer.accumulator.append(base64Body: body, sequence: sequence)
+                else {
+                    binaryExportTransfers.removeValue(forKey: transferId)
+                    return
+                }
+                binaryExportTransfers[transferId] = transfer
+
+            case "complete":
+                guard let chunks = payload["chunks"] as? Int,
+                      let transfer = binaryExportTransfers.removeValue(forKey: transferId),
+                      transfer.accumulator.isComplete(reportedChunks: chunks),
+                      let fileURL = writeTextExport(
+                          data: transfer.accumulator.data,
+                          requestedFileName: transfer.requestedFileName,
+                          renderAsPDF: false
+                      )
+                else {
+                    return
+                }
+                presentShareSheet(for: fileURL)
+
+            case "cancel":
+                binaryExportTransfers.removeValue(forKey: transferId)
+
+            default:
+                return
+            }
         }
 
         private func exportData(body: String, base64Encoded: Bool) -> Data? {
@@ -393,6 +484,12 @@ struct WorkspaceWebView: UIViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            model.updateNavigationState(from: webView)
+        }
+
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            binaryExportTransfers.removeAll()
+            model.webContentProcessTerminated()
             model.updateNavigationState(from: webView)
         }
 

@@ -1,10 +1,10 @@
 import { jsPDF } from "jspdf";
 
 export const exhibitLimits = {
-  maximumScreenshots: 20,
-  maximumTotalInputBytes: 40 * 1024 * 1024,
+  maximumScreenshots: 12,
+  maximumTotalInputBytes: 24 * 1024 * 1024,
   maximumImagePixels: 25_000_000,
-  maximumTotalPixels: 150_000_000,
+  maximumTotalPixels: 60_000_000,
   maximumEvidenceBytes: 10 * 1024 * 1024,
   maximumNativeShareBytes: 25 * 1024 * 1024,
 } as const;
@@ -43,8 +43,9 @@ export interface ExhibitPagePlacement {
   height: number;
 }
 
-const normalizedMaximumLongEdge = 2600;
-const normalizedMaximumShortEdge = 2000;
+const normalizedMaximumLongEdge = 2200;
+const normalizedMaximumShortEdge = 1600;
+const normalizedJpegQuality = 0.82;
 const maximumGenerationMilliseconds = 30_000;
 
 export type ExhibitPagePlan =
@@ -181,7 +182,7 @@ export function validateExhibitSources(sources: Array<Pick<ExhibitSource, "bytes
 
   const totalBytes = sources.reduce((sum, source) => sum + source.bytes.byteLength, 0);
   if (totalBytes > exhibitLimits.maximumTotalInputBytes) {
-    return { ok: false as const, error: "The selected screenshots exceed the 40 MB total limit." };
+    return { ok: false as const, error: "The selected screenshots exceed the 24 MB total limit." };
   }
 
   const totalPixels = sources.reduce((sum, source) => sum + source.info.pixels, 0);
@@ -234,7 +235,7 @@ async function canvasBlob(canvas: HTMLCanvasElement) {
     canvas.toBlob(
       (blob) => blob ? resolve(blob) : reject(new Error("A screenshot could not be prepared locally.")),
       "image/jpeg",
-      0.92
+      normalizedJpegQuality
     );
   });
 }

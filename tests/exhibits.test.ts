@@ -50,6 +50,12 @@ function source(id: string): ExhibitSource {
 }
 
 describe("screenshot exhibit domain", () => {
+  it("keeps the mobile-safe exhibit budget explicit", () => {
+    expect(exhibitLimits.maximumScreenshots).toBe(12);
+    expect(exhibitLimits.maximumTotalInputBytes).toBe(24 * 1024 * 1024);
+    expect(exhibitLimits.maximumTotalPixels).toBe(60_000_000);
+  });
+
   it("recognizes matching PNG and JPEG signatures and dimensions", () => {
     expect(inspectExhibitImage(pngHeader(1200, 1800), { fileName: "a.png", fileType: "image/png" }))
       .toMatchObject({ ok: true, info: { format: "PNG", width: 1200, height: 1800 } });

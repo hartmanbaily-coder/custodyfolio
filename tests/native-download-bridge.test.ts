@@ -109,4 +109,62 @@ describe("native text export bridge", () => {
       base64Encoded: true,
     });
   });
+
+  it("streams binary exports through the chunked iOS bridge when available", async () => {
+    const postMessage = vi.fn();
+    vi.stubGlobal("window", {
+      webkit: {
+        messageHandlers: {
+          lostToFoundDownloadV2: { postMessage },
+        },
+      },
+    });
+
+    const bytes = new Uint8Array(70 * 1024);
+    bytes.fill(0x61);
+    await downloadBlobFile("compiled.pdf", new Blob([bytes], { type: "application/pdf" }));
+
+    expect(postMessage.mock.calls[0]?.[0]).toMatchObject({
+      action: "start",
+      fileName: "compiled.pdf",
+      contentType: "application/pdf",
+      byteCount: bytes.byteLength,
+    });
+    expect(postMessage.mock.calls[1]?.[0]).toMatchObject({
+      action: "chunk",
+      sequence: 0,
+    });
+    expect(postMessage.mock.calls[2]?.[0]).toMatchObject({
+      action: "chunk",
+      sequence: 1,
+    });
+    expect(postMessage.mock.calls[3]?.[0]).toMatchObject({
+      action: "complete",
+      chunks: 2,
+    });
+
+    const chunkBytes = postMessage.mock.calls
+      .slice(1, 3)
+      .flatMap(([message]) => Array.from(Buffer.from(message.body, "base64")));
+    expect(Uint8Array.from(chunkBytes)).toEqual(bytes);
+  });
+
+  it("refuses an unsafe single-message export on an older iOS shell", async () => {
+    const postMessage = vi.fn();
+    vi.stubGlobal("window", {
+      webkit: {
+        messageHandlers: {
+          lostToFoundDownload: { postMessage },
+        },
+      },
+    });
+
+    const oversized = new Blob([new Uint8Array((4 * 1024 * 1024) + 1)], {
+      type: "application/pdf",
+    });
+    await expect(downloadBlobFile("compiled.pdf", oversized)).rejects.toThrow(
+      "too large for the installed TestFlight build"
+    );
+    expect(postMessage).not.toHaveBeenCalled();
+  });
 });

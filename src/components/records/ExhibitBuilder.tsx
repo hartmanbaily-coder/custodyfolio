@@ -102,6 +102,8 @@ export default function ExhibitBuilder({
           info: inspection.info,
           previewUrl: URL.createObjectURL(file),
         });
+        const incrementalValidation = validateExhibitSources([...sources, ...nextSources]);
+        if (!incrementalValidation.ok) throw new Error(incrementalValidation.error);
       }
 
       const validation = validateExhibitSources([...sources, ...nextSources]);
@@ -166,6 +168,8 @@ export default function ExhibitBuilder({
     try {
       await downloadBlobFile(generated.fileName, generated.blob);
       setMessage("The compiled PDF is ready to download or share.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The PDF could not be prepared for sharing.");
     } finally {
       setBusy("");
     }
@@ -254,7 +258,7 @@ export default function ExhibitBuilder({
             />
           </label>
           <p className="text-xs leading-5 text-slate-500">
-            Up to 20 screenshots, 40 MB total, 25 megapixels each, and 150 megapixels combined.
+            Up to 12 screenshots, 24 MB total, 25 megapixels each, and 60 megapixels combined.
             HEIC/HEIF is not supported in this builder.
           </p>
 

@@ -38,6 +38,7 @@ enum SessionCookiePolicy {
 enum ExportSecurityPolicy {
     static let maximumTextExportBytes = 10 * 1024 * 1024
     static let maximumBinaryExportBytes = 25 * 1024 * 1024
+    static let maximumBinaryChunkBytes = 64 * 1024
     static let maximumFileNameCharacters = 160
 
     static func exportData(body: String, base64Encoded: Bool) -> Data? {
@@ -77,6 +78,42 @@ enum ExportSecurityPolicy {
             .lastPathComponent
         guard !baseName.isEmpty else { return nil }
         return "\(baseName).pdf"
+    }
+}
+
+struct ChunkedExportAccumulator {
+    let expectedBytes: Int
+    private(set) var data = Data()
+    private(set) var nextSequence = 0
+
+    init?(expectedBytes: Int) {
+        guard expectedBytes >= 0,
+              expectedBytes <= ExportSecurityPolicy.maximumBinaryExportBytes
+        else {
+            return nil
+        }
+        self.expectedBytes = expectedBytes
+    }
+
+    mutating func append(base64Body: String, sequence: Int) -> Bool {
+        let maximumBase64ChunkCharacters =
+            (ExportSecurityPolicy.maximumBinaryChunkBytes * 4 / 3) + 8
+        guard sequence == nextSequence,
+              base64Body.utf8.count <= maximumBase64ChunkCharacters,
+              let chunk = Data(base64Encoded: base64Body),
+              chunk.count <= ExportSecurityPolicy.maximumBinaryChunkBytes,
+              data.count + chunk.count <= expectedBytes
+        else {
+            return false
+        }
+
+        data.append(chunk)
+        nextSequence += 1
+        return true
+    }
+
+    func isComplete(reportedChunks: Int) -> Bool {
+        reportedChunks == nextSequence && data.count == expectedBytes
     }
 }
 
