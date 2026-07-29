@@ -4,6 +4,22 @@ import XCTest
 @testable import LostToFound
 
 final class NativeSecurityPolicyTests: XCTestCase {
+    func testPhotoCaptureUsageDescriptionsArePackaged() throws {
+        let infoDictionary = try XCTUnwrap(Bundle.main.infoDictionary)
+        let requiredKeys = [
+            "NSCameraUsageDescription",
+            "NSPhotoLibraryUsageDescription",
+        ]
+
+        for key in requiredKeys {
+            let description = try XCTUnwrap(infoDictionary[key] as? String)
+            XCTAssertFalse(
+                description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                "\(key) must contain a user-facing privacy explanation."
+            )
+        }
+    }
+
     func testSessionCookiePolicyKeepsOnlyAllowedUnexpiredSessionCookies() throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let validRefresh = try makeCookie(
