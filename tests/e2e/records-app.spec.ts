@@ -195,6 +195,8 @@ test("records login and report workflow", async ({ page }) => {
   await expect(page.getByText(/Vacation schedule:/)).toHaveCount(0);
   const scheduleSetup = page.locator("details").filter({ hasText: "Optional calendar schedule setup" });
   await expect(scheduleSetup).not.toHaveAttribute("open", "");
+  await expect(scheduleSetup).not.toContainText("Open only when needed");
+  await expect(scheduleSetup.getByTestId("calendar-schedule-setup-chevron")).toBeVisible();
 
   const fileImportForm = page.getByTestId("file-upload-form");
   await fileImportForm.getByLabel("File category").selectOption("message_archive");
@@ -452,6 +454,34 @@ test("mobile quick issue saves directly to editable report notes", async ({ page
   await expect(page.getByText("Updated attorney follow-up issue", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Delete note Updated attorney follow-up issue" }).click();
   await expect(page.getByRole("status")).toContainText("Date based note deleted");
+});
+
+test("optional calendar setup uses a simple arrow disclosure", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      "l2f.records.session.v1",
+      JSON.stringify({
+        userId: "user-demo-parent-a",
+        caseId: "case-demo-parenting-plan",
+        email: "demo@example.com",
+        authMode: "local",
+      })
+    );
+  });
+  await page.goto("/records");
+  await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Import", exact: true }).click();
+
+  const scheduleSetup = page
+    .locator("details")
+    .filter({ hasText: "Optional calendar schedule setup" });
+  await expect(scheduleSetup).not.toHaveAttribute("open", "");
+  await expect(scheduleSetup).not.toContainText("Open only when needed");
+  await expect(scheduleSetup.getByTestId("calendar-schedule-setup-chevron")).toBeVisible();
+
+  await scheduleSetup.locator("summary").click();
+  await expect(scheduleSetup).toHaveAttribute("open", "");
 });
 
 test("mobile screenshot exhibit builder preserves order and generates a protected local PDF", async ({ page }) => {

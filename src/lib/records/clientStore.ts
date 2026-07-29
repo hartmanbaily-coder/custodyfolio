@@ -19,6 +19,8 @@ const storageKey = "l2f.records.dataset.v1";
 const sessionKey = "l2f.records.session.v1";
 const failedLoginKey = "l2f.records.failed-login.v1";
 const remoteDatasetKey = "default";
+const recordsStorageConnectionError =
+  "Could not reach secure records storage. Check your connection and try saving again.";
 
 export type RecordsStorageMode = "local" | "supabase";
 export type RecordsSession = {
@@ -103,6 +105,34 @@ function persistLocalDataset(dataset: RecordsDataset) {
   window.localStorage.setItem(storageKey, JSON.stringify(dataset));
 }
 
+function isFetchNetworkError(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  return (
+    error.name === "TypeError" ||
+    error.message === "Load failed" ||
+    error.message === "Failed to fetch" ||
+    error.message.includes("NetworkError")
+  );
+}
+
+export async function fetchRecordsStorage(
+  input: RequestInfo | URL,
+  init?: RequestInit
+) {
+  try {
+    return await fetch(input, init);
+  } catch (firstError) {
+    if (!isFetchNetworkError(firstError)) throw firstError;
+  }
+
+  try {
+    return await fetch(input, init);
+  } catch (secondError) {
+    if (!isFetchNetworkError(secondError)) throw secondError;
+    throw new Error(recordsStorageConnectionError, { cause: secondError });
+  }
+}
+
 export function parseRecordsSessionResponse(
   status: number,
   body: { session?: RecordsSession; error?: string; mfaRequired?: boolean }
@@ -160,13 +190,16 @@ async function readRemoteSession() {
 }
 
 async function readRemoteDataset(session: RecordsSession) {
-  const response = await fetch(`/api/records/dataset?caseId=${encodeURIComponent(remoteDatasetKey)}`, {
-    cache: "no-store",
-    credentials: "same-origin",
-    headers: {
-      [recordsAccountBindingHeaderName]: session.userId,
-    },
-  });
+  const response = await fetchRecordsStorage(
+    `/api/records/dataset?caseId=${encodeURIComponent(remoteDatasetKey)}`,
+    {
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: {
+        [recordsAccountBindingHeaderName]: session.userId,
+      },
+    }
+  );
 
   const body = (await response.json().catch(() => ({}))) as {
     dataset?: Partial<RecordsDataset> | null;
@@ -190,15 +223,18 @@ async function readRemoteDataset(session: RecordsSession) {
 }
 
 async function persistRemoteDataset(dataset: RecordsDataset, accountId: string) {
-  const response = await fetch(`/api/records/dataset?caseId=${encodeURIComponent(remoteDatasetKey)}`, {
-    method: "PUT",
-    credentials: "same-origin",
-    headers: {
-      "Content-Type": "application/json",
-      [recordsAccountBindingHeaderName]: accountId,
-    },
-    body: JSON.stringify({ dataset }),
-  });
+  const response = await fetchRecordsStorage(
+    `/api/records/dataset?caseId=${encodeURIComponent(remoteDatasetKey)}`,
+    {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        [recordsAccountBindingHeaderName]: accountId,
+      },
+      body: JSON.stringify({ dataset }),
+    }
+  );
 
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { error?: string };
