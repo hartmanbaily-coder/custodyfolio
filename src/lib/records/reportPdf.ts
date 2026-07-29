@@ -163,14 +163,14 @@ export function generatePrintableReportPdf(packet: PrintableReportPacket) {
   ) {
     const fontSize = options.fontSize || 9.5;
     const lineHeight = fontSize * 1.35;
+    document.setFont("helvetica", options.bold ? "bold" : "normal");
+    document.setFontSize(fontSize);
     const lines = wrappedLines(document, value, contentWidth - 20);
     const height = Math.max(28, lines.length * lineHeight + 17);
     ensureSpace(height + 7);
     setFillColor(document, options.background || lightSlate);
     setDrawColor(document, options.borderColor || border);
     document.roundedRect(pageMargin, cursorY, contentWidth, height, 4, 4, "FD");
-    document.setFont("helvetica", options.bold ? "bold" : "normal");
-    document.setFontSize(fontSize);
     setTextColor(document, options.color || slate);
     document.text(lines, pageMargin + 10, cursorY + 13, { lineHeightFactor: 1.35 });
     cursorY += height + 7;

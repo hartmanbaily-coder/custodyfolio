@@ -834,6 +834,15 @@ test("mobile create flows stay visible across every record tab and reload with a
   await expenseForm.getByRole("button", { name: "Save expense" }).click();
   await expect(page.getByRole("status")).toContainText("Expense record saved. It appears below");
   await expect(page.getByText(expenseName, { exact: true })).toBeVisible();
+  await expect(page.getByTestId("expense-category-chart")).toHaveAttribute(
+    "data-total",
+    "161.97"
+  );
+  const expenseExportPanel = page
+    .getByRole("heading", { name: "Lawyer/court export", exact: true })
+    .locator("xpath=ancestor::section[1]");
+  await expect(expenseExportPanel.getByRole("button", { name: "Print / save PDF" })).toBeEnabled();
+  await expect(expenseExportPanel).not.toContainText("No records match the selected date range.");
 
   const noteTitle = "Persistence audit note";
   const noteBody = "This note verifies that a newly created record remains visible after reload.";

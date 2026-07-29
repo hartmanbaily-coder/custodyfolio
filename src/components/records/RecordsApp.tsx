@@ -15,6 +15,7 @@ import {
   childSupportHistoryRange,
   childSupportObligationChartRows,
   daysBetween,
+  expenseHistoryRange,
   exchangeChartRows,
   formatMoney,
   generateChildSupportObligations,
@@ -592,9 +593,13 @@ export default function RecordsApp() {
       supportAsOfDate,
     ]
   );
+  const expensesRange = useMemo(
+    () => expenseHistoryRange(selected.expenseItems, supportAsOfDate),
+    [selected.expenseItems, supportAsOfDate]
+  );
   const expenseStats = useMemo(
-    () => calculateExpenseStats(selected.expenseItems, range),
-    [selected.expenseItems, range]
+    () => calculateExpenseStats(selected.expenseItems, expensesRange),
+    [selected.expenseItems, expensesRange]
   );
   const calendarEvents = useMemo(
     () => buildCalendarEvents(dataset, userId, effectiveCaseId, range),
@@ -632,9 +637,9 @@ export default function RecordsApp() {
       notes: buildSectionExportPacket(dataset, userId, effectiveCaseId, range, "notes"),
       evidence: buildSectionExportPacket(dataset, userId, effectiveCaseId, range, "evidence"),
       childSupport: buildSectionExportPacket(dataset, userId, effectiveCaseId, range, "child_support"),
-      expenses: buildSectionExportPacket(dataset, userId, effectiveCaseId, range, "expenses"),
+      expenses: buildSectionExportPacket(dataset, userId, effectiveCaseId, expensesRange, "expenses"),
     }),
-    [dataset, userId, effectiveCaseId, range, calendarViewRange]
+    [dataset, userId, effectiveCaseId, range, calendarViewRange, expensesRange]
   );
 
   function flash(message: string) {
@@ -6471,8 +6476,12 @@ function ExpensesView({
 
   return (
     <div className="space-y-4">
+      <p className="text-sm leading-6 text-slate-600">
+        Totals, category chart, and the lawyer/court export include all saved expense records.
+        Use Reports when you need a custom date range.
+      </p>
       <section className="grid gap-3 md:grid-cols-4">
-        <StatCard label="Total expenses" value={formatMoney(expenseStats.totalExpenses)} detail="Selected range" />
+        <StatCard label="Total expenses" value={formatMoney(expenseStats.totalExpenses)} detail="All saved records" />
         <StatCard label="Reimbursement requested" value={formatMoney(expenseStats.reimbursementRequested)} detail="User entered records" />
         <StatCard label="Reimbursement received" value={formatMoney(expenseStats.reimbursementReceived)} detail="User entered records" />
         <StatCard label="Unpaid reimbursement" value={formatMoney(expenseStats.unpaidReimbursement)} detail="Based on records" tone="amber" />

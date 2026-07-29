@@ -548,6 +548,23 @@ export function childSupportHistoryRange(
   };
 }
 
+export function expenseHistoryRange(
+  expenses: ExpenseItem[],
+  asOfDate = toDateString(new Date())
+): DateRange {
+  const dates = [
+    asOfDate,
+    ...expenses
+      .map((expense) => expense.expenseDate)
+      .filter((date): date is string => Boolean(date)),
+  ].sort();
+
+  return {
+    from: dates[0] || asOfDate,
+    to: dates.at(-1) || asOfDate,
+  };
+}
+
 export function childSupportObligationChartRows(
   obligations: ChildSupportObligation[],
   asOfDate = toDateString(new Date())

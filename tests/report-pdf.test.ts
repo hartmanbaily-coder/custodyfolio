@@ -7,6 +7,7 @@ import {
   generatePrintableReportPdf,
   printableReportPacket,
 } from "@/lib/records/reportPdf";
+import { expenseHistoryRange, filterOwnedCaseRecords } from "@/lib/records/calculations";
 import { createRecordsSeed, demoCaseId, demoUserId } from "@/lib/records/seed";
 
 const range = { from: "2026-05-01", to: "2026-06-15" };
@@ -32,6 +33,29 @@ describe("printable report PDF", () => {
     expect(new TextDecoder("ascii").decode(bytes.slice(0, 5))).toBe("%PDF-");
     expect(generated.byteLength).toBe(bytes.byteLength);
     expect(generated.byteLength).toBeGreaterThan(5_000);
+    expect(generated.pageCount).toBeGreaterThan(0);
+  });
+
+  it("creates a populated expense-history PDF when saved expenses predate the current month", async () => {
+    const dataset = createRecordsSeed();
+    const expenses = filterOwnedCaseRecords(dataset.expenseItems, demoUserId, demoCaseId);
+    const historyRange = expenseHistoryRange(expenses, "2026-07-29");
+    const packet = buildSectionExportPacket(
+      dataset,
+      demoUserId,
+      demoCaseId,
+      historyRange,
+      "expenses"
+    );
+    const generated = generatePrintableReportPdf(packet);
+    const bytes = await pdfBytes(generated.blob);
+
+    expect(packet.metrics.find((metric) => metric.label === "Total expenses")?.value).toBe(
+      "$119.22"
+    );
+    expect(packet.tables[0]?.rows).toHaveLength(2);
+    expect(new TextDecoder("ascii").decode(bytes.slice(0, 5))).toBe("%PDF-");
+    expect(generated.byteLength).toBeGreaterThan(4_000);
     expect(generated.pageCount).toBeGreaterThan(0);
   });
 

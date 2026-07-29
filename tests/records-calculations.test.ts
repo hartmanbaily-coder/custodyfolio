@@ -14,6 +14,7 @@ import {
   childSupportHistoryRange,
   childSupportObligationChartRows,
   containsForbiddenGeneratedTerm,
+  expenseHistoryRange,
   filterOwnedCaseRecords,
   generateChildSupportObligations,
   generateExpectedExchangeEvents,
@@ -297,6 +298,33 @@ describe("records calculations", () => {
     expect(stats.reimbursementReceived).toBeCloseTo(17.5);
     expect(stats.unpaidReimbursement).toBeCloseTo(101.72);
     expect(stats.byCategory.map((row) => row.category)).toContain("school");
+  });
+
+  it("includes earlier saved expenses in the expense history chart and section export", () => {
+    const dataset = createRecordsSeed();
+    const expenses = filterOwnedCaseRecords(dataset.expenseItems, demoUserId, demoCaseId);
+    const historyRange = expenseHistoryRange(expenses, "2026-07-29");
+    const stats = calculateExpenseStats(expenses, historyRange);
+    const packet = buildSectionExportPacket(
+      dataset,
+      demoUserId,
+      demoCaseId,
+      historyRange,
+      "expenses"
+    );
+    const expenseTable = packet.tables.find((table) => table.title === "Expense records");
+    const categoryChart = packet.charts.find((chart) => chart.title === "Expenses by category");
+
+    expect(historyRange).toEqual({ from: "2026-05-03", to: "2026-07-29" });
+    expect(stats.totalExpenses).toBeCloseTo(119.22);
+    expect(stats.expenseCount).toBe(2);
+    expect(expenseTable?.rows).toHaveLength(2);
+    expect(categoryChart?.rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: "school", value: 84.22 }),
+        expect.objectContaining({ label: "medical", value: 35 }),
+      ])
+    );
   });
 
   it("keeps custody day colors off the timeline while surfacing dated transition exchanges", () => {
