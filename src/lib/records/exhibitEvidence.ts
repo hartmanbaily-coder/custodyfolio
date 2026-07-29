@@ -22,14 +22,19 @@ export interface ExhibitSaveRequest {
   };
 }
 
+export interface SavedScreenshotExhibit {
+  evidenceId: string;
+  fileName: string;
+}
+
 export async function saveScreenshotExhibitToFiles(input: {
   request: ExhibitSaveRequest;
   caseId: string;
   userId: string;
   uploadFile: (file: File, evidenceId: string) => Promise<Partial<EvidenceItem>>;
   updateDataset: (updater: (current: RecordsDataset) => RecordsDataset) => Promise<void> | void;
-  reloadDataset: () => Promise<void>;
-}) {
+  reloadDataset: () => Promise<boolean | void>;
+}): Promise<SavedScreenshotExhibit> {
   const { request, caseId, userId } = input;
   const filesToSave = [
     ...(request.saveOriginals ? request.sources.map((source) => source.file) : []),
@@ -143,11 +148,37 @@ export async function saveScreenshotExhibitToFiles(input: {
       dataset?: Partial<RecordsDataset>;
       error?: string;
     };
-    const savedIds = new Set(verification.dataset?.evidenceItems?.map((item) => item.id) || []);
-    if (!verificationResponse.ok || uploadedRecords.some((record) => !savedIds.has(record.id))) {
+    const storedItems = verification.dataset?.evidenceItems || [];
+    const allFilesConfirmed = uploadedRecords.every((record) =>
+      storedItems.some(
+        (stored) =>
+          stored.id === record.id &&
+          stored.userId === userId &&
+          stored.caseId === caseId &&
+          stored.originalFileName === record.file.name &&
+          stored.fileSize === record.file.size &&
+          Boolean(stored.storagePath) &&
+          stored.storagePath === record.uploaded.storagePath
+      )
+    );
+    if (!verificationResponse.ok || !allFilesConfirmed) {
       throw new Error(verification.error || "Files were saved, but cloud reload confirmation failed.");
     }
-    await input.reloadDataset();
+    const reloadSucceeded = await input.reloadDataset();
+    if (reloadSucceeded === false) {
+      throw new Error(
+        "The PDF was saved, but Files could not reload it. Reopen Files to refresh your private storage."
+      );
+    }
+
+    const savedPdf = nextEvidenceItems.find((record) => record.derivationType === "screenshot_exhibit");
+    if (!savedPdf) {
+      throw new Error("The generated PDF record could not be confirmed.");
+    }
+    return {
+      evidenceId: savedPdf.id,
+      fileName: savedPdf.originalFileName,
+    };
   } catch (error) {
     if (!metadataSaved) await Promise.all(uploadedRecords.map((record) => cleanup(record.file, record.id)));
     throw error;

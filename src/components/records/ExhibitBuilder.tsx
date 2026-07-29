@@ -3,7 +3,10 @@
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { downloadBlobFile } from "@/lib/records/clientStore";
-import type { ExhibitSaveRequest } from "@/lib/records/exhibitEvidence";
+import type {
+  ExhibitSaveRequest,
+  SavedScreenshotExhibit,
+} from "@/lib/records/exhibitEvidence";
 import {
   exhibitLimits,
   generateScreenshotExhibit,
@@ -22,9 +25,11 @@ interface SelectedExhibitSource extends ExhibitSource {
 export default function ExhibitBuilder({
   cloudStorageEnabled,
   onSave,
+  onOpenFiles,
 }: {
   cloudStorageEnabled: boolean;
-  onSave: (request: ExhibitSaveRequest) => Promise<void>;
+  onSave: (request: ExhibitSaveRequest) => Promise<SavedScreenshotExhibit>;
+  onOpenFiles: () => void;
 }) {
   const [sources, setSources] = useState<SelectedExhibitSource[]>([]);
   const [label, setLabel] = useState("");
@@ -41,6 +46,7 @@ export default function ExhibitBuilder({
     fileName: string;
     pageCount: number;
   } | null>(null);
+  const [savedExhibit, setSavedExhibit] = useState<SavedScreenshotExhibit | null>(null);
   const [busy, setBusy] = useState<"select" | "generate" | "save" | "share" | "">("");
   const [message, setMessage] = useState("");
   const sourcesRef = useRef(sources);
@@ -71,6 +77,7 @@ export default function ExhibitBuilder({
 
   function invalidateOutput() {
     setGenerated(null);
+    setSavedExhibit(null);
     setMessage("");
   }
 
@@ -111,6 +118,7 @@ export default function ExhibitBuilder({
 
       setSources((current) => [...current, ...nextSources]);
       setGenerated(null);
+      setSavedExhibit(null);
       setMessage(`${nextSources.length} screenshot${nextSources.length === 1 ? "" : "s"} added.`);
     } catch (error) {
       for (const source of nextSources) URL.revokeObjectURL(source.previewUrl);
@@ -142,6 +150,7 @@ export default function ExhibitBuilder({
 
   async function generate() {
     setBusy("generate");
+    setSavedExhibit(null);
     setMessage("");
     try {
       const normalized = await normalizeExhibitSourcesForPdf(sources);
@@ -198,9 +207,10 @@ export default function ExhibitBuilder({
     }
 
     setBusy("save");
+    setSavedExhibit(null);
     setMessage("");
     try {
-      await onSave({
+      const saved = await onSave({
         pdfFile: new File([generated.blob], generated.fileName, {
           type: "application/pdf",
           lastModified: Date.now(),
@@ -216,7 +226,8 @@ export default function ExhibitBuilder({
           includeInReports,
         },
       });
-      setMessage("The generated exhibit was saved to Files.");
+      setSavedExhibit(saved);
+      setMessage(`${saved.fileName} was saved to Files and confirmed in private storage.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The generated exhibit could not be saved.");
     } finally {
@@ -339,6 +350,11 @@ export default function ExhibitBuilder({
             >
               {message}
             </p>
+          ) : null}
+          {savedExhibit ? (
+            <button type="button" className="btn-primary w-full" onClick={onOpenFiles}>
+              Open saved PDF in Files
+            </button>
           ) : null}
           {generated ? (
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">

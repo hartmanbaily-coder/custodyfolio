@@ -138,10 +138,7 @@ import {
   saveScreenshotExhibitToFiles,
   type ExhibitSaveRequest,
 } from "@/lib/records/exhibitEvidence";
-import {
-  assertEvidenceItemAccess,
-  isEvidenceStoragePathOwnedByUser,
-} from "@/lib/records/evidenceStorage";
+import { uploadEvidenceFileToPrivateStorage } from "@/lib/records/evidenceClient";
 import { getRecordsCsrfToken } from "@/lib/records/attorneyClient";
 
 const recordsPrivacyNote =
@@ -907,6 +904,7 @@ export default function RecordsApp() {
                 recordsStorageMode={recordsStorageMode}
                 sectionExport={sectionExportPackets.evidence}
                 onExportSection={exportSectionPacket}
+                onOpenFiles={() => openView("Files")}
                 flash={flash}
               />
             )}
@@ -4910,54 +4908,12 @@ function ImportView({
   }
 
   async function uploadImportEvidenceFile(file: File, evidenceId: string) {
-    const body = new FormData();
-    body.append("file", file);
-    body.append("caseId", caseId);
-    body.append("evidenceId", evidenceId);
-
-    const response = await fetch("/api/records/evidence/upload", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: {
-        [recordsAccountBindingHeaderName]: userId,
-      },
-      body,
+    return uploadEvidenceFileToPrivateStorage({
+      file,
+      evidenceId,
+      caseId,
+      userId,
     });
-    const parsed = (await response.json().catch(() => ({}))) as {
-      evidence?: Partial<EvidenceItem>;
-      error?: string;
-    };
-
-    if (!response.ok) {
-      throw new Error(parsed.error || "File upload failed.");
-    }
-
-    const uploadAccess =
-      parsed.evidence?.id &&
-      parsed.evidence.userId &&
-      parsed.evidence.caseId &&
-      parsed.evidence.storagePath
-        ? assertEvidenceItemAccess(
-            {
-              id: parsed.evidence.id,
-              userId: parsed.evidence.userId,
-              caseId: parsed.evidence.caseId,
-              storagePath: parsed.evidence.storagePath,
-              malwareScanStatus: parsed.evidence.malwareScanStatus,
-            },
-            { userId, caseId }
-          )
-        : null;
-    if (
-      parsed.evidence?.malwareScanStatus !== "clean" ||
-      parsed.evidence.id !== evidenceId ||
-      !uploadAccess?.ok ||
-      !isEvidenceStoragePathOwnedByUser(parsed.evidence.storagePath || "", userId)
-    ) {
-      throw new Error("File upload response was incomplete.");
-    }
-
-    return parsed.evidence;
   }
 
   return (
@@ -5187,6 +5143,7 @@ function EvidenceView({
   recordsStorageMode,
   sectionExport,
   onExportSection,
+  onOpenFiles,
   flash,
 }: {
   mode: "files" | "screenshots";
@@ -5199,6 +5156,7 @@ function EvidenceView({
   recordsStorageMode: "local" | "supabase";
   sectionExport: SectionExportPacket;
   onExportSection: (packet: SectionExportPacket, format: SectionExportFormat) => void;
+  onOpenFiles: () => void;
   flash: (message: string) => void;
 }) {
   const [uploading, setUploading] = useState(false);
@@ -5206,50 +5164,12 @@ function EvidenceView({
   const [editingEvidenceId, setEditingEvidenceId] = useState("");
 
   async function uploadEvidenceFile(file: File, evidenceId: string) {
-    const body = new FormData();
-    body.append("file", file);
-    body.append("caseId", caseId);
-    body.append("evidenceId", evidenceId);
-
-    const response = await fetch("/api/records/evidence/upload", {
-      method: "POST",
-      credentials: "same-origin",
-      body,
+    return uploadEvidenceFileToPrivateStorage({
+      file,
+      evidenceId,
+      caseId,
+      userId,
     });
-    const parsed = (await response.json().catch(() => ({}))) as {
-      evidence?: Partial<EvidenceItem>;
-      error?: string;
-    };
-
-    if (!response.ok) {
-      throw new Error(parsed.error || "File upload failed.");
-    }
-
-    const uploadAccess =
-      parsed.evidence?.id &&
-      parsed.evidence.userId &&
-      parsed.evidence.caseId &&
-      parsed.evidence.storagePath
-        ? assertEvidenceItemAccess(
-            {
-              id: parsed.evidence.id,
-              userId: parsed.evidence.userId,
-              caseId: parsed.evidence.caseId,
-              storagePath: parsed.evidence.storagePath,
-              malwareScanStatus: parsed.evidence.malwareScanStatus,
-            },
-            { userId, caseId }
-          )
-        : null;
-    if (
-      parsed.evidence?.malwareScanStatus !== "clean" ||
-      parsed.evidence.id !== evidenceId ||
-      !uploadAccess?.ok
-    ) {
-      throw new Error("File upload response was incomplete.");
-    }
-
-    return parsed.evidence;
   }
 
   async function saveScreenshotExhibit(request: ExhibitSaveRequest) {
@@ -5558,6 +5478,7 @@ function EvidenceView({
         <ExhibitBuilder
           cloudStorageEnabled={recordsStorageMode === "supabase"}
           onSave={saveScreenshotExhibit}
+          onOpenFiles={onOpenFiles}
         />
         <div className="rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-sm leading-6 text-teal-950">
           Generated screenshot PDFs are saved in Files, where they can be reviewed, downloaded, or
@@ -7573,7 +7494,7 @@ function RangeToolbar({
           setPreset("custom");
           setRange({ ...range, from: event.target.value });
         }}
-        className="h-10 min-w-0 max-w-full rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 sm:w-auto xl:w-36"
+        className="records-range-date h-10 min-w-0 max-w-full rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 sm:w-auto xl:w-36"
       />
       <input
         aria-label="To date"
@@ -7583,7 +7504,7 @@ function RangeToolbar({
           setPreset("custom");
           setRange({ ...range, to: event.target.value });
         }}
-        className="h-10 min-w-0 max-w-full rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 sm:w-auto xl:w-36"
+        className="records-range-date h-10 min-w-0 max-w-full rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 sm:w-auto xl:w-36"
       />
     </div>
   );

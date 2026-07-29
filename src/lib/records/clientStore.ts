@@ -266,6 +266,7 @@ export function useRecordsStore() {
         setStorageStatus("Private drafting storage.");
         setStorageError(null);
       }
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Records storage unavailable.";
       if (recordsStorageMode === "supabase") {
@@ -275,6 +276,7 @@ export function useRecordsStore() {
       }
       setStorageStatus(message);
       setStorageError(message);
+      return false;
     } finally {
       setHydrated(true);
     }

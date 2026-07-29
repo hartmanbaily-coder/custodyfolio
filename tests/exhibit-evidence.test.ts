@@ -24,7 +24,7 @@ describe("saving a compiled exhibit to Files", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    await saveScreenshotExhibitToFiles({
+    const saved = await saveScreenshotExhibitToFiles({
       request: {
         pdfFile: pdf as unknown as globalThis.File,
         sources: [{ id: "source-1", file: original as unknown as globalThis.File }],
@@ -44,6 +44,7 @@ describe("saving a compiled exhibit to Files", () => {
       },
       reloadDataset: async () => {
         reloads += 1;
+        return true;
       },
     });
 
@@ -53,6 +54,10 @@ describe("saving a compiled exhibit to Files", () => {
     expect(savedOriginal?.includeInReports).toBe(false);
     expect(savedPdf?.includeInReports).toBe(true);
     expect(savedPdf?.sourceEvidenceIds).toEqual([savedOriginal?.id]);
+    expect(saved).toEqual({
+      evidenceId: savedPdf?.id,
+      fileName: "compiled.pdf",
+    });
     expect(reloads).toBe(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -96,6 +101,7 @@ describe("saving a compiled exhibit to Files", () => {
       },
       reloadDataset: async () => {
         reloads += 1;
+        return true;
       },
     });
 
@@ -103,6 +109,39 @@ describe("saving a compiled exhibit to Files", () => {
     expect(dataset.evidenceItems[0]?.derivationType).toBe("screenshot_exhibit");
     expect(reloads).toBe(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not report success when Files cannot reload the confirmed PDF", async () => {
+    let dataset = createEmptyRecordsDatasetForUser("owner-1", "owner@example.com");
+    const pdf = new File(["%PDF-1.7\ncompiled"], "compiled.pdf", {
+      type: "application/pdf",
+    });
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({ dataset }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    ));
+
+    await expect(saveScreenshotExhibitToFiles({
+      request: {
+        pdfFile: pdf as unknown as globalThis.File,
+        sources: [],
+        saveOriginals: false,
+        metadata: { includeInReports: true },
+      },
+      caseId: "case-1",
+      userId: "owner-1",
+      uploadFile: async (_file, evidenceId) => ({
+        storedFileName: `${evidenceId}.pdf`,
+        storagePath: `owner-1/case-1/${evidenceId}/${evidenceId}.pdf`,
+        malwareScanStatus: "clean",
+      }),
+      updateDataset: async (updater) => {
+        dataset = updater(dataset);
+      },
+      reloadDataset: async () => false,
+    })).rejects.toThrow("The PDF was saved, but Files could not reload it.");
   });
 
   it("cleans up a temporary first upload when a later upload fails before metadata is saved", async () => {
