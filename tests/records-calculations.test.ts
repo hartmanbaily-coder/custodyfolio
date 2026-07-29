@@ -34,6 +34,8 @@ import {
 import type { CalendarEvent, ReportType } from "@/lib/records/types";
 import {
   childSupportOrderSchema,
+  evidenceFileName,
+  validateEvidenceDisplayFileName,
   validateEvidenceFile,
 } from "@/lib/records/validation";
 
@@ -377,6 +379,34 @@ describe("privacy and safety helpers", () => {
         fileSize: 100,
       })
     ).toMatchObject({ ok: false });
+  });
+
+  it("validates editable evidence names while preserving the original file type", () => {
+    expect(
+      validateEvidenceDisplayFileName({
+        displayFileName: "July school exchange.pdf",
+        originalFileName: "IMG_4821.pdf",
+      })
+    ).toEqual({ ok: true, fileName: "July school exchange.pdf" });
+    expect(
+      validateEvidenceDisplayFileName({
+        displayFileName: "July school exchange.png",
+        originalFileName: "IMG_4821.pdf",
+      })
+    ).toEqual({ ok: false, error: "Keep the original .pdf file extension." });
+    expect(
+      validateEvidenceDisplayFileName({
+        displayFileName: "../July school exchange.pdf",
+        originalFileName: "IMG_4821.pdf",
+      })
+    ).toMatchObject({ ok: false });
+    expect(
+      evidenceFileName({
+        originalFileName: "IMG_4821.pdf",
+        displayFileName: "July school exchange.pdf",
+      })
+    ).toBe("July school exchange.pdf");
+    expect(evidenceFileName({ originalFileName: "IMG_4821.pdf" })).toBe("IMG_4821.pdf");
   });
 
   it("keeps generated report language neutral", () => {

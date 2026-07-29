@@ -10,6 +10,7 @@ import {
   getEvidenceBucket,
 } from "@/lib/records/evidenceStorage";
 import type { EvidenceItem } from "@/lib/records/types";
+import { evidenceFileName } from "@/lib/records/validation";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
 
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
     headers: {
       "Cache-Control": "no-store",
       "Content-Disposition": `attachment; filename="${safeDownloadName(
-        storedEvidence.originalFileName || storedEvidence.storedFileName || "evidence-file"
+        evidenceFileName(storedEvidence) || storedEvidence.storedFileName || "evidence-file"
       )}"`,
       "Content-Type": storedEvidence.fileType || data.type || "application/octet-stream",
     },

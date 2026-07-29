@@ -96,6 +96,7 @@ export function projectSharedCaseDataset(
         ?.map((id) => evidenceIds.get(id))
         .filter((id): id is string => Boolean(id)),
       originalFileName: record.originalFileName,
+      displayFileName: record.displayFileName,
       fileType: record.fileType,
       fileSize: record.fileSize,
       uploadedAt: record.uploadedAt,
@@ -161,6 +162,7 @@ export function projectSharedCaseDataset(
       relatedChildSupportPaymentId: record.relatedChildSupportPaymentId,
       relatedExpenseId: record.relatedExpenseId,
       originalFileName: record.originalFileName,
+      displayFileName: record.displayFileName,
       storedFileName: "",
       fileType: record.fileType,
       fileSize: record.fileSize,

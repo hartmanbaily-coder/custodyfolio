@@ -16,6 +16,7 @@ import type {
   PaymentStatus,
   RecordsDataset,
 } from "./types";
+import { evidenceFileName } from "./validation";
 
 export const generatedReportForbiddenTerms = [
   "violation",
@@ -908,7 +909,7 @@ export function buildCalendarEvents(
         time: timeFromIso(item.uploadedAt),
         sortAt: item.evidenceDate ? buildSortAt(item.evidenceDate, timeFromIso(item.uploadedAt)) : item.uploadedAt,
         type: "evidence_item" as const,
-        title: `File attachment: ${item.originalFileName}`,
+        title: `File attachment: ${evidenceFileName(item)}`,
         detail: item.description,
         summary: joinParts([
           `File type: ${item.fileType}`,
@@ -1162,7 +1163,7 @@ export function buildEvidenceIndex(items: EvidenceItem[], range: DateRange) {
     .filter((item) => !item.evidenceDate || isWithinDateRange(item.evidenceDate, range))
     .map((item, index) => ({
       index: index + 1,
-      fileName: item.originalFileName,
+      fileName: evidenceFileName(item),
       evidenceDate: item.evidenceDate || "",
       description: item.description || "",
       tags: item.tags.join(", "),

@@ -1183,9 +1183,21 @@ test("saved information records expose working edit and delete controls", async 
   const evidenceEditor = page.locator("form").filter({
     has: page.getByRole("button", { name: "Update file information" }),
   });
+  await evidenceEditor.getByLabel("File name").fill("May child support portal.pdf");
+  await evidenceEditor.getByRole("button", { name: "Update file information" }).click();
+  await expect(page.getByRole("status")).toContainText("Keep the original .png file extension");
+
+  await evidenceEditor.getByLabel("File name").fill("May child support portal.png");
   await evidenceEditor.getByLabel("Description").fill("Updated file description");
   await evidenceEditor.getByRole("button", { name: "Update file information" }).click();
   await expect(page.getByRole("status")).toContainText("File information updated");
+  await expect(page.getByText("May child support portal.png", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Original upload: demo-payment-portal-screenshot.png", { exact: true })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Edit file information May child support portal.png" })
+  ).toBeVisible();
   await expect(page.getByText("Updated file description", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Expenses", exact: true }).click();

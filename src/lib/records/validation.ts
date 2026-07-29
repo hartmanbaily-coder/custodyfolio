@@ -348,6 +348,57 @@ export function getFileExtension(fileName: string) {
   return parts.length > 1 ? parts.at(-1) || "" : "";
 }
 
+export function evidenceFileName(
+  item: Pick<EvidenceItem, "originalFileName" | "displayFileName">
+) {
+  return item.displayFileName?.trim() || item.originalFileName;
+}
+
+export function validateEvidenceDisplayFileName(input: {
+  displayFileName: string;
+  originalFileName: string;
+}) {
+  const displayFileName = input.displayFileName.trim();
+  if (!displayFileName) {
+    return { ok: false as const, error: "Enter a file name." };
+  }
+  if (displayFileName.length > 180) {
+    return { ok: false as const, error: "File name must be 180 characters or fewer." };
+  }
+  if (displayFileName === "." || displayFileName === "..") {
+    return { ok: false as const, error: "Enter a valid file name." };
+  }
+  if (/[<>:"/\\|?*\u0000-\u001f\u007f]/.test(displayFileName)) {
+    return {
+      ok: false as const,
+      error: 'File name cannot include < > : " / \\ | ? * or control characters.',
+    };
+  }
+  if (displayFileName.endsWith(".") || displayFileName.endsWith(" ")) {
+    return { ok: false as const, error: "File name cannot end with a period or space." };
+  }
+
+  const originalExtension = getFileExtension(input.originalFileName);
+  const displayExtension = getFileExtension(displayFileName);
+  if (displayExtension !== originalExtension) {
+    return {
+      ok: false as const,
+      error: originalExtension
+        ? `Keep the original .${originalExtension} file extension.`
+        : "The file extension cannot be changed.",
+    };
+  }
+
+  const baseName = originalExtension
+    ? displayFileName.slice(0, -(originalExtension.length + 1)).trim()
+    : displayFileName;
+  if (!baseName) {
+    return { ok: false as const, error: "Enter a name before the file extension." };
+  }
+
+  return { ok: true as const, fileName: displayFileName };
+}
+
 const evidenceMimeTypeByExtension: Record<string, string> = {
   csv: "text/csv",
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
