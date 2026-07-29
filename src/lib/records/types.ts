@@ -251,6 +251,7 @@ export interface EvidenceItem {
   relatedChildSupportPaymentId?: Id;
   relatedExpenseId?: Id;
   originalFileName: string;
+  displayFileName?: string;
   storedFileName: string;
   fileType: string;
   fileSize: number;

@@ -71,6 +71,7 @@ describe("attorney read-only projection", () => {
     });
     dataset.evidenceItems[0] = {
       ...dataset.evidenceItems[0],
+      displayFileName: "May exchange evidence.pdf",
       storagePath: `${demoUserId}/${demoCaseId}/private/path`,
       storageSha256: "secret-hash",
       storageBucket: "private-bucket",
@@ -93,6 +94,10 @@ describe("attorney read-only projection", () => {
     expect(serialized).not.toContain(demoUserId);
     expect(projection?.dataset.auditLogs).toEqual([]);
     expect(projection?.evidence[0].downloadHandle).toContain("opaque-");
+    expect(projection?.evidence[0].displayFileName).toBe("May exchange evidence.pdf");
+    expect(projection?.evidence[0].originalFileName).toBe(
+      dataset.evidenceItems[0].originalFileName
+    );
   });
 });
 

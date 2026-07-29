@@ -9,6 +9,7 @@ import {
 } from "@/lib/records/evidenceStorage";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
+import { evidenceFileName } from "@/lib/records/validation";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
   return new NextResponse(data, {
     headers: {
       "Cache-Control": "no-store, private",
-      "Content-Disposition": `attachment; filename="${safeDownloadName(storedEvidence.originalFileName)}"`,
+      "Content-Disposition": `attachment; filename="${safeDownloadName(evidenceFileName(storedEvidence))}"`,
       "Content-Type": storedEvidence.fileType || data.type || "application/octet-stream",
       "X-Content-Type-Options": "nosniff",
     },

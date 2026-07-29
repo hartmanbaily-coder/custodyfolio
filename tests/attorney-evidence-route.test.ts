@@ -82,6 +82,7 @@ describe("attorney evidence download authorization", () => {
         userId: "owner-1",
         caseId: "case-1",
         originalFileName: "shared-file.pdf",
+        displayFileName: "May exchange evidence.pdf",
         fileType: "application/pdf",
         storagePath: "owner-1/case-1/evidence-1/evidence-1.pdf",
         malwareScanStatus: "clean",
@@ -116,6 +117,9 @@ describe("attorney evidence download authorization", () => {
     }));
     expect(recordAttorneyAccessEvent.mock.calls[0][0]).not.toHaveProperty("metadata");
     expect(response.headers.get("Cache-Control")).toContain("no-store");
+    expect(response.headers.get("Content-Disposition")).toContain(
+      'filename="May exchange evidence.pdf"'
+    );
   });
 
   it("returns a privacy-safe response before looking up evidence when the grant is unavailable", async () => {

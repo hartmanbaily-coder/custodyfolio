@@ -114,9 +114,11 @@ import {
   dateNoteSchema,
   exchangeLogSchema,
   exchangeRuleSchema,
+  evidenceFileName,
   expenseItemSchema,
   normalizeEvidenceFileType,
   timezoneSchema,
+  validateEvidenceDisplayFileName,
   validateEvidenceFile,
 } from "@/lib/records/validation";
 import {
@@ -5288,7 +5290,7 @@ function EvidenceView({
       }
 
       const blob = await response.blob();
-      await downloadBlobFile(item.originalFileName, blob);
+      await downloadBlobFile(evidenceFileName(item), blob);
       flash("File downloaded.");
     } catch (error) {
       flash(error instanceof Error ? error.message : "File download failed.");
@@ -5299,7 +5301,8 @@ function EvidenceView({
 
   function downloadEvidenceMetadata() {
     const rows = evidence.map((item) => ({
-      file_name: item.originalFileName,
+      file_name: evidenceFileName(item),
+      original_upload_name: item.originalFileName,
       evidence_date: item.evidenceDate || "",
       uploaded_at: item.uploadedAt,
       file_type: item.fileType,
@@ -5391,6 +5394,12 @@ function EvidenceView({
   function updateEvidenceMetadata(event: FormEvent<HTMLFormElement>, item: EvidenceItem) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    const renamedFile = validateEvidenceDisplayFileName({
+      displayFileName: text(formData, "displayFileName"),
+      originalFileName: item.originalFileName,
+    });
+    if (!renamedFile.ok) return flash(renamedFile.error);
+
     const now = nowIso();
     updateDataset((current) =>
       withAudit(
@@ -5400,6 +5409,10 @@ function EvidenceView({
             record.id === item.id && record.userId === userId && record.caseId === caseId
               ? {
                   ...record,
+                  displayFileName:
+                    renamedFile.fileName === record.originalFileName
+                      ? undefined
+                      : renamedFile.fileName,
                   evidenceDate: text(formData, "evidenceDate") || undefined,
                   description: text(formData, "description") || undefined,
                   tags: parseTags(text(formData, "tags")),
@@ -5415,7 +5428,8 @@ function EvidenceView({
           action: "updated",
           entityType: "evidenceItem",
           entityId: item.id,
-          metadataSummary: "File metadata updated without file contents in audit metadata.",
+          metadataSummary:
+            "User-facing file name and metadata updated. Original upload name, stored file, and contents unchanged.",
         }
       )
     );
@@ -5555,8 +5569,13 @@ function EvidenceView({
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <h3 className="break-words text-sm font-semibold text-slate-950 [overflow-wrap:anywhere]">
-                        {item.originalFileName}
+                        {evidenceFileName(item)}
                       </h3>
+                      {item.displayFileName ? (
+                        <p className="mt-1 break-words text-xs leading-5 text-slate-500 [overflow-wrap:anywhere]">
+                          Original upload: {item.originalFileName}
+                        </p>
+                      ) : null}
                       <p className="mt-1 text-xs leading-5 text-slate-500">
                         {item.evidenceDate || item.uploadedAt.slice(0, 10)} -{" "}
                         {Math.round(item.fileSize / 1024)} KB - {item.fileType}
@@ -5564,7 +5583,7 @@ function EvidenceView({
                     </div>
                     <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
                       <select
-                        aria-label={`Review status for ${item.originalFileName}`}
+                        aria-label={`Review status for ${evidenceFileName(item)}`}
                         value={item.reviewStatus || "needs_review"}
                         onChange={(event) =>
                           updateEvidenceReviewStatus(item, event.target.value as EvidenceReviewStatus)
@@ -5595,12 +5614,12 @@ function EvidenceView({
                         Print sheet
                       </button>
                       <EditButton
-                        ariaLabel={`Edit file information ${item.originalFileName}`}
+                        ariaLabel={`Edit file information ${evidenceFileName(item)}`}
                         onClick={() => setEditingEvidenceId(item.id)}
                       />
                       <DeleteButton
                         label="Delete"
-                        ariaLabel={`Delete file ${item.originalFileName}`}
+                        ariaLabel={`Delete file ${evidenceFileName(item)}`}
                         disabled={busyEvidenceId === item.id}
                         onClick={() => void deleteEvidence(item)}
                       />
@@ -5621,6 +5640,19 @@ function EvidenceView({
                       onSubmit={(event) => updateEvidenceMetadata(event, item)}
                       className="grid gap-3 rounded-md border border-teal-200 bg-teal-50/40 p-3"
                     >
+                      <Field label="File name">
+                        <input
+                          name="displayFileName"
+                          className="input"
+                          defaultValue={evidenceFileName(item)}
+                          maxLength={180}
+                          required
+                        />
+                      </Field>
+                      <p className="text-xs leading-5 text-slate-600">
+                        Keep the existing file extension. Renaming changes the displayed and
+                        downloaded name; the original upload name and stored file stay preserved.
+                      </p>
                       <Field label="Record date">
                         <input name="evidenceDate" type="date" className="input" defaultValue={item.evidenceDate || ""} />
                       </Field>
@@ -8562,8 +8594,12 @@ function buildReportPrintHtml(preview: ReportPreview, range: DateRange) {
 }
 
 function buildEvidencePrintHtml(item: EvidenceItem) {
+  const fileName = evidenceFileName(item);
   const rows = [
-    ["File name", item.originalFileName],
+    ["File name", fileName],
+    ...(fileName !== item.originalFileName
+      ? [["Original uploaded name", item.originalFileName]]
+      : []),
     ["Record date", item.evidenceDate || ""],
     ["Uploaded", item.uploadedAt],
     ["File type", item.fileType],
@@ -8579,7 +8615,7 @@ function buildEvidencePrintHtml(item: EvidenceItem) {
   return `<!doctype html>
     <html>
       <head>
-        <title>File Sheet - ${escapeHtml(item.originalFileName)}</title>
+        <title>File Sheet - ${escapeHtml(fileName)}</title>
         <style>
           @page { margin: 0.55in; }
           body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #0f172a; margin: 0; }
