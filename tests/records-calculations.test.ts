@@ -11,7 +11,10 @@ import {
   calculateExchangeStats,
   calculateExchangeTiming,
   calculateExpenseStats,
+  childSupportHistoryRange,
+  childSupportObligationChartRows,
   containsForbiddenGeneratedTerm,
+  expenseHistoryRange,
   filterOwnedCaseRecords,
   generateChildSupportObligations,
   generateExpectedExchangeEvents,
@@ -158,6 +161,58 @@ describe("records calculations", () => {
     });
   });
 
+  it("charts complete support history instead of only the current report month", () => {
+    const dataset = createRecordsSeed();
+    const seededOrder = dataset.childSupportOrders[0];
+    const seededPayment = dataset.childSupportPayments[0];
+    if (!seededOrder || !seededPayment) throw new Error("Child support seed records are missing.");
+
+    const order = {
+      ...seededOrder,
+      id: "support-order-history",
+      orderedAmount: 674,
+      effectiveStartDate: "2026-05-01",
+      firstPaymentDueDate: "2026-05-01",
+    };
+    const payments = ["2026-05-01", "2026-07-01", "2026-08-01"].map(
+      (dueDate, index) => ({
+        ...seededPayment,
+        id: `support-payment-history-${index}`,
+        childSupportOrderId: order.id,
+        dueDate,
+        amountDue: 674,
+        amountPaid: 0,
+        paymentDate: dueDate,
+        paymentStatus: index === 2 ? ("paid" as const) : ("late" as const),
+      })
+    );
+
+    const historyRange = childSupportHistoryRange(
+      [order],
+      payments,
+      "2026-07-29"
+    );
+    const obligations = generateChildSupportObligations(
+      [order],
+      payments,
+      historyRange,
+      "2026-07-29"
+    );
+    const chartRows = childSupportObligationChartRows(
+      obligations,
+      historyRange.to
+    );
+
+    expect(historyRange).toEqual({ from: "2026-05-01", to: "2026-08-01" });
+    expect(chartRows.map((row) => row.month)).toEqual([
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08",
+    ]);
+    expect(chartRows).toHaveLength(4);
+  });
+
   it("keeps monthly and semi monthly obligation dates anchored to the entered due dates", () => {
     const dataset = createRecordsSeed();
     const seededOrder = dataset.childSupportOrders[0];
@@ -243,6 +298,33 @@ describe("records calculations", () => {
     expect(stats.reimbursementReceived).toBeCloseTo(17.5);
     expect(stats.unpaidReimbursement).toBeCloseTo(101.72);
     expect(stats.byCategory.map((row) => row.category)).toContain("school");
+  });
+
+  it("includes earlier saved expenses in the expense history chart and section export", () => {
+    const dataset = createRecordsSeed();
+    const expenses = filterOwnedCaseRecords(dataset.expenseItems, demoUserId, demoCaseId);
+    const historyRange = expenseHistoryRange(expenses, "2026-07-29");
+    const stats = calculateExpenseStats(expenses, historyRange);
+    const packet = buildSectionExportPacket(
+      dataset,
+      demoUserId,
+      demoCaseId,
+      historyRange,
+      "expenses"
+    );
+    const expenseTable = packet.tables.find((table) => table.title === "Expense records");
+    const categoryChart = packet.charts.find((chart) => chart.title === "Expenses by category");
+
+    expect(historyRange).toEqual({ from: "2026-05-03", to: "2026-07-29" });
+    expect(stats.totalExpenses).toBeCloseTo(119.22);
+    expect(stats.expenseCount).toBe(2);
+    expect(expenseTable?.rows).toHaveLength(2);
+    expect(categoryChart?.rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: "school", value: 84.22 }),
+        expect.objectContaining({ label: "medical", value: 35 }),
+      ])
+    );
   });
 
   it("keeps custody day colors off the timeline while surfacing dated transition exchanges", () => {

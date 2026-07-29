@@ -12,8 +12,10 @@ import {
   buildCustodyDayMap,
   calculateChildSupportObligationStats,
   calculateExpenseStats,
+  childSupportHistoryRange,
   childSupportObligationChartRows,
   daysBetween,
+  expenseHistoryRange,
   exchangeChartRows,
   formatMoney,
   generateChildSupportObligations,
@@ -213,7 +215,7 @@ const recordsTimezoneOptions = [
   { value: "UTC", label: "UTC — Coordinated Universal Time" },
 ];
 type Session = RecordsSession;
-type SectionExportFormat = "pdf" | "csv" | "json";
+type SectionExportFormat = "pdf" | "csv";
 type LoginFlowResult =
   | { status: "complete" }
   | { status: "mfa_required" }
@@ -563,9 +565,41 @@ export default function RecordsApp() {
     () => calculateChildSupportObligationStats(supportObligations, supportAsOfDate),
     [supportObligations, supportAsOfDate]
   );
+  const supportHistoryRange = useMemo(
+    () =>
+      childSupportHistoryRange(
+        selected.childSupportOrders,
+        selected.childSupportPayments,
+        supportAsOfDate
+      ),
+    [
+      selected.childSupportOrders,
+      selected.childSupportPayments,
+      supportAsOfDate,
+    ]
+  );
+  const supportHistoryObligations = useMemo(
+    () =>
+      generateChildSupportObligations(
+        selected.childSupportOrders,
+        selected.childSupportPayments,
+        supportHistoryRange,
+        supportAsOfDate
+      ),
+    [
+      selected.childSupportOrders,
+      selected.childSupportPayments,
+      supportHistoryRange,
+      supportAsOfDate,
+    ]
+  );
+  const expensesRange = useMemo(
+    () => expenseHistoryRange(selected.expenseItems, supportAsOfDate),
+    [selected.expenseItems, supportAsOfDate]
+  );
   const expenseStats = useMemo(
-    () => calculateExpenseStats(selected.expenseItems, range),
-    [selected.expenseItems, range]
+    () => calculateExpenseStats(selected.expenseItems, expensesRange),
+    [selected.expenseItems, expensesRange]
   );
   const calendarEvents = useMemo(
     () => buildCalendarEvents(dataset, userId, effectiveCaseId, range),
@@ -584,8 +618,12 @@ export default function RecordsApp() {
     [calendarEvents]
   );
   const supportRows = useMemo(
-    () => childSupportObligationChartRows(supportObligations, supportAsOfDate),
-    [supportObligations, supportAsOfDate]
+    () =>
+      childSupportObligationChartRows(
+        supportHistoryObligations,
+        supportHistoryRange.to
+      ),
+    [supportHistoryObligations, supportHistoryRange.to]
   );
   const reportPreview = useMemo(
     () => buildReportPreview(dataset, userId, effectiveCaseId, range, reportType),
@@ -599,9 +637,9 @@ export default function RecordsApp() {
       notes: buildSectionExportPacket(dataset, userId, effectiveCaseId, range, "notes"),
       evidence: buildSectionExportPacket(dataset, userId, effectiveCaseId, range, "evidence"),
       childSupport: buildSectionExportPacket(dataset, userId, effectiveCaseId, range, "child_support"),
-      expenses: buildSectionExportPacket(dataset, userId, effectiveCaseId, range, "expenses"),
+      expenses: buildSectionExportPacket(dataset, userId, effectiveCaseId, expensesRange, "expenses"),
     }),
-    [dataset, userId, effectiveCaseId, range, calendarViewRange]
+    [dataset, userId, effectiveCaseId, range, calendarViewRange, expensesRange]
   );
 
   function flash(message: string) {
@@ -626,13 +664,7 @@ export default function RecordsApp() {
 
     const slug = `${packet.id}-${packet.range.from}-${packet.range.to}`;
 
-    if (format === "json") {
-      downloadTextFile(
-        `my_custody_case_${slug}.json`,
-        JSON.stringify(packet, null, 2),
-        "application/json"
-      );
-    } else if (format === "csv") {
+    if (format === "csv") {
       downloadTextFile(`my_custody_case_${slug}.csv`, sectionExportToCsv(packet), "text/csv");
     } else {
       try {
@@ -6176,6 +6208,10 @@ function ChildSupportView({
           />
 
           <Panel title="Payment history by month" action="Due vs paid">
+            <p className="mb-3 text-xs leading-5 text-slate-500">
+              Full order history through today or the latest saved payment month. Scheduled months
+              without a recorded payment remain visible.
+            </p>
             <SupportTrendLine rows={supportRows} />
           </Panel>
           <SupportObligationsPanel obligations={obligations} />
@@ -6440,8 +6476,12 @@ function ExpensesView({
 
   return (
     <div className="space-y-4">
+      <p className="text-sm leading-6 text-slate-600">
+        Totals, category chart, and the lawyer/court export include all saved expense records.
+        Use Reports when you need a custom date range.
+      </p>
       <section className="grid gap-3 md:grid-cols-4">
-        <StatCard label="Total expenses" value={formatMoney(expenseStats.totalExpenses)} detail="Selected range" />
+        <StatCard label="Total expenses" value={formatMoney(expenseStats.totalExpenses)} detail="All saved records" />
         <StatCard label="Reimbursement requested" value={formatMoney(expenseStats.reimbursementRequested)} detail="User entered records" />
         <StatCard label="Reimbursement received" value={formatMoney(expenseStats.reimbursementReceived)} detail="User entered records" />
         <StatCard label="Unpaid reimbursement" value={formatMoney(expenseStats.unpaidReimbursement)} detail="Based on records" tone="amber" />
@@ -6621,30 +6661,6 @@ function ReportsView({
     flash("CSV report downloaded.");
   }
 
-  function downloadJson() {
-    if (!exportReviewComplete) {
-      flash("Complete the export review first.");
-      return;
-    }
-    const body = JSON.stringify({ report: preview, dataScope: { userId, caseId, range } }, null, 2);
-    downloadTextFile(
-      `my_custody_case_records_${reportType}_${range.from}_${range.to}.json`,
-      body,
-      "application/json"
-    );
-    updateDataset((current) =>
-      withAudit(current, {
-        userId,
-        caseId,
-        action: "exported",
-        entityType: "report",
-        entityId: reportType,
-        metadataSummary: "Structured report JSON exported without sensitive row contents in audit metadata.",
-      })
-    );
-    flash("Structured report JSON downloaded.");
-  }
-
   async function printPdf() {
     if (!exportReviewComplete) {
       flash("Complete the export review first.");
@@ -6720,9 +6736,6 @@ function ReportsView({
           <button className="btn-secondary" type="button" onClick={() => void printPdf()} disabled={!exportReviewComplete}>
             Print or save PDF
           </button>
-          <button className="btn-secondary" type="button" onClick={downloadJson} disabled={!exportReviewComplete}>
-            Download report JSON
-          </button>
           <p className="text-xs leading-5 text-slate-500">
             CSV contains the report&apos;s dated record rows in a clean table. PDF output is a
             complete letter size file that can be printed or saved. Downloaded reports leave
@@ -6771,7 +6784,7 @@ function ReportsView({
                 <ReportPrintRows headers={table.headers} rows={table.rows.slice(0, 24)} />
                 {table.rows.length > 24 && (
                   <p className="mt-2 text-xs text-slate-500">
-                    {table.rows.length - 24} more rows included in CSV/JSON export.
+                    {table.rows.length - 24} more rows included in the complete CSV and PDF exports.
                   </p>
                 )}
               </div>
@@ -7035,7 +7048,18 @@ function SettingsView({
       expenseItems: selected.expenseItems,
       auditLogs: selected.auditLogs,
     };
-    downloadTextFile("my_custody_case_records_user_export.json", JSON.stringify(scoped, null, 2), "application/json");
+    const backup = {
+      format: "custody_folio_selected_case_backup",
+      schemaVersion: 1,
+      exportedAt: nowIso(),
+      data: scoped,
+    };
+    downloadTextFile(
+      `custody_folio_selected_case_backup_${formatLocalDate(new Date(), profile?.timezone)}.json`,
+      JSON.stringify(backup, null, 2),
+      "application/json"
+    );
+    flash("Advanced JSON data backup downloaded.");
   }
 
   return (
@@ -7248,10 +7272,31 @@ function SettingsView({
         </Panel>
 
         <Panel title="User data controls" action="Private by default">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <button type="button" onClick={exportData} className="btn-secondary">
-              Export my data
-            </button>
+          <details
+            data-testid="advanced-data-backup"
+            className="group overflow-hidden rounded-md border border-slate-200 bg-slate-50"
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-semibold text-slate-900 marker:content-none">
+              <span>Advanced data backup</span>
+              <span
+                className="shrink-0 text-slate-500 transition-transform group-open:rotate-180"
+                aria-hidden="true"
+              >
+                <ChevronDownIcon />
+              </span>
+            </summary>
+            <div className="space-y-3 border-t border-slate-200 p-3">
+              <p className="text-xs leading-5 text-slate-600">
+                Download a machine-readable JSON backup of the selected case. Keep it for archival
+                or future migration; it is not formatted for court or attorney reading, and Custody
+                Folio cannot restore it automatically yet.
+              </p>
+              <button type="button" onClick={exportData} className="btn-secondary">
+                Download JSON backup
+              </button>
+            </div>
+          </details>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <button type="button" onClick={deleteCase} className="btn-secondary">
               Delete selected case
             </button>
@@ -7733,7 +7778,7 @@ function SectionExportPanel({
           </ul>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2">
           <button
             type="button"
             disabled={!hasRecords}
@@ -7749,14 +7794,6 @@ function SectionExportPanel({
             onClick={() => void onExport(packet, "csv")}
           >
             Download CSV
-          </button>
-          <button
-            type="button"
-            disabled={!hasRecords}
-            className="btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => void onExport(packet, "json")}
-          >
-            Download JSON
           </button>
         </div>
         {!hasRecords && (

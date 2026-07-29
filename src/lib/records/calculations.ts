@@ -525,6 +525,46 @@ export function calculateChildSupportObligationStats(
   };
 }
 
+export function childSupportHistoryRange(
+  orders: ChildSupportOrder[],
+  payments: ChildSupportPayment[],
+  asOfDate = toDateString(new Date())
+): DateRange {
+  const dates = [
+    asOfDate,
+    ...orders.flatMap((order) =>
+      [
+        order.effectiveStartDate,
+        order.firstPaymentDueDate,
+        order.secondPaymentDueDate,
+      ].filter((date): date is string => Boolean(date))
+    ),
+    ...payments.map((payment) => payment.dueDate),
+  ].sort();
+
+  return {
+    from: dates[0] || asOfDate,
+    to: dates.at(-1) || asOfDate,
+  };
+}
+
+export function expenseHistoryRange(
+  expenses: ExpenseItem[],
+  asOfDate = toDateString(new Date())
+): DateRange {
+  const dates = [
+    asOfDate,
+    ...expenses
+      .map((expense) => expense.expenseDate)
+      .filter((date): date is string => Boolean(date)),
+  ].sort();
+
+  return {
+    from: dates[0] || asOfDate,
+    to: dates.at(-1) || asOfDate,
+  };
+}
+
 export function childSupportObligationChartRows(
   obligations: ChildSupportObligation[],
   asOfDate = toDateString(new Date())

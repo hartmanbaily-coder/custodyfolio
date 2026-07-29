@@ -24,8 +24,12 @@
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Custody Folio uses the camera only when you choose to photograph evidence or records for upload.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Custody Folio uses Face ID to protect access to your private records workspace.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Custody Folio accesses your photo library only when you choose images to attach to your records or create a PDF.</string>
 	<key>WKAppBoundDomains</key>
 	<array>
 		<string>custodyfolio.com</string>
