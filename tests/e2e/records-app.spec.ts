@@ -457,6 +457,9 @@ test("mobile quick issue saves directly to editable report notes", async ({ page
 test("mobile screenshot exhibit builder preserves order and generates a protected local PDF", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => {
+    window.createImageBitmap = async () => {
+      throw new Error("Load failed");
+    };
     window.localStorage.setItem(
       "l2f.records.session.v1",
       JSON.stringify({

@@ -245,8 +245,14 @@ async function loadCanvasImage(blob: Blob): Promise<{
   close: () => void;
 }> {
   if (typeof createImageBitmap === "function") {
-    const bitmap = await createImageBitmap(blob);
-    return { image: bitmap, close: () => bitmap.close() };
+    try {
+      const bitmap = await createImageBitmap(blob);
+      return { image: bitmap, close: () => bitmap.close() };
+    } catch {
+      // Some iOS WebKit versions expose createImageBitmap but reject valid
+      // Photos screenshots with "Load failed". Fall through to the broadly
+      // supported HTMLImageElement decoder instead of surfacing that raw error.
+    }
   }
   const url = URL.createObjectURL(blob);
   const image = new Image();
