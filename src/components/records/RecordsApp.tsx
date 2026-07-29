@@ -5039,10 +5039,16 @@ function ImportView({
           </form>
         </Panel>
 
-        <details className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_5px_18px_rgba(15,23,42,0.07)] xl:col-span-2">
+        <details className="group overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_5px_18px_rgba(15,23,42,0.07)] xl:col-span-2">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-semibold text-slate-900 marker:content-none sm:px-5">
             <span>Optional calendar schedule setup</span>
-            <span className="text-xs font-medium text-slate-500">Open only when needed</span>
+            <span
+              data-testid="calendar-schedule-setup-chevron"
+              className="shrink-0 text-slate-500 transition-transform group-open:rotate-180"
+              aria-hidden="true"
+            >
+              <ChevronDownIcon />
+            </span>
           </summary>
           <div className="space-y-5 border-t border-slate-200 p-4 sm:p-5">
             <p className="text-xs leading-5 text-slate-500">
