@@ -526,6 +526,32 @@ test("mobile screenshot exhibit builder preserves order and generates a protecte
   expect(fitsViewport).toBe(true);
 });
 
+test("lawyer court summary and charts export a populated PDF file", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/records");
+  await page.getByRole("button", { name: "Enter records workspace" }).click();
+  await page.getByLabel("From date").fill("2026-05-01", { force: true });
+  await page.getByLabel("To date").fill("2026-06-15", { force: true });
+  await page.locator("nav").getByRole("button", { name: /^Timeline/ }).click();
+
+  const exportPanel = page.locator("section").filter({
+    has: page.getByRole("heading", { name: "Lawyer/court export", exact: true }),
+  });
+  await expect(exportPanel.getByText("Timeline records by type", { exact: true })).toBeVisible();
+
+  const downloadPromise = page.waitForEvent("download");
+  await exportPanel.getByRole("button", { name: "Print / save PDF" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe(
+    "my_custody_case_timeline-2026-05-01-2026-06-15.pdf"
+  );
+  const downloadedPdfPath = await download.path();
+  expect(downloadedPdfPath).not.toBeNull();
+  const downloadedPdf = await readFile(downloadedPdfPath!);
+  expect(downloadedPdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+  expect(downloadedPdf.byteLength).toBeGreaterThan(5_000);
+});
+
 test("mobile exchange status indicators have readable horizontal spacing", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/records");

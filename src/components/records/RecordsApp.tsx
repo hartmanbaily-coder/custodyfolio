@@ -71,9 +71,12 @@ import {
   reportsTabReportTypes,
   rowsToCsv,
   sectionExportToCsv,
-  type ReportPreview,
   type SectionExportPacket,
 } from "@/lib/records/reports";
+import {
+  generatePrintableReportPdf,
+  printableReportPacket,
+} from "@/lib/records/reportPdf";
 import {
   buildDateRangePreset,
   buildMonthDays,
@@ -612,7 +615,10 @@ export default function RecordsApp() {
     }, 2800);
   }
 
-  function exportSectionPacket(packet: SectionExportPacket, format: SectionExportFormat) {
+  async function exportSectionPacket(
+    packet: SectionExportPacket,
+    format: SectionExportFormat
+  ) {
     if (!packet.tables.some((table) => table.rows.length > 0)) {
       flash("No records match the selected date range. Adjust the range before exporting.");
       return;
@@ -629,16 +635,12 @@ export default function RecordsApp() {
     } else if (format === "csv") {
       downloadTextFile(`my_custody_case_${slug}.csv`, sectionExportToCsv(packet), "text/csv");
     } else {
-      const printHtml = buildSectionExportPrintHtml(packet);
-      if (!shareHtmlAsPdf(`my_custody_case_${slug}.pdf`, printHtml)) {
-        const printWindow = window.open("", "_blank", "noopener,noreferrer,width=1000,height=760");
-        if (!printWindow) {
-          flash("Popup blocked. Allow popups to print the section packet.");
-          return;
-        }
-
-        printWindow.document.write(printHtml);
-        printWindow.document.close();
+      try {
+        const generated = generatePrintableReportPdf(packet);
+        await downloadBlobFile(`my_custody_case_${slug}.pdf`, generated.blob);
+      } catch (error) {
+        flash(error instanceof Error ? error.message : "PDF export failed.");
+        return;
       }
     }
 
@@ -6637,21 +6639,22 @@ function ReportsView({
     flash("Structured report JSON downloaded.");
   }
 
-  function printPdf() {
+  async function printPdf() {
     if (!exportReviewComplete) {
       flash("Complete the export review first.");
       return;
     }
-    const printHtml = buildReportPrintHtml(preview, range);
-    if (!shareHtmlAsPdf(`my_custody_case_records_${reportType}_${range.from}_${range.to}.pdf`, printHtml)) {
-      const printWindow = window.open("", "_blank", "width=1000,height=760");
-      if (!printWindow) {
-        flash("Popup blocked. Allow popups to print the report.");
-        return;
-      }
-      printWindow.opener = null;
-      printWindow.document.write(printHtml);
-      printWindow.document.close();
+    try {
+      const generated = generatePrintableReportPdf(
+        printableReportPacket(preview, range)
+      );
+      await downloadBlobFile(
+        `my_custody_case_records_${reportType}_${range.from}_${range.to}.pdf`,
+        generated.blob
+      );
+    } catch (error) {
+      flash(error instanceof Error ? error.message : "PDF export failed.");
+      return;
     }
     updateDataset((current) =>
       withAudit(current, {
@@ -6660,9 +6663,10 @@ function ReportsView({
         action: "exported",
         entityType: "report",
         entityId: reportType,
-        metadataSummary: "Printable report opened for PDF save.",
+        metadataSummary: "Printable PDF report generated for print or save.",
       })
     );
+    flash("PDF report ready to print or save.");
   }
 
   return (
@@ -6707,15 +6711,16 @@ function ReportsView({
           <button className="btn-primary" type="button" onClick={downloadCsv} disabled={!exportReviewComplete}>
             Download CSV
           </button>
-          <button className="btn-secondary" type="button" onClick={printPdf} disabled={!exportReviewComplete}>
+          <button className="btn-secondary" type="button" onClick={() => void printPdf()} disabled={!exportReviewComplete}>
             Print or save PDF
           </button>
           <button className="btn-secondary" type="button" onClick={downloadJson} disabled={!exportReviewComplete}>
             Download report JSON
           </button>
           <p className="text-xs leading-5 text-slate-500">
-            CSV contains the report&apos;s dated record rows in a clean table. PDF output uses a letter size report
-            layout before opening your print dialog. Downloaded reports leave protected storage.
+            CSV contains the report&apos;s dated record rows in a clean table. PDF output is a
+            complete letter size file that can be printed or saved. Downloaded reports leave
+            protected storage.
           </p>
         </div>
       </Panel>
@@ -7691,7 +7696,10 @@ function SectionExportPanel({
   onExport,
 }: {
   packet: SectionExportPacket;
-  onExport: (packet: SectionExportPacket, format: SectionExportFormat) => void;
+  onExport: (
+    packet: SectionExportPacket,
+    format: SectionExportFormat
+  ) => void | Promise<void>;
 }) {
   const hasRecords = packet.tables.some((table) => table.rows.length > 0);
 
@@ -7724,7 +7732,7 @@ function SectionExportPanel({
             type="button"
             disabled={!hasRecords}
             className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => onExport(packet, "pdf")}
+            onClick={() => void onExport(packet, "pdf")}
           >
             Print / save PDF
           </button>
@@ -7732,7 +7740,7 @@ function SectionExportPanel({
             type="button"
             disabled={!hasRecords}
             className="btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => onExport(packet, "csv")}
+            onClick={() => void onExport(packet, "csv")}
           >
             Download CSV
           </button>
@@ -7740,7 +7748,7 @@ function SectionExportPanel({
             type="button"
             disabled={!hasRecords}
             className="btn-secondary disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => onExport(packet, "json")}
+            onClick={() => void onExport(packet, "json")}
           >
             Download JSON
           </button>
@@ -8463,136 +8471,6 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#039;");
 }
 
-type PrintableExportPacket = Pick<
-  SectionExportPacket,
-  "title" | "caseName" | "generatedAt" | "range" | "disclaimer" | "metrics" | "summaries" | "charts" | "tables" | "suggestedUses"
->;
-
-function buildSectionExportPrintHtml(packet: PrintableExportPacket) {
-  return `<!doctype html>
-    <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <title>${escapeHtml(packet.title)}</title>
-        <style>
-          @page { size: letter; margin: 0.55in; }
-          * { box-sizing: border-box; }
-          html { color-scheme: light; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-          body { background: #ffffff; color: #0f172a; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; }
-          h1 { font-size: 25px; letter-spacing: -0.02em; line-height: 1.15; margin: 4px 0 6px; }
-          h2 { color: #0f172a; font-size: 15px; line-height: 1.3; margin: 24px 0 9px; }
-          h3 { color: #0f172a; font-size: 13px; line-height: 1.35; margin: 0; }
-          p { color: #475569; font-size: 11px; line-height: 1.5; margin: 0; }
-          .report-header { border-top: 6px solid #0f766e; padding-top: 13px; }
-          .brand { color: #0f766e; font-size: 9px; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase; }
-          .range { color: #64748b; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-          .header-meta { align-items: flex-start; display: flex; gap: 12px; justify-content: space-between; }
-          .case-name { color: #334155; font-size: 12px; font-weight: 650; }
-          .generated { color: #64748b; font-size: 10px; text-align: right; }
-          .notice { background: #fffbeb; border: 1px solid #fcd34d; border-left: 4px solid #d97706; color: #713f12; font-size: 10px; line-height: 1.45; margin: 14px 0; padding: 9px 11px; }
-          .metrics { display: grid; gap: 8px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 14px 0 0; }
-          .metric { background: #f8fafc; border: 1px solid #dbe4ee; border-radius: 5px; break-inside: avoid; min-width: 0; padding: 9px; }
-          .metric-label { color: #64748b; font-size: 9px; font-weight: 650; line-height: 1.35; }
-          .metric strong { color: #0f172a; display: block; font-size: 18px; line-height: 1.15; margin-top: 4px; }
-          .metric-detail { color: #64748b; font-size: 9px; margin-top: 3px; }
-          .summary { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 9px 0 0; }
-          .summary p { background: #f8fafc; border: 1px solid #dbe4ee; border-radius: 5px; break-inside: avoid; color: #334155; padding: 9px 10px; }
-          .summary .summary-primary { background: #ecfdf5; border-color: #99f6e4; color: #134e4a; font-weight: 650; grid-column: 1 / -1; }
-          .chart { border: 1px solid #dbe4ee; border-radius: 5px; break-inside: avoid; margin: 0 0 10px; padding: 11px 12px 12px; }
-          .chart + .chart { margin-top: 10px; }
-          .chart-description { margin-top: 3px; }
-          .chart-row { break-inside: avoid; margin-top: 7px; }
-          .chart-label { align-items: baseline; display: flex; gap: 12px; justify-content: space-between; }
-          .chart-label span { color: #334155; font-size: 9px; line-height: 1.35; }
-          .chart-label span:last-child { color: #0f172a; flex: 0 0 auto; font-weight: 700; text-align: right; }
-          .track { background: #e2e8f0; border-radius: 999px; height: 6px; margin-top: 3px; overflow: hidden; }
-          .bar { background: #0f766e; border-radius: 999px; height: 6px; }
-          .bar.secondary { background: #2563eb; }
-          .bar.tertiary { background: #b45309; }
-          .guidance { background: #f8fafc; border: 1px solid #dbe4ee; border-radius: 5px; break-inside: avoid; margin-top: 18px; padding: 10px 12px; }
-          .guidance h2 { margin: 0 0 5px; }
-          .guidance ul { color: #475569; font-size: 10px; line-height: 1.45; margin: 0 0 0 16px; padding: 0; }
-          .records-section { margin-top: 22px; }
-          .records-section > h2 { border-bottom: 2px solid #0f766e; margin-bottom: 10px; padding-bottom: 5px; }
-          .record-list { display: grid; gap: 9px; }
-          .record { border: 1px solid #cbd5e1; border-radius: 5px; break-inside: avoid; padding: 10px 11px; }
-          .record-heading { align-items: flex-start; border-bottom: 1px solid #e2e8f0; display: flex; gap: 12px; justify-content: space-between; margin-bottom: 8px; padding-bottom: 6px; }
-          .record-title { color: #0f172a; font-size: 12px; font-weight: 750; line-height: 1.3; }
-          .record-subtitle { color: #64748b; font-size: 9px; margin-top: 2px; }
-          .record-date { color: #475569; flex: 0 0 auto; font-size: 10px; font-weight: 700; text-align: right; }
-          .record-fields { display: grid; gap: 5px 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; }
-          .record-field { align-items: start; display: grid; gap: 6px; grid-template-columns: 78px minmax(0, 1fr); min-width: 0; }
-          .record-field-wide { grid-column: 1 / -1; }
-          .record-field dt { color: #64748b; font-size: 7.5px; font-weight: 750; line-height: 1.35; margin: 0; text-transform: uppercase; }
-          .record-field dd { color: #1e293b; font-size: 9.5px; line-height: 1.38; margin: 0; overflow-wrap: anywhere; }
-          .empty { color: #64748b; font-style: italic; }
-          @media print {
-            .report-header, .metrics, .metric, .summary p, .chart, .guidance, .record { break-inside: avoid-page; }
-            h1, h2, h3 { break-after: avoid-page; }
-            p { orphans: 3; widows: 3; }
-          }
-        </style>
-      </head>
-      <body>
-        <header class="report-header">
-          <p class="brand">${escapeHtml(siteName)}</p>
-          <p class="range">${escapeHtml(packet.range.from)} to ${escapeHtml(packet.range.to)}</p>
-          <h1>${escapeHtml(packet.title)}</h1>
-          <div class="header-meta">
-            <p class="case-name">${escapeHtml(packet.caseName)}</p>
-            <p class="generated">Generated ${escapeHtml(packet.generatedAt)}</p>
-          </div>
-        </header>
-        <div class="notice">${escapeHtml(packet.disclaimer)}</div>
-        <section class="metrics">
-          ${packet.metrics
-            .map(
-              (metric) => `<div class="metric"><p class="metric-label">${escapeHtml(
-                metric.label
-              )}</p><strong>${escapeHtml(String(metric.value))}</strong>${
-                metric.detail ? `<p class="metric-detail">${escapeHtml(metric.detail)}</p>` : ""
-              }</div>`
-            )
-            .join("")}
-        </section>
-        <section class="summary">
-          ${packet.summaries
-            .map(
-              (summary, index) =>
-                `<p${index === 0 ? ' class="summary-primary"' : ""}>${escapeHtml(summary)}</p>`
-            )
-            .join("")}
-        </section>
-        <h2>Charts</h2>
-        ${packet.charts.map(buildPrintableChartHtml).join("") || '<p class="empty">No chart data for this range.</p>'}
-        <section class="guidance">
-          <h2>Before sharing</h2>
-          <ul>${packet.suggestedUses.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
-        </section>
-        ${packet.tables.map(buildPrintableTableHtml).join("")}
-        <script>window.print();</script>
-      </body>
-    </html>`;
-}
-
-function buildReportPrintHtml(preview: ReportPreview, range: DateRange) {
-  return buildSectionExportPrintHtml({
-    title: preview.title,
-    caseName: preview.caseName,
-    generatedAt: preview.generatedAt,
-    range,
-    disclaimer: preview.disclaimer,
-    metrics: preview.metrics,
-    summaries: [preview.focus, ...preview.summaries],
-    charts: preview.charts,
-    tables: preview.tables,
-    suggestedUses: [
-      "Review the dated entries against original records before sharing.",
-      "Use this factual organization aid with an attorney or other qualified professional as appropriate.",
-    ],
-  });
-}
-
 function buildEvidencePrintHtml(item: EvidenceItem) {
   const fileName = evidenceFileName(item);
   const rows = [
@@ -8641,111 +8519,6 @@ function buildEvidencePrintHtml(item: EvidenceItem) {
         <script>window.print();</script>
       </body>
     </html>`;
-}
-
-function buildPrintableChartHtml(chart: SectionExportPacket["charts"][number]) {
-  if (chart.rows.length === 0) {
-    return `<div class="chart"><h3>${escapeHtml(chart.title)}</h3><p class="empty">No chart data for this range.</p></div>`;
-  }
-  const values = chart.rows.flatMap((row) =>
-    [row.value, row.secondaryValue, row.tertiaryValue].filter((value): value is number => typeof value === "number")
-  );
-  const max = Math.max(1, ...values.map((value) => Math.abs(value)));
-
-  return `<div class="chart">
-    <h3>${escapeHtml(chart.title)}${chart.unit ? ` (${escapeHtml(chart.unit)})` : ""}</h3>
-    ${chart.description ? `<p class="chart-description">${escapeHtml(chart.description)}</p>` : ""}
-    ${chart.rows
-      .map((row) => {
-        const width = Math.max(4, Math.min(100, (Math.abs(row.value) / max) * 100));
-        const secondaryWidth =
-          typeof row.secondaryValue === "number"
-            ? Math.max(4, Math.min(100, (Math.abs(row.secondaryValue) / max) * 100))
-            : 0;
-        const tertiaryWidth =
-          typeof row.tertiaryValue === "number"
-            ? Math.max(4, Math.min(100, (Math.abs(row.tertiaryValue) / max) * 100))
-            : 0;
-        return `<div class="chart-row">
-          <div class="chart-label"><span>${escapeHtml(row.label)}</span><span>${escapeHtml(
-            [
-              formatChartValue(row.value, chart.unit),
-              typeof row.secondaryValue === "number" ? formatChartValue(row.secondaryValue, chart.unit) : "",
-              typeof row.tertiaryValue === "number" ? formatChartValue(row.tertiaryValue, chart.unit) : "",
-            ]
-              .filter(Boolean)
-              .join(" / ")
-          )}</span></div>
-          <div class="track"><div class="bar" style="width:${width}%"></div></div>
-          ${
-            typeof row.secondaryValue === "number"
-              ? `<div class="track"><div class="bar secondary" style="width:${secondaryWidth}%"></div></div>`
-              : ""
-          }
-          ${
-            typeof row.tertiaryValue === "number"
-              ? `<div class="track"><div class="bar tertiary" style="width:${tertiaryWidth}%"></div></div>`
-              : ""
-          }
-        </div>`;
-      })
-      .join("")}
-  </div>`;
-}
-
-function buildPrintableTableHtml(table: SectionExportPacket["tables"][number]) {
-  if (table.rows.length === 0) {
-    return `<section class="records-section"><h2>${escapeHtml(
-      table.title
-    )}</h2><p class="empty">No rows for this range.</p></section>`;
-  }
-
-  const normalizedHeaders = table.headers.map((header) => header.trim().toLowerCase());
-  const findHeaderIndex = (...names: string[]) =>
-    names.map((name) => normalizedHeaders.indexOf(name)).find((index) => index >= 0);
-  const dateIndex = findHeaderIndex("date");
-  const timeIndex = findHeaderIndex("time");
-  const titleIndex = findHeaderIndex("title", "file", "issue");
-  const secondaryIndex = findHeaderIndex("description", "source");
-
-  return `<section class="records-section">
-    <h2>${escapeHtml(table.title)}</h2>
-    <div class="record-list">
-      ${table.rows
-        .map((row, rowIndex) => {
-          const title = titleIndex === undefined ? `Record ${rowIndex + 1}` : String(row[titleIndex] || `Record ${rowIndex + 1}`);
-          const secondary =
-            secondaryIndex === undefined || secondaryIndex === titleIndex ? "" : String(row[secondaryIndex] || "");
-          const date = dateIndex === undefined ? "" : String(row[dateIndex] || "");
-          const time = timeIndex === undefined ? "" : String(row[timeIndex] || "");
-          const headingIndexes = new Set(
-            [titleIndex, secondaryIndex, dateIndex, timeIndex].filter((index): index is number => index !== undefined)
-          );
-          const fields = table.headers
-            .map((header, index) => {
-              const value = String(row[index] || "").trim();
-              if (!value || headingIndexes.has(index)) return "";
-              const wideClass = isWideReportField(header) ? " record-field-wide" : "";
-              return `<div class="record-field${wideClass}"><dt>${escapeHtml(header)}</dt><dd>${escapeHtml(
-                value
-              )}</dd></div>`;
-            })
-            .join("");
-
-          return `<article class="record">
-            <div class="record-heading">
-              <div>
-                <p class="record-title">${escapeHtml(title)}</p>
-                ${secondary ? `<p class="record-subtitle">${escapeHtml(secondary)}</p>` : ""}
-              </div>
-              ${date || time ? `<p class="record-date">${escapeHtml([date, time].filter(Boolean).join(" "))}</p>` : ""}
-            </div>
-            ${fields ? `<dl class="record-fields">${fields}</dl>` : ""}
-          </article>`;
-        })
-        .join("")}
-    </div>
-  </section>`;
 }
 
 function withAlpha(hex: string, alpha: number) {
