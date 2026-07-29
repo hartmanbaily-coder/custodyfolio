@@ -16,7 +16,6 @@ import {
   downloadBlobFile,
   downloadTextFile,
   readRecordsSession,
-  shareHtmlAsPdf,
   signOutRecordsSession,
 } from "@/lib/records/clientStore";
 import type { SharedCaseProjection, SharedEvidenceItem } from "@/lib/records/attorneyProjection";
@@ -24,12 +23,15 @@ import {
   buildReportPreview,
   reportPreviewToCsv,
   reportsTabReportTypes,
-  type ReportPreview,
 } from "@/lib/records/reports";
 import type { DateRange, ReportType } from "@/lib/records/types";
 import { formatLocalDate } from "@/lib/records/dateRanges";
 import { maxBrowserTimeoutMs } from "@/lib/records/attorneyPolicy";
 import { evidenceFileName } from "@/lib/records/validation";
+import {
+  generatePrintableReportPdf,
+  printableReportPacket,
+} from "@/lib/records/reportPdf";
 
 type PortalView = "Overview" | "Timeline" | "Calendar" | "Exchanges" | "Notes" | "Files" | "Child Support" | "Expenses" | "Reports";
 const portalViews: PortalView[] = ["Overview", "Timeline", "Calendar", "Exchanges", "Notes", "Files", "Child Support", "Expenses", "Reports"];
@@ -60,27 +62,6 @@ function initialRange(projection: SharedCaseProjection): DateRange {
     today,
   ].filter(Boolean).sort();
   return { from: dates[0] || today, to: dates.at(-1) || today };
-}
-
-function escapeHtml(value: unknown) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function reportHtml(preview: ReportPreview) {
-  const tables = preview.tables.map((table) => `
-    <section><h2>${escapeHtml(table.title)}</h2><table><thead><tr>${table.headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
-    <tbody>${table.rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table></section>`).join("");
-  return `<!doctype html><html><head><meta charset="utf-8"><style>
-    @page{size:letter;margin:.55in}body{font:11px system-ui;color:#0f172a}h1{font-size:20px}h2{font-size:14px;margin-top:20px}
-    table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #cbd5e1;padding:5px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
-    p{line-height:1.5}.notice{background:#f8fafc;border:1px solid #cbd5e1;padding:10px}</style></head><body>
-    <h1>${escapeHtml(preview.title)}</h1><p>${escapeHtml(preview.caseName)} · ${escapeHtml(preview.generatedAt)}</p>
-    <p class="notice">${escapeHtml(preview.disclaimer)}</p>${tables}</body></html>`;
 }
 
 export default function AttorneyPortal() {
@@ -228,11 +209,11 @@ export default function AttorneyPortal() {
       const slug = `my_custody_case_shared_${generatedReport.type}_${generatedReport.range.from}_${generatedReport.range.to}`;
       if (format === "csv") {
         downloadTextFile(`${slug}.csv`, reportPreviewToCsv(reportPreview), "text/csv");
-      } else if (!shareHtmlAsPdf(`${slug}.pdf`, reportHtml(reportPreview))) {
-        const printWindow = window.open("", "_blank", "noopener,noreferrer");
-        if (!printWindow) throw new Error("Popup blocked. Allow popups to print this report.");
-        printWindow.document.write(reportHtml(reportPreview));
-        printWindow.document.close();
+      } else {
+        const generated = generatePrintableReportPdf(
+          printableReportPacket(reportPreview, generatedReport.range)
+        );
+        await downloadBlobFile(`${slug}.pdf`, generated.blob);
       }
       setMessage(`${format.toUpperCase()} report prepared. Download activity was recorded.`);
     } catch (error) {
