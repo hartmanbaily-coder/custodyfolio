@@ -312,6 +312,7 @@ test("records login and report workflow", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText(/CSV contains the report's dated record rows in a clean table/)).toBeVisible();
   await expect(page.getByText("Pre-export privacy review")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Download report JSON" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Download CSV" })).toBeDisabled();
   await page.getByLabel(/Names, file titles/).check();
   await page.getByLabel(/Payment references/).check();
@@ -572,6 +573,7 @@ test("lawyer court summary and charts export a populated PDF file", async ({ pag
     has: page.getByRole("heading", { name: "Lawyer/court export", exact: true }),
   });
   await expect(exportPanel.getByText("Timeline records by type", { exact: true })).toBeVisible();
+  await expect(exportPanel.getByRole("button", { name: "Download JSON" })).toHaveCount(0);
 
   const downloadPromise = page.waitForEvent("download");
   await exportPanel.getByRole("button", { name: "Print / save PDF" }).click();
@@ -1211,6 +1213,36 @@ test("settings use structured time zone selectors for profiles and cases", async
 
   await page.getByRole("button", { name: "Calendar", exact: true }).click();
   await expect(page.getByText("Case timezone: America/Anchorage")).toBeVisible();
+});
+
+test("advanced data backup keeps JSON out of the primary export flow", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/records");
+  await page.getByRole("button", { name: "Enter records workspace" }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+
+  const backup = page.getByTestId("advanced-data-backup");
+  await expect(backup).not.toHaveAttribute("open", "");
+  await expect(backup.getByRole("button", { name: "Download JSON backup" })).not.toBeVisible();
+  await backup.locator("summary").click();
+  await expect(backup).toHaveAttribute("open", "");
+
+  const downloadPromise = page.waitForEvent("download");
+  await backup.getByRole("button", { name: "Download JSON backup" }).click();
+  const download = await downloadPromise;
+  const path = await download.path();
+  if (!path) throw new Error("Advanced JSON backup did not produce a file.");
+  const body = JSON.parse(await readFile(path, "utf8")) as {
+    format?: string;
+    schemaVersion?: number;
+    data?: { matters?: unknown[]; auditLogs?: unknown[] };
+  };
+  expect(body).toMatchObject({
+    format: "custody_folio_selected_case_backup",
+    schemaVersion: 1,
+  });
+  expect(body.data?.matters?.length).toBeGreaterThan(0);
+  expect(body.data?.auditLogs?.length).toBeGreaterThan(0);
 });
 
 test("saved information records expose working edit and delete controls", async ({ page }) => {
