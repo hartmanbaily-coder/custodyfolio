@@ -807,6 +807,24 @@ export function notifyNativeNavigationChanged({
   });
 }
 
+const browserDownloadUrlLifetimeMilliseconds = 60_000;
+
+function downloadBlobFileInBrowser(fileName: string, blob: Blob) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.rel = "noopener";
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+
+  // Safari may not read a blob URL until its download preview or print process
+  // starts. Revoking it synchronously can leave that process on about:blank.
+  setTimeout(() => URL.revokeObjectURL(url), browserDownloadUrlLifetimeMilliseconds);
+}
+
 export function downloadTextFile(fileName: string, body: string, contentType: string) {
   const nativeHandler = nativeDownloadHandler();
   if (nativeHandler) {
@@ -814,13 +832,7 @@ export function downloadTextFile(fileName: string, body: string, contentType: st
     return;
   }
 
-  const blob = new Blob([body], { type: contentType });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = fileName;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  downloadBlobFileInBrowser(fileName, new Blob([body], { type: contentType }));
 }
 
 export function shareHtmlAsPdf(fileName: string, html: string) {
@@ -925,12 +937,7 @@ export async function downloadBlobFile(fileName: string, blob: Blob) {
     return;
   }
 
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = fileName;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  downloadBlobFileInBrowser(fileName, blob);
 }
 
 export function withAudit(

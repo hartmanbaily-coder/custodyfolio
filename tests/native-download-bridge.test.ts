@@ -8,7 +8,9 @@ import {
 } from "@/lib/records/clientStore";
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("native text export bridge", () => {
@@ -166,5 +168,53 @@ describe("native text export bridge", () => {
       "too large for the installed TestFlight build"
     );
     expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it("keeps browser PDF bytes available for Safari preview and print", async () => {
+    vi.useFakeTimers();
+    const click = vi.fn();
+    const remove = vi.fn();
+    const appendChild = vi.fn();
+    const anchor = {
+      href: "",
+      download: "",
+      rel: "",
+      style: { display: "" },
+      click,
+      remove,
+    };
+    const createObjectURL = vi.fn(() => "blob:https://custodyfolio.com/compiled-pdf");
+    const revokeObjectURL = vi.fn();
+
+    vi.stubGlobal("window", {});
+    vi.stubGlobal("document", {
+      body: { appendChild },
+      createElement: vi.fn(() => anchor),
+    });
+    vi.stubGlobal("URL", { createObjectURL, revokeObjectURL });
+
+    await downloadBlobFile(
+      "compiled.pdf",
+      new Blob(["%PDF-1.7\nscreenshot exhibit"], { type: "application/pdf" })
+    );
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(anchor).toMatchObject({
+      href: "blob:https://custodyfolio.com/compiled-pdf",
+      download: "compiled.pdf",
+      rel: "noopener",
+      style: { display: "none" },
+    });
+    expect(appendChild).toHaveBeenCalledWith(anchor);
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(59_999);
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(revokeObjectURL).toHaveBeenCalledWith(
+      "blob:https://custodyfolio.com/compiled-pdf"
+    );
   });
 });
