@@ -11,6 +11,7 @@ import {
   buildCalendarEvents,
   buildCustodyDayMap,
   calculateChildSupportObligationStats,
+  calculateExchangeStats,
   calculateExpenseStats,
   childSupportHistoryRange,
   childSupportObligationChartRows,
@@ -855,6 +856,7 @@ export default function RecordsApp() {
               <DashboardView
                 range={range}
                 calendarEvents={timelineEvents}
+                exchangeLogs={selected.exchangeLogs}
                 evidenceCount={selected.evidenceItems.length}
                 onOpen={openView}
               />
@@ -911,6 +913,7 @@ export default function RecordsApp() {
                 selected={selected}
                 range={range}
                 expectedExchanges={expectedExchanges}
+                timezone={caseTimezone}
                 sectionExport={sectionExportPackets.exchanges}
                 onExportSection={exportSectionPacket}
                 onOpenCalendar={openRecurringExchangeSchedule}
@@ -922,6 +925,7 @@ export default function RecordsApp() {
                 updateDataset={updateDataset}
                 userId={userId}
                 caseId={effectiveCaseId}
+                timezone={caseTimezone}
                 notes={selected.dateNotes}
                 sectionExport={sectionExportPackets.notes}
                 onExportSection={exportSectionPacket}
@@ -1853,11 +1857,13 @@ function LoginScreen({
 function DashboardView({
   range,
   calendarEvents,
+  exchangeLogs,
   evidenceCount,
   onOpen,
 }: {
   range: DateRange;
   calendarEvents: CalendarEvent[];
+  exchangeLogs: RecordsDataset["exchangeLogs"];
   evidenceCount: number;
   onOpen: (view: ActiveView) => void;
 }) {
@@ -1869,6 +1875,7 @@ function DashboardView({
       event.type !== "expense_item"
   );
   const stats = buildDashboardTimelineStats(dashboardEvents);
+  const exchangeStats = calculateExchangeStats(exchangeLogs, [], range);
   const focusEvents = dashboardEvents.filter(
     (event) =>
       isLateExchangeTimelineEvent(event) ||
@@ -1879,11 +1886,36 @@ function DashboardView({
       event.severity === "attention"
   );
   const sourceCounts = [
-    { label: "Late exchanges", value: stats.lateExchangeCount },
-    { label: "Missed/refused", value: stats.missedExchangeCount },
-    { label: "No FaceTime", value: stats.noFaceTimeCount },
-    { label: "Post call notices", value: stats.postCallNoFaceTimeCount },
-    { label: "Attached files", value: stats.evidenceCount },
+    {
+      label: "Late exchanges",
+      value: exchangeStats.lateCount,
+      view: "Exchanges" as const,
+      action: "Open exchange records",
+    },
+    {
+      label: "Missed/refused",
+      value: exchangeStats.missedCount + exchangeStats.refusedCount,
+      view: "Exchanges" as const,
+      action: "Open exchange records",
+    },
+    {
+      label: "No FaceTime",
+      value: stats.noFaceTimeCount,
+      view: "Notes" as const,
+      action: "Log a FaceTime outcome",
+    },
+    {
+      label: "Post call notices",
+      value: stats.postCallNoFaceTimeCount,
+      view: "Notes" as const,
+      action: "Log a FaceTime outcome",
+    },
+    {
+      label: "Attached files",
+      value: stats.evidenceCount,
+      view: "Files" as const,
+      action: "Open files",
+    },
   ];
 
   return (
@@ -1910,12 +1942,50 @@ function DashboardView({
           </span>
         </button>
       </section>
+      <p className="text-sm leading-6 text-slate-600">
+        These counters use the selected date range. Choose a counter to review or add the
+        records that feed it.
+      </p>
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Timeline records" value={stats.timelineCount} detail={`${range.from} to ${range.to}`} />
-        <StatCard label="Late exchanges" value={stats.lateExchangeCount} detail="From visible timeline records" tone="amber" />
-        <StatCard label="Missed/refused" value={stats.missedExchangeCount} detail="Exchange issues in timeline" tone="slate" />
-        <StatCard label="No FaceTime conducted" value={stats.noFaceTimeCount} detail="FaceTime notes and text archive" tone="amber" />
-        <StatCard label="Post call notices" value={stats.postCallNoFaceTimeCount} detail="Call first, then text response" tone="slate" />
+        <StatCard
+          label="Timeline records"
+          value={stats.timelineCount}
+          detail={`${range.from} to ${range.to}`}
+          actionLabel="Review timeline"
+          onClick={() => onOpen("Timeline")}
+        />
+        <StatCard
+          label="Late exchanges"
+          value={exchangeStats.lateCount}
+          detail="From saved exchange outcomes"
+          actionLabel="Log or review exchanges"
+          onClick={() => onOpen("Exchanges")}
+          tone="amber"
+        />
+        <StatCard
+          label="Missed/refused"
+          value={exchangeStats.missedCount + exchangeStats.refusedCount}
+          detail="From saved exchange statuses"
+          actionLabel="Log or review exchanges"
+          onClick={() => onOpen("Exchanges")}
+          tone="slate"
+        />
+        <StatCard
+          label="No FaceTime conducted"
+          value={stats.noFaceTimeCount}
+          detail="From saved FaceTime outcomes"
+          actionLabel="Log FaceTime outcome"
+          onClick={() => onOpen("Notes")}
+          tone="amber"
+        />
+        <StatCard
+          label="Post call notices"
+          value={stats.postCallNoFaceTimeCount}
+          detail="Notice received after a call attempt"
+          actionLabel="Log FaceTime outcome"
+          onClick={() => onOpen("Notes")}
+          tone="slate"
+        />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[340px_1fr]">
@@ -1924,15 +1994,18 @@ function DashboardView({
             <div className="grid gap-4">
               <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
                 {sourceCounts.map((item) => (
-                  <div
+                  <button
                     key={item.label}
-                    className="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-2.5 text-sm last:border-b-0"
+                    type="button"
+                    onClick={() => onOpen(item.view)}
+                    aria-label={`${item.action}: ${item.label}`}
+                    className="flex w-full items-center justify-between gap-3 border-b border-slate-100 px-3 py-2.5 text-left text-sm transition last:border-b-0 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-200"
                   >
                     <span className="font-medium text-slate-700">{item.label}</span>
                     <span className="rounded bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-950 ring-1 ring-slate-200">
                       {item.value}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
@@ -3589,14 +3662,17 @@ type ExchangeLogDraft = {
   location: string;
 };
 
-const defaultExchangeLogDraft: ExchangeLogDraft = {
-  orderedDate: "2026-06-12",
-  orderedTime: "18:00",
-  actualDate: "2026-06-12",
-  actualTime: "18:18",
-  direction: "other_parent_to_me",
-  location: "",
-};
+function createDefaultExchangeLogDraft(timezone: string): ExchangeLogDraft {
+  const today = formatLocalDate(new Date(), timezone);
+  return {
+    orderedDate: today,
+    orderedTime: "18:00",
+    actualDate: today,
+    actualTime: "",
+    direction: "other_parent_to_me",
+    location: "",
+  };
+}
 
 function ExchangesView({
   updateDataset,
@@ -3605,6 +3681,7 @@ function ExchangesView({
   selected,
   range,
   expectedExchanges,
+  timezone,
   sectionExport,
   onExportSection,
   onOpenCalendar,
@@ -3616,6 +3693,7 @@ function ExchangesView({
   selected: ReturnType<typeof useSelectedRecords>;
   range: DateRange;
   expectedExchanges: ReturnType<typeof generateExpectedExchangeEvents>;
+  timezone: string;
   sectionExport: SectionExportPacket;
   onExportSection: (packet: SectionExportPacket, format: SectionExportFormat) => void;
   onOpenCalendar: () => void;
@@ -3623,7 +3701,9 @@ function ExchangesView({
 }) {
   const [editingExchangeId, setEditingExchangeId] = useState("");
   const [selectedExpectedExchangeId, setSelectedExpectedExchangeId] = useState("");
-  const [exchangeLogDraft, setExchangeLogDraft] = useState(defaultExchangeLogDraft);
+  const [exchangeLogDraft, setExchangeLogDraft] = useState(() =>
+    createDefaultExchangeLogDraft(timezone)
+  );
   const editingExchange = selected.exchangeLogs.find((log) => log.id === editingExchangeId) || null;
   const userRoleLabel = selected.matter?.userRoleLabel || "Me";
   const otherParentLabel = selected.matter?.otherParentLabel || "Other parent";
@@ -3701,7 +3781,7 @@ function ExchangesView({
       );
       form.reset();
       setSelectedExpectedExchangeId("");
-      setExchangeLogDraft(defaultExchangeLogDraft);
+      setExchangeLogDraft(createDefaultExchangeLogDraft(timezone));
       flash("Exchange outcome saved. It appears below.");
     } catch (error) {
       flash(error instanceof Error ? error.message : "Exchange outcome save failed.");
@@ -4171,10 +4251,38 @@ function ExchangesView({
   );
 }
 
+type FaceTimeOutcome =
+  | "completed"
+  | "not_conducted"
+  | "attempted_unanswered"
+  | "declined_or_canceled";
+
+const faceTimeOutcomeOptions: Array<{ value: FaceTimeOutcome; label: string }> = [
+  { value: "completed", label: "Completed" },
+  { value: "not_conducted", label: "Not conducted" },
+  { value: "attempted_unanswered", label: "Attempted, no answer" },
+  { value: "declined_or_canceled", label: "Canceled or declined" },
+];
+
+const faceTimeOutcomeTitles: Record<FaceTimeOutcome, string> = {
+  completed: "FaceTime completed",
+  not_conducted: "No FaceTime conducted",
+  attempted_unanswered: "FaceTime attempt unanswered",
+  declined_or_canceled: "FaceTime canceled or declined",
+};
+
+const faceTimeOutcomeStatements: Record<FaceTimeOutcome, string> = {
+  completed: "FaceTime was conducted.",
+  not_conducted: "FaceTime was not conducted.",
+  attempted_unanswered: "A FaceTime attempt was not answered.",
+  declined_or_canceled: "FaceTime was canceled or declined.",
+};
+
 function NotesView({
   updateDataset,
   userId,
   caseId,
+  timezone,
   notes,
   sectionExport,
   onExportSection,
@@ -4183,6 +4291,7 @@ function NotesView({
   updateDataset: ReturnType<typeof useRecordsStore>["updateDataset"];
   userId: string;
   caseId: string;
+  timezone: string;
   notes: ReturnType<typeof useSelectedRecords>["dateNotes"];
   sectionExport: SectionExportPacket;
   onExportSection: (packet: SectionExportPacket, format: SectionExportFormat) => void;
@@ -4191,8 +4300,84 @@ function NotesView({
   const [filter, setFilter] = useState("all");
   const [editingNoteId, setEditingNoteId] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
+  const [faceTimeSaving, setFaceTimeSaving] = useState(false);
+  const [faceTimeOutcome, setFaceTimeOutcome] =
+    useState<FaceTimeOutcome>("not_conducted");
   const [deletingNoteId, setDeletingNoteId] = useState("");
   const editingNote = notes.find((note) => note.id === editingNoteId) || null;
+
+  async function saveFaceTimeOutcome(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const outcome = text(formData, "faceTimeOutcome") as FaceTimeOutcome;
+    const details = text(formData, "details");
+    const postCallNotice =
+      outcome !== "completed" && formData.get("postCallNotice") === "on";
+    const tags = [
+      "facetime",
+      outcome === "completed" ? "facetime_completed" : "no_facetime",
+      outcome === "attempted_unanswered" ? "unanswered_call" : "",
+      postCallNotice ? "post_call_notice" : "",
+    ].filter(Boolean);
+    const parsed = dateNoteSchema.safeParse({
+      noteDate: text(formData, "noteDate"),
+      noteTime: text(formData, "noteTime"),
+      category: "communication",
+      title: faceTimeOutcomeTitles[outcome],
+      body: [
+        faceTimeOutcomeStatements[outcome],
+        postCallNotice ? "A message or notice was received after the call attempt." : "",
+        details,
+      ]
+        .filter(Boolean)
+        .join(" "),
+      tags,
+      includeInReports: formData.get("includeInReports") === "on",
+    });
+    if (!parsed.success) {
+      return flash(parsed.error.issues[0]?.message || "Check the FaceTime outcome form.");
+    }
+
+    const noteId = createId("note");
+    const now = nowIso();
+    setFaceTimeSaving(true);
+    try {
+      await updateDataset((current) =>
+        withAudit(
+          {
+            ...current,
+            dateNotes: [
+              {
+                id: noteId,
+                userId,
+                caseId,
+                createdAt: now,
+                updatedAt: now,
+                ...emptyToUndefined(parsed.data),
+              },
+              ...current.dateNotes,
+            ],
+          },
+          {
+            userId,
+            caseId,
+            action: "created",
+            entityType: "dateNote",
+            entityId: noteId,
+            metadataSummary: "Structured FaceTime outcome saved without communication details in audit metadata.",
+          }
+        )
+      );
+      form.reset();
+      setFaceTimeOutcome("not_conducted");
+      flash("FaceTime outcome saved and reflected in the dashboard date range.");
+    } catch (error) {
+      flash(error instanceof Error ? error.message : "FaceTime outcome save failed.");
+    } finally {
+      setFaceTimeSaving(false);
+    }
+  }
 
   async function saveNote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -4292,6 +4477,60 @@ function NotesView({
   return (
     <div className="grid min-w-0 gap-4 xl:grid-cols-[420px_1fr]">
       <div className="min-w-0 space-y-4">
+        <Panel title="Log FaceTime outcome" action="Dashboard source">
+          <p className="mb-3 text-xs leading-5 text-slate-600">
+            This structured entry updates the No FaceTime and Post call notices dashboard
+            counters when its date is inside the selected range.
+          </p>
+          <form data-testid="facetime-outcome-form" onSubmit={saveFaceTimeOutcome} className="grid gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Date">
+                <input
+                  name="noteDate"
+                  type="date"
+                  className="input"
+                  defaultValue={formatLocalDate(new Date(), timezone)}
+                />
+              </Field>
+              <Field label="Time (optional)">
+                <input name="noteTime" type="time" className="input" />
+              </Field>
+            </div>
+            <Field label="FaceTime outcome">
+              <select
+                name="faceTimeOutcome"
+                className="input"
+                value={faceTimeOutcome}
+                onChange={(event) =>
+                  setFaceTimeOutcome(event.target.value as FaceTimeOutcome)
+                }
+              >
+                {faceTimeOutcomeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {faceTimeOutcome !== "completed" && (
+              <label className="flex items-start gap-2 rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-700">
+                <input name="postCallNotice" type="checkbox" />
+                <span>A message or notice came after the call attempt.</span>
+              </label>
+            )}
+            <Field label="Details (optional)">
+              <textarea name="details" className="input min-h-20" />
+            </Field>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input name="includeInReports" type="checkbox" defaultChecked />
+              Include this outcome in selected reports
+            </label>
+            <button className="btn-primary" type="submit" disabled={faceTimeSaving}>
+              {faceTimeSaving ? "Saving outcome…" : "Save FaceTime outcome"}
+            </button>
+          </form>
+        </Panel>
+
         <Panel title={editingNote ? "Edit date based note" : "Add date based note"} action="Factual wording">
           <form
             id="date-note-form"
@@ -4301,7 +4540,14 @@ function NotesView({
           >
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Date">
-                <input name="noteDate" type="date" className="input" defaultValue={editingNote?.noteDate || "2026-06-10"} />
+                <input
+                  name="noteDate"
+                  type="date"
+                  className="input"
+                  defaultValue={
+                    editingNote?.noteDate || formatLocalDate(new Date(), timezone)
+                  }
+                />
               </Field>
               <Field label="Time">
                 <input name="noteTime" type="time" className="input" defaultValue={editingNote?.noteTime || ""} />
@@ -7711,11 +7957,15 @@ function StatCard({
   label,
   value,
   detail,
+  actionLabel,
+  onClick,
   tone = "teal",
 }: {
   label: string;
   value: string | number;
   detail: string;
+  actionLabel?: string;
+  onClick?: () => void;
   tone?: "teal" | "amber" | "slate";
 }) {
   const toneClasses =
@@ -7724,13 +7974,32 @@ function StatCard({
       : tone === "slate"
         ? "border-l-slate-500 bg-white text-slate-700"
         : "border-l-teal-600 bg-teal-50/30 text-teal-700";
-  return (
-    <div className={`min-w-0 max-w-full rounded-lg border border-l-4 border-slate-200 bg-white p-4 shadow-[0_5px_18px_rgba(15,23,42,0.07)] ${toneClasses}`}>
+  const content = (
+    <>
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
       <p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p>
       <p className="mt-1 text-xs text-slate-500">{detail}</p>
-    </div>
+      {actionLabel && (
+        <p className="mt-3 text-xs font-semibold text-blue-700">{actionLabel} →</p>
+      )}
+    </>
   );
+
+  const className = `min-w-0 max-w-full rounded-lg border border-l-4 border-slate-200 bg-white p-4 text-left shadow-[0_5px_18px_rgba(15,23,42,0.07)] ${toneClasses}`;
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={`${actionLabel || "Open"}: ${label}, ${value}`}
+        className={`${className} w-full transition hover:border-blue-400 hover:shadow-[0_7px_22px_rgba(15,23,42,0.1)] focus:outline-none focus:ring-2 focus:ring-blue-200`}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return <div className={className}>{content}</div>;
 }
 
 function StatMini({ label, value }: { label: string; value: string }) {

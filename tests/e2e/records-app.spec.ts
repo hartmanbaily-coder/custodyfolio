@@ -561,6 +561,73 @@ test("mobile screenshot exhibit builder preserves order and generates a protecte
   expect(fitsViewport).toBe(true);
 });
 
+test("dashboard counters open their inputs and use structured records in the selected range", async ({
+  page,
+}) => {
+  const { today } = localDateParts();
+
+  await page.goto("/records");
+  await page.getByRole("button", { name: "Enter records workspace" }).click();
+
+  const lateExchangeCard = page.getByRole("button", {
+    name: /^Log or review exchanges: Late exchanges,/,
+  });
+  await expect(lateExchangeCard).toContainText("0");
+  await lateExchangeCard.click();
+
+  const exchangeForm = page.locator("form").filter({
+    has: page.getByRole("button", { name: "Save exchange outcome" }),
+  });
+  await expect(exchangeForm.getByLabel("Scheduled exchange date")).toHaveValue(today);
+  await expect(exchangeForm.getByLabel("Actual date")).toHaveValue(today);
+  await exchangeForm.getByLabel("Actual time").fill("18:15");
+  await exchangeForm.getByRole("button", { name: "Save exchange outcome" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Exchange outcome saved. It appears below"
+  );
+
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  await expect(
+    page.getByRole("button", {
+      name: /^Log or review exchanges: Late exchanges, 1$/,
+    })
+  ).toBeVisible();
+
+  await page
+    .getByRole("button", {
+      name: /^Log FaceTime outcome: No FaceTime conducted, 0$/,
+    })
+    .click();
+  const faceTimeForm = page.getByTestId("facetime-outcome-form");
+  await expect(faceTimeForm.getByLabel("Date", { exact: true })).toHaveValue(today);
+  await faceTimeForm.getByLabel("FaceTime outcome").selectOption("attempted_unanswered");
+  await faceTimeForm
+    .getByLabel("A message or notice came after the call attempt.")
+    .check();
+  await faceTimeForm.getByLabel("Details (optional)").fill(
+    "The attempted call was not answered."
+  );
+  await faceTimeForm.getByRole("button", { name: "Save FaceTime outcome" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "FaceTime outcome saved and reflected in the dashboard date range"
+  );
+
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  await expect(
+    page.getByRole("button", {
+      name: /^Log FaceTime outcome: No FaceTime conducted, 1$/,
+    })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: /^Log FaceTime outcome: Post call notices, 1$/,
+    })
+  ).toBeVisible();
+
+  await page.locator("nav").getByRole("button", { name: /^Timeline/ }).click();
+  await expect(page.getByRole("button", { name: /JSON/i })).toHaveCount(0);
+});
+
 test("lawyer court summary and charts export a populated PDF file", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/records");
