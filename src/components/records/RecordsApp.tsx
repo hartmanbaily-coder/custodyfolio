@@ -7486,25 +7486,58 @@ function RangeToolbar({
         <option value="ytd">Year to date</option>
         <option value="custom">Custom range</option>
       </select>
-      <input
-        aria-label="From date"
-        type="date"
+      <CenteredRangeDateInput
+        label="From date"
         value={range.from}
-        onChange={(event) => {
+        onChange={(value) => {
           setPreset("custom");
-          setRange({ ...range, from: event.target.value });
+          setRange({ ...range, from: value });
         }}
-        className="records-range-date h-10 min-w-0 max-w-full rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 sm:w-auto xl:w-36"
       />
-      <input
-        aria-label="To date"
-        type="date"
+      <CenteredRangeDateInput
+        label="To date"
         value={range.to}
-        onChange={(event) => {
+        onChange={(value) => {
           setPreset("custom");
-          setRange({ ...range, to: event.target.value });
+          setRange({ ...range, to: value });
         }}
-        className="records-range-date h-10 min-w-0 max-w-full rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 sm:w-auto xl:w-36"
+      />
+    </div>
+  );
+}
+
+function displayRangeDate(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  return `${match[2]}/${match[3]}/${match[1]}`;
+}
+
+function CenteredRangeDateInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div
+      className="relative h-10 w-full min-w-0 max-w-full rounded-md border border-slate-200 bg-white text-slate-900 focus-within:border-teal-600 focus-within:ring-2 focus-within:ring-teal-100 sm:w-36"
+      data-testid="range-date-control"
+    >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none flex h-full w-full items-center justify-center px-10 text-center text-sm tabular-nums"
+      >
+        <span data-testid="range-date-value">{displayRangeDate(value)}</span>
+      </span>
+      <input
+        aria-label={label}
+        type="date"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
       />
     </div>
   );

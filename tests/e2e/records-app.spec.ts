@@ -1333,24 +1333,22 @@ test("mobile workspace header stays compact and exposes its full controls", asyn
   await expect(page.getByLabel("Date range preset")).toBeVisible();
   await expect(page.getByLabel("From date")).toBeVisible();
   await expect(page.getByLabel("To date")).toBeVisible();
-  const rangeDateAlignment = await page
-    .getByLabel(/^(From|To) date$/)
-    .evaluateAll((inputs) =>
-      inputs.map((input) => ({
-        className: input.className,
-        textAlign: window.getComputedStyle(input).textAlign,
-      }))
+  const rangeDateCenters = await page
+    .getByTestId("range-date-value")
+    .evaluateAll((values) =>
+      values.map((value) => {
+        const control = value.closest('[data-testid="range-date-control"]');
+        if (!control) return Number.POSITIVE_INFINITY;
+        const valueBox = value.getBoundingClientRect();
+        const controlBox = control.getBoundingClientRect();
+        return Math.abs(
+          (valueBox.left + valueBox.right) / 2 -
+          (controlBox.left + controlBox.right) / 2
+        );
+      })
     );
-  expect(rangeDateAlignment).toEqual([
-    expect.objectContaining({
-      className: expect.stringContaining("records-range-date"),
-      textAlign: "center",
-    }),
-    expect.objectContaining({
-      className: expect.stringContaining("records-range-date"),
-      textAlign: "center",
-    }),
-  ]);
+  expect(rangeDateCenters).toHaveLength(2);
+  expect(rangeDateCenters.every((offset) => offset <= 1)).toBe(true);
   await expect(page.getByRole("button", { name: "Logout", exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Done", exact: true }).click();
