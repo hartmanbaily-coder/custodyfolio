@@ -359,6 +359,10 @@ test("mobile child support records are visible, editable, and deletable", async 
 
   await page.getByRole("button", { name: "Child Support", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Child Support", exact: true })).toBeVisible();
+  await expect(page.getByTestId("support-history-chart")).toHaveAttribute(
+    "data-months",
+    "2026-02,2026-03,2026-04,2026-05,2026-06,2026-07"
+  );
 
   const orderForm = page.locator("#child-support-order-form");
   await orderForm.getByLabel("Order nickname").fill("Mobile support order");

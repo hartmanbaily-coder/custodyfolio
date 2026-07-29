@@ -12,6 +12,7 @@ import {
   buildCustodyDayMap,
   calculateChildSupportObligationStats,
   calculateExpenseStats,
+  childSupportHistoryRange,
   childSupportObligationChartRows,
   daysBetween,
   exchangeChartRows,
@@ -563,6 +564,34 @@ export default function RecordsApp() {
     () => calculateChildSupportObligationStats(supportObligations, supportAsOfDate),
     [supportObligations, supportAsOfDate]
   );
+  const supportHistoryRange = useMemo(
+    () =>
+      childSupportHistoryRange(
+        selected.childSupportOrders,
+        selected.childSupportPayments,
+        supportAsOfDate
+      ),
+    [
+      selected.childSupportOrders,
+      selected.childSupportPayments,
+      supportAsOfDate,
+    ]
+  );
+  const supportHistoryObligations = useMemo(
+    () =>
+      generateChildSupportObligations(
+        selected.childSupportOrders,
+        selected.childSupportPayments,
+        supportHistoryRange,
+        supportAsOfDate
+      ),
+    [
+      selected.childSupportOrders,
+      selected.childSupportPayments,
+      supportHistoryRange,
+      supportAsOfDate,
+    ]
+  );
   const expenseStats = useMemo(
     () => calculateExpenseStats(selected.expenseItems, range),
     [selected.expenseItems, range]
@@ -584,8 +613,12 @@ export default function RecordsApp() {
     [calendarEvents]
   );
   const supportRows = useMemo(
-    () => childSupportObligationChartRows(supportObligations, supportAsOfDate),
-    [supportObligations, supportAsOfDate]
+    () =>
+      childSupportObligationChartRows(
+        supportHistoryObligations,
+        supportHistoryRange.to
+      ),
+    [supportHistoryObligations, supportHistoryRange.to]
   );
   const reportPreview = useMemo(
     () => buildReportPreview(dataset, userId, effectiveCaseId, range, reportType),
@@ -6176,6 +6209,10 @@ function ChildSupportView({
           />
 
           <Panel title="Payment history by month" action="Due vs paid">
+            <p className="mb-3 text-xs leading-5 text-slate-500">
+              Full order history through today or the latest saved payment month. Scheduled months
+              without a recorded payment remain visible.
+            </p>
             <SupportTrendLine rows={supportRows} />
           </Panel>
           <SupportObligationsPanel obligations={obligations} />

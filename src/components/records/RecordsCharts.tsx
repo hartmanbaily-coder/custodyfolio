@@ -109,42 +109,56 @@ export function SupportTrendLine({
 }: {
   rows: Array<{ month: string; amountDue: number; amountPaid: number; unpaidBalance: number }>;
 }) {
-  if (rows.length === 0) return <ChartEmpty label="No monthly payment rows yet." />;
+  const chartAttributes = {
+    "data-testid": "support-history-chart",
+    "data-month-count": String(rows.length),
+    "data-months": rows.map((row) => row.month).join(","),
+  };
+
+  if (rows.length === 0) {
+    return (
+      <div {...chartAttributes}>
+        <ChartEmpty label="No monthly payment rows yet." />
+      </div>
+    );
+  }
 
   return (
-    <ResponsiveContainer width="100%" height={220} minWidth={0}>
-      <LineChart data={rows}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-        <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-        <YAxis tick={{ fontSize: 11 }} />
-        <Tooltip />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Line
-          type="monotone"
-          dataKey="amountDue"
-          name="Due"
-          stroke="#334155"
-          strokeWidth={2}
-          isAnimationActive={false}
-        />
-        <Line
-          type="monotone"
-          dataKey="amountPaid"
-          name="Paid"
-          stroke="#0f766e"
-          strokeWidth={2}
-          isAnimationActive={false}
-        />
-        <Line
-          type="monotone"
-          dataKey="unpaidBalance"
-          name="Unpaid balance based on records"
-          stroke="#b45309"
-          strokeWidth={2}
-          isAnimationActive={false}
-        />
-      </LineChart>
-    </ResponsiveContainer>
+    <div className="min-w-0" {...chartAttributes}>
+      <ResponsiveContainer width="100%" height={220} minWidth={0}>
+        <LineChart data={rows}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+          <YAxis tick={{ fontSize: 11 }} />
+          <Tooltip />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Line
+            type="monotone"
+            dataKey="amountDue"
+            name="Due"
+            stroke="#334155"
+            strokeWidth={2}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="amountPaid"
+            name="Paid"
+            stroke="#0f766e"
+            strokeWidth={2}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="unpaidBalance"
+            name="Unpaid balance based on records"
+            stroke="#b45309"
+            strokeWidth={2}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 

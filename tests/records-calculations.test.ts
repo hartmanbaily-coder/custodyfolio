@@ -11,6 +11,8 @@ import {
   calculateExchangeStats,
   calculateExchangeTiming,
   calculateExpenseStats,
+  childSupportHistoryRange,
+  childSupportObligationChartRows,
   containsForbiddenGeneratedTerm,
   filterOwnedCaseRecords,
   generateChildSupportObligations,
@@ -156,6 +158,58 @@ describe("records calculations", () => {
       pastDueBalance: 500,
       pastDueCount: 1,
     });
+  });
+
+  it("charts complete support history instead of only the current report month", () => {
+    const dataset = createRecordsSeed();
+    const seededOrder = dataset.childSupportOrders[0];
+    const seededPayment = dataset.childSupportPayments[0];
+    if (!seededOrder || !seededPayment) throw new Error("Child support seed records are missing.");
+
+    const order = {
+      ...seededOrder,
+      id: "support-order-history",
+      orderedAmount: 674,
+      effectiveStartDate: "2026-05-01",
+      firstPaymentDueDate: "2026-05-01",
+    };
+    const payments = ["2026-05-01", "2026-07-01", "2026-08-01"].map(
+      (dueDate, index) => ({
+        ...seededPayment,
+        id: `support-payment-history-${index}`,
+        childSupportOrderId: order.id,
+        dueDate,
+        amountDue: 674,
+        amountPaid: 0,
+        paymentDate: dueDate,
+        paymentStatus: index === 2 ? ("paid" as const) : ("late" as const),
+      })
+    );
+
+    const historyRange = childSupportHistoryRange(
+      [order],
+      payments,
+      "2026-07-29"
+    );
+    const obligations = generateChildSupportObligations(
+      [order],
+      payments,
+      historyRange,
+      "2026-07-29"
+    );
+    const chartRows = childSupportObligationChartRows(
+      obligations,
+      historyRange.to
+    );
+
+    expect(historyRange).toEqual({ from: "2026-05-01", to: "2026-08-01" });
+    expect(chartRows.map((row) => row.month)).toEqual([
+      "2026-05",
+      "2026-06",
+      "2026-07",
+      "2026-08",
+    ]);
+    expect(chartRows).toHaveLength(4);
   });
 
   it("keeps monthly and semi monthly obligation dates anchored to the entered due dates", () => {
