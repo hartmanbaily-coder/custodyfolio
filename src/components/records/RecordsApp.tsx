@@ -799,26 +799,26 @@ export default function RecordsApp() {
               </div>
             </div>
 
-            <nav className="mt-5 flex max-w-full gap-1 overflow-x-auto rounded-lg border border-slate-200 bg-slate-50/80 p-1 lg:block lg:space-y-1 lg:overflow-visible">
+            <nav className="mt-5 flex max-w-full gap-1 overflow-x-auto rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] p-1 lg:block lg:space-y-1 lg:overflow-visible">
               {navItems.map((item) => (
                 <button
                   key={item}
                   type="button"
                   onClick={() => openView(item)}
-                  className={`flex shrink-0 items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left text-sm font-medium transition lg:w-full ${
+                  className={`flex shrink-0 items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#7C9AB0] lg:w-full ${
                     activeView === item
-                      ? "bg-white text-teal-900 shadow-sm ring-1 ring-slate-200"
-                      : "text-slate-600 hover:bg-white hover:text-slate-950"
+                      ? "bg-[#1E3A5F] text-white shadow-sm"
+                      : "text-slate-700 hover:bg-[#E2E8F0] hover:text-slate-950"
                   }`}
                 >
                   <span>{item}</span>
                   {item === "Files" && (
-                    <span className={`rounded px-1.5 text-[11px] ${activeView === item ? "bg-teal-50 text-teal-900" : "bg-white text-slate-500"}`}>
+                    <span className={`rounded px-1.5 text-[11px] ${activeView === item ? "bg-white/20 text-white" : "bg-white/80 text-slate-600"}`}>
                       {selected.evidenceItems.length}
                     </span>
                   )}
                   {item === "Timeline" && (
-                    <span className={`rounded px-1.5 text-[11px] ${activeView === item ? "bg-teal-50 text-teal-900" : "bg-white text-slate-500"}`}>
+                    <span className={`rounded px-1.5 text-[11px] ${activeView === item ? "bg-white/20 text-white" : "bg-white/80 text-slate-600"}`}>
                       {timelineEvents.length}
                     </span>
                   )}
@@ -1934,10 +1934,10 @@ function DashboardView({
         <button
           type="button"
           onClick={() => onOpen("Attorney Access")}
-          className="rounded-lg border border-slate-200 bg-white p-4 text-left transition hover:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-100"
+          className="rounded-lg border border-[#C4B5FD] bg-[#F5F3FF] p-4 text-left transition hover:border-[#8B5CF6] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
         >
-          <span className="text-sm font-semibold text-slate-950">Share with an attorney</span>
-          <span className="mt-1 block text-xs leading-5 text-slate-600">
+          <span className="text-sm font-semibold text-[#4C1D95]">Share with an attorney</span>
+          <span className="mt-1 block text-xs leading-5 text-[#5B21B6]">
             Create or revoke 30-day read-only access and review access history.
           </span>
         </button>
