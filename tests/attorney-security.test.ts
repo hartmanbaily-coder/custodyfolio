@@ -206,6 +206,8 @@ describe("attorney migration controls", () => {
 
   it("keeps the attorney portal and all protected APIs out of service-worker caches", async () => {
     const serviceWorker = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
+    expect(serviceWorker).toContain('"custody_folio_shell_v5"');
+    expect(serviceWorker).not.toContain("my_custody_case_shell");
     expect(serviceWorker).toContain('"/api/"');
     expect(serviceWorker).toContain('"/attorney"');
     expect(serviceWorker).toContain("PRIVATE_PREFIXES.some");
