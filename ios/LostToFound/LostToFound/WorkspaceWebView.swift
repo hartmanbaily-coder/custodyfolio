@@ -245,7 +245,7 @@ struct WorkspaceWebView: UIViewRepresentable {
         configuration.limitsNavigationsToAppBoundDomains = true
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
         configuration.websiteDataStore = websiteDataStore
-        configuration.applicationNameForUserAgent = "LostToFound-iOS/0.1"
+        configuration.applicationNameForUserAgent = "CustodyFolio-iOS/1.0"
         WorkspaceDisplayPolicy.apply(to: configuration.userContentController)
         configuration.userContentController.add(
             WeakScriptMessageHandler(delegate: context.coordinator),
@@ -262,6 +262,10 @@ struct WorkspaceWebView: UIViewRepresentable {
         configuration.userContentController.add(
             WeakScriptMessageHandler(delegate: context.coordinator),
             name: Coordinator.nativeNavigationHandlerName
+        )
+        configuration.userContentController.add(
+            WeakScriptMessageHandler(delegate: context.coordinator),
+            name: Coordinator.nativeAppearanceHandlerName
         )
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
@@ -301,6 +305,9 @@ struct WorkspaceWebView: UIViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(
             forName: Coordinator.nativeNavigationHandlerName
         )
+        webView.configuration.userContentController.removeScriptMessageHandler(
+            forName: Coordinator.nativeAppearanceHandlerName
+        )
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
@@ -308,6 +315,7 @@ struct WorkspaceWebView: UIViewRepresentable {
         static let nativeChunkedDownloadHandlerName = "lostToFoundDownloadV2"
         static let nativeSessionHandlerName = "lostToFoundSession"
         static let nativeNavigationHandlerName = "lostToFoundNavigation"
+        static let nativeAppearanceHandlerName = "custodyFolioAppearance"
 
         private struct BinaryExportTransfer {
             let requestedFileName: String
@@ -356,6 +364,19 @@ struct WorkspaceWebView: UIViewRepresentable {
                 model.workspaceHistoryChanged(
                     canGoBack: canGoBack,
                     canGoForward: canGoForward
+                )
+                return
+            }
+
+            if message.name == Self.nativeAppearanceHandlerName {
+                guard let preference = AppearancePreferencePolicy.preference(
+                    from: message.body as? [String: Any]
+                ) else {
+                    return
+                }
+                UserDefaults.standard.set(
+                    preference,
+                    forKey: AppearancePreferencePolicy.storageKey
                 )
                 return
             }

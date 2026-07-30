@@ -206,7 +206,7 @@ export default function AttorneyPortal() {
     if (!reportPreview || !generatedReport) return;
     try {
       await auditReport("report_downloaded", generatedReport.type);
-      const slug = `my_custody_case_shared_${generatedReport.type}_${generatedReport.range.from}_${generatedReport.range.to}`;
+      const slug = `custody_folio_shared_${generatedReport.type}_${generatedReport.range.from}_${generatedReport.range.to}`;
       if (format === "csv") {
         downloadTextFile(`${slug}.csv`, reportPreviewToCsv(reportPreview), "text/csv");
       } else {

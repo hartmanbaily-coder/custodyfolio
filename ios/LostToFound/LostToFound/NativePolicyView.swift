@@ -15,6 +15,10 @@ enum AppBrand {
 private let appPolicyLinks: [PolicyLink] = [
     PolicyLink(title: "Privacy Policy", url: URL(string: "https://custodyfolio.com/privacy")!),
     PolicyLink(title: "Terms of Use", url: URL(string: "https://custodyfolio.com/terms")!),
+    PolicyLink(title: "Security", url: URL(string: "https://custodyfolio.com/security")!),
+    PolicyLink(title: "AI Data Use", url: URL(string: "https://custodyfolio.com/ai-data-use")!),
+    PolicyLink(title: "Subprocessors", url: URL(string: "https://custodyfolio.com/subprocessors")!),
+    PolicyLink(title: "Accessibility", url: URL(string: "https://custodyfolio.com/accessibility")!),
     PolicyLink(title: "Account Deletion", url: AppBrand.accountDeletionRequestURL),
     PolicyLink(title: "Contact", url: URL(string: "https://custodyfolio.com/contact")!)
 ]

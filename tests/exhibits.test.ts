@@ -97,8 +97,8 @@ describe("screenshot exhibit domain", () => {
 
   it("sanitizes downloaded filenames", () => {
     expect(sanitizeExhibitFileName("Exhibit A", "../private child name?"))
-      .toBe("my_custody_case_exhibit_Exhibit-A-private-child-name.pdf");
-    expect(sanitizeExhibitFileName("💼", "")).toBe("my_custody_case_exhibit_compiled_screenshots.pdf");
+      .toBe("custody_folio_exhibit_Exhibit-A-private-child-name.pdf");
+    expect(sanitizeExhibitFileName("💼", "")).toBe("custody_folio_exhibit_compiled_screenshots.pdf");
   });
 
   it("enforces count, total input size, and combined-pixel limits", () => {

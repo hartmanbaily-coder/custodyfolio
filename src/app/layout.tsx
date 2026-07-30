@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import type { Viewport } from "next";
+import { headers } from "next/headers";
 import type { ReactNode } from "react";
 import PwaRegistration from "@/components/PwaRegistration";
+import ThemeProvider from "@/components/ThemeProvider";
 import { siteDescription, siteName } from "@/lib/site";
+import { themeBootstrapScript } from "@/lib/theme";
 import "./globals.css";
 
 export const dynamic = "force-dynamic";
@@ -15,9 +18,6 @@ export const metadata: Metadata = {
   },
   description: siteDescription,
   metadataBase: new URL("https://custodyfolio.com"),
-  alternates: {
-    canonical: "/",
-  },
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
@@ -49,11 +49,12 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: ReactNode;
 }>) {
+  const nonce = (await headers()).get("x-nonce") || undefined;
   const websiteStructuredData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -62,16 +63,25 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: themeBootstrapScript }}
+        />
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteStructuredData) }}
         />
       </head>
       <body className="min-h-screen bg-slate-100 text-slate-950 antialiased overflow-x-hidden">
-        <PwaRegistration />
-        {children}
+        <ThemeProvider>
+          <PwaRegistration />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

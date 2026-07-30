@@ -84,20 +84,20 @@ function CompactPolicyFooter({
           </p>
           <nav
             aria-label="Policy and support links"
-            className="flex min-w-0 flex-wrap gap-x-4 gap-y-2 text-xs font-semibold"
+            className="flex min-w-0 flex-nowrap gap-x-4 overflow-x-auto pb-1 text-xs font-semibold sm:flex-wrap sm:overflow-visible sm:pb-0"
           >
             {publicPolicyLinks.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-slate-600 underline decoration-slate-300 underline-offset-4 transition hover:text-teal-800"
+                className="shrink-0 whitespace-nowrap text-slate-600 underline decoration-slate-300 underline-offset-4 transition hover:text-teal-800"
               >
                 {item.label}
               </Link>
             ))}
             <a
               href={supportMailto}
-              className="text-teal-700 underline decoration-teal-200 underline-offset-4 hover:text-teal-900"
+              className="shrink-0 whitespace-nowrap text-teal-700 underline decoration-teal-200 underline-offset-4 hover:text-teal-900"
             >
               Support
             </a>

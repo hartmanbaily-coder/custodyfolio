@@ -2,7 +2,16 @@ import Link from "next/link";
 import Image from "next/image";
 
 import PolicyFooter from "@/components/PolicyFooter";
-import { recordsTagline, siteName } from "@/lib/site";
+import { pageMetadata, recordsTagline, siteDescription, siteName } from "@/lib/site";
+
+export const metadata = {
+  ...pageMetadata({
+    title: "Custody Folio | Custody Logs and Evidence",
+    description: siteDescription,
+    canonical: "/",
+  }),
+  title: { absolute: "Custody Folio | Custody Logs and Evidence" },
+};
 
 const quickActions = [
   "Late exchange",

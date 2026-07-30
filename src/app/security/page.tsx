@@ -1,5 +1,11 @@
 import { PolicyPage, type PolicySection } from "@/components/PolicyPage";
-import { securityEmail, securityMailto } from "@/lib/site";
+import { pageMetadata, securityEmail, securityMailto } from "@/lib/site";
+
+export const metadata = pageMetadata({
+  title: "Security",
+  description: "How to protect your Custody Folio account and report a security concern.",
+  canonical: "/security",
+});
 
 const sections: PolicySection[] = [
   {

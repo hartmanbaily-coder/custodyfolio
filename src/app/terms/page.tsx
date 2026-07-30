@@ -1,4 +1,11 @@
 import { PolicyPage, type PolicySection } from "@/components/PolicyPage";
+import { pageMetadata } from "@/lib/site";
+
+export const metadata = pageMetadata({
+  title: "Terms of Use",
+  description: "Terms for using Custody Folio to organize custody records and reports.",
+  canonical: "/terms",
+});
 
 const sections: PolicySection[] = [
   {

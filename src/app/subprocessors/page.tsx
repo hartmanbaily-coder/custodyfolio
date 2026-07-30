@@ -1,4 +1,11 @@
 import { PolicyPage, type PolicySection } from "@/components/PolicyPage";
+import { pageMetadata } from "@/lib/site";
+
+export const metadata = pageMetadata({
+  title: "Subprocessors",
+  description: "Service providers that may process information to operate Custody Folio.",
+  canonical: "/subprocessors",
+});
 
 const sections: PolicySection[] = [
   {
