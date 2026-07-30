@@ -21,9 +21,12 @@ export default function PwaRegistration() {
       window.location.hostname === "127.0.0.1";
     if (!isSupportedOrigin) return;
 
-    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {
-      // Installation support should never block the records workspace.
-    });
+    navigator.serviceWorker
+      .register("/sw.js", { scope: "/" })
+      .then((registration) => registration.update())
+      .catch(() => {
+        // Installation support should never block the records workspace.
+      });
   }, []);
 
   return null;
