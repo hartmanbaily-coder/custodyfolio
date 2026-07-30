@@ -2,7 +2,13 @@ import Link from "next/link";
 
 import { AccountDeletionRequest } from "@/app/account/delete/AccountDeletionRequest";
 import { PolicyPage, type PolicySection } from "@/components/PolicyPage";
-import { accountDeletionMailto, supportEmail } from "@/lib/site";
+import { accountDeletionMailto, pageMetadata, supportEmail } from "@/lib/site";
+
+export const metadata = pageMetadata({
+  title: "Delete Account",
+  description: "Permanently delete your Custody Folio account and associated records.",
+  canonical: "/account/delete",
+});
 
 const sections: PolicySection[] = [
   {

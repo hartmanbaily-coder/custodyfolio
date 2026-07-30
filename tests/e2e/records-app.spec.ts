@@ -546,7 +546,7 @@ test("mobile screenshot exhibit builder preserves order and generates a protecte
   const downloadPromise = page.waitForEvent("download");
   await builder.getByRole("button", { name: "Download or share PDF" }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe("my_custody_case_exhibit_Exhibit-A.pdf");
+  expect(download.suggestedFilename()).toBe("custody_folio_exhibit_Exhibit-A.pdf");
   const downloadedPdfPath = await download.path();
   expect(downloadedPdfPath).not.toBeNull();
   const downloadedPdf = await readFile(downloadedPdfPath!);
@@ -646,7 +646,7 @@ test("lawyer court summary and charts export a populated PDF file", async ({ pag
   await exportPanel.getByRole("button", { name: "Print / save PDF" }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe(
-    "my_custody_case_timeline-2026-05-01-2026-06-15.pdf"
+    "custody_folio_timeline-2026-05-01-2026-06-15.pdf"
   );
   const downloadedPdfPath = await download.path();
   expect(downloadedPdfPath).not.toBeNull();
@@ -1374,7 +1374,7 @@ test("saved information records expose working edit and delete controls", async 
   await expenseForm.getByLabel("Amount", { exact: true }).fill("99.50");
   await expenseForm.getByRole("button", { name: "Update expense" }).click();
   await expect(page.getByRole("status")).toContainText("Expense record updated");
-  await expect(page.getByText("$99.50", { exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "$99.50", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Delete expense School supply receipt" }).click();
   await expect(page.getByRole("status")).toContainText("Expense record deleted");
 });

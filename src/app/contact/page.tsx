@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PolicyPage, type PolicySection } from "@/components/PolicyPage";
 import {
   accountDeletionPath,
+  pageMetadata,
   privacyEmail,
   privacyMailto,
   securityEmail,
@@ -10,6 +11,12 @@ import {
   supportEmail,
   supportMailto,
 } from "@/lib/site";
+
+export const metadata = pageMetadata({
+  title: "Contact",
+  description: "Contact Custody Folio support, privacy, or security.",
+  canonical: "/contact",
+});
 
 const sections: PolicySection[] = [
   {

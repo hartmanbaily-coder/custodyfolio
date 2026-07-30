@@ -798,6 +798,13 @@ type NativeNavigationHandler = {
   }) => void;
 };
 
+type NativeAppearanceHandler = {
+  postMessage: (message: {
+    action: "setAppearance";
+    preference: "system" | "light" | "dark";
+  }) => void;
+};
+
 declare global {
   interface Window {
     webkit?: {
@@ -806,6 +813,7 @@ declare global {
         lostToFoundDownloadV2?: NativeChunkedDownloadHandler;
         lostToFoundNavigation?: NativeNavigationHandler;
         lostToFoundSession?: NativeSessionHandler;
+        custodyFolioAppearance?: NativeAppearanceHandler;
       };
     };
   }

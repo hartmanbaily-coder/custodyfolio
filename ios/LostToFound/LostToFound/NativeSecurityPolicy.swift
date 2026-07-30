@@ -1,5 +1,20 @@
 import Foundation
 
+enum AppearancePreferencePolicy {
+    static let storageKey = "custody-folio-appearance"
+    static let allowedPreferences = Set(["system", "light", "dark"])
+
+    static func preference(from payload: [String: Any]?) -> String? {
+        guard payload?["action"] as? String == "setAppearance",
+              let preference = payload?["preference"] as? String,
+              allowedPreferences.contains(preference)
+        else {
+            return nil
+        }
+        return preference
+    }
+}
+
 enum SessionCookiePolicy {
     static let allowedHosts = Set([
         "custodyfolio.com",

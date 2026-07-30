@@ -1,5 +1,11 @@
 import { PolicyPage, type PolicySection } from "@/components/PolicyPage";
-import { supportEmail, supportMailto } from "@/lib/site";
+import { pageMetadata, supportEmail, supportMailto } from "@/lib/site";
+
+export const metadata = pageMetadata({
+  title: "Accessibility Statement",
+  description: "Custody Folio accessibility goals and how to report an access barrier.",
+  canonical: "/accessibility",
+});
 
 const sections: PolicySection[] = [
   {

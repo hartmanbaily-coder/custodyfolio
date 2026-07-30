@@ -1,4 +1,11 @@
 import { PolicyPage, type PolicySection } from "@/components/PolicyPage";
+import { pageMetadata } from "@/lib/site";
+
+export const metadata = pageMetadata({
+  title: "AI Data Use",
+  description: "The current status of AI assisted import in Custody Folio.",
+  canonical: "/ai-data-use",
+});
 
 const sections: PolicySection[] = [
   {

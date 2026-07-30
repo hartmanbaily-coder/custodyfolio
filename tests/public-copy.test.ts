@@ -49,6 +49,35 @@ describe("customer facing copy", () => {
     expect(site).toContain('securityEmail = "security@custodyfolio.com"');
   });
 
+  it("links the complete public policy set", () => {
+    const site = readFileSync(resolve(process.cwd(), "src/lib/site.ts"), "utf8");
+    for (const path of [
+      "/privacy",
+      "/terms",
+      "/security",
+      "/ai-data-use",
+      "/subprocessors",
+      "/accessibility",
+      "/contact",
+      "/account/delete",
+    ]) {
+      expect(site).toContain(path);
+    }
+  });
+
+  it("does not expose the retired product name in export filenames", () => {
+    const exportFiles = [
+      "src/components/records/RecordsApp.tsx",
+      "src/components/records/AttorneyPortal.tsx",
+      "src/lib/records/exhibits.ts",
+    ];
+    for (const file of exportFiles) {
+      const source = readFileSync(resolve(process.cwd(), file), "utf8");
+      expect(source).not.toContain("my_custody_case_");
+      expect(source).toContain("custody_folio_");
+    }
+  });
+
   it("states that signed-in account deletion is immediate and self-service", () => {
     const deletionPage = readFileSync(
       resolve(process.cwd(), "src/app/account/delete/page.tsx"),

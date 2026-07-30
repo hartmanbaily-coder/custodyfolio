@@ -4,6 +4,31 @@ import XCTest
 @testable import LostToFound
 
 final class NativeSecurityPolicyTests: XCTestCase {
+    func testAppearancePreferenceAcceptsOnlySupportedMainBridgeValues() {
+        XCTAssertEqual(
+            AppearancePreferencePolicy.preference(
+                from: ["action": "setAppearance", "preference": "system"]
+            ),
+            "system"
+        )
+        XCTAssertEqual(
+            AppearancePreferencePolicy.preference(
+                from: ["action": "setAppearance", "preference": "dark"]
+            ),
+            "dark"
+        )
+        XCTAssertNil(
+            AppearancePreferencePolicy.preference(
+                from: ["action": "setAppearance", "preference": "sepia"]
+            )
+        )
+        XCTAssertNil(
+            AppearancePreferencePolicy.preference(
+                from: ["action": "deleteRecords", "preference": "light"]
+            )
+        )
+    }
+
     func testPhotoCaptureUsageDescriptionsArePackaged() throws {
         let infoDictionary = try XCTUnwrap(Bundle.main.infoDictionary)
         let requiredKeys = [

@@ -320,7 +320,7 @@ export function sanitizeExhibitFileName(label?: string, title?: string) {
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 120);
-  return `my_custody_case_exhibit_${safe || "compiled_screenshots"}.pdf`;
+  return `custody_folio_exhibit_${safe || "compiled_screenshots"}.pdf`;
 }
 
 function addWrappedText(

@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { FormEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PolicyFooter from "@/components/PolicyFooter";
+import ThemeSelector from "@/components/ThemeSelector";
 import {
   addDays,
   buildDashboardTimelineStats,
@@ -666,11 +667,11 @@ export default function RecordsApp() {
     const slug = `${packet.id}-${packet.range.from}-${packet.range.to}`;
 
     if (format === "csv") {
-      downloadTextFile(`my_custody_case_${slug}.csv`, sectionExportToCsv(packet), "text/csv");
+      downloadTextFile(`custody_folio_${slug}.csv`, sectionExportToCsv(packet), "text/csv");
     } else {
       try {
         const generated = generatePrintableReportPdf(packet);
-        await downloadBlobFile(`my_custody_case_${slug}.pdf`, generated.blob);
+        await downloadBlobFile(`custody_folio_${slug}.pdf`, generated.blob);
       } catch (error) {
         flash(error instanceof Error ? error.message : "PDF export failed.");
         return;
@@ -3550,7 +3551,7 @@ function TimelineView({
       attention_level: event.severity || "neutral",
     }));
     downloadTextFile(
-      `my_custody_case_timeline_${range.from}_${range.to}.csv`,
+      `custody_folio_timeline_${range.from}_${range.to}.csv`,
       rowsToCsv(rows),
       "text/csv"
     );
@@ -5620,7 +5621,7 @@ function EvidenceView({
 
   function printEvidenceSheet(item: EvidenceItem) {
     const printHtml = buildEvidencePrintHtml(item);
-    if (!shareHtmlAsPdf(`my_custody_case_file_sheet_${item.id}.pdf`, printHtml)) {
+    if (!shareHtmlAsPdf(`custody_folio_file_sheet_${item.id}.pdf`, printHtml)) {
       const printWindow = window.open("", "_blank", "noopener,noreferrer,width=900,height=700");
       if (!printWindow) {
         flash("Popup blocked. Allow popups to print the file sheet.");
@@ -6893,7 +6894,7 @@ function ReportsView({
       return;
     }
     const csv = reportPreviewToCsv(preview);
-    downloadTextFile(`my_custody_case_records_${reportType}_${range.from}_${range.to}.csv`, csv, "text/csv");
+    downloadTextFile(`custody_folio_records_${reportType}_${range.from}_${range.to}.csv`, csv, "text/csv");
     updateDataset((current) =>
       withAudit(current, {
         userId,
@@ -6917,7 +6918,7 @@ function ReportsView({
         printableReportPacket(preview, range)
       );
       await downloadBlobFile(
-        `my_custody_case_records_${reportType}_${range.from}_${range.to}.pdf`,
+        `custody_folio_records_${reportType}_${range.from}_${range.to}.pdf`,
         generated.blob
       );
     } catch (error) {
@@ -7313,6 +7314,7 @@ function SettingsView({
       <div className="min-w-0 space-y-4">
         <Panel title="Account settings" action="Profile">
           <form onSubmit={updateProfile} className="grid gap-3">
+            <ThemeSelector />
             <Field label="Display name">
               <input name="displayName" className="input" defaultValue={profile?.displayName || ""} />
             </Field>

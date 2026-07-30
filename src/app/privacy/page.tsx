@@ -1,6 +1,12 @@
 import { PolicyPage, type PolicySection } from "@/components/PolicyPage";
-import { accountDeletionPath, privacyEmail, privacyMailto } from "@/lib/site";
+import { accountDeletionPath, pageMetadata, privacyEmail, privacyMailto } from "@/lib/site";
 import Link from "next/link";
+
+export const metadata = pageMetadata({
+  title: "Privacy Policy",
+  description: "How Custody Folio collects, uses, protects, retains, and deletes information.",
+  canonical: "/privacy",
+});
 
 const sections: PolicySection[] = [
   {

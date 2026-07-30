@@ -63,10 +63,10 @@ describe("native text export bridge", () => {
       },
     });
 
-    downloadTextFile("my_custody_case_report.csv", "date,event\n2026-07-10,Export", "text/csv");
+    downloadTextFile("custody_folio_report.csv", "date,event\n2026-07-10,Export", "text/csv");
 
     expect(postMessage).toHaveBeenCalledWith({
-      fileName: "my_custody_case_report.csv",
+      fileName: "custody_folio_report.csv",
       body: "date,event\n2026-07-10,Export",
       contentType: "text/csv",
     });
@@ -82,10 +82,10 @@ describe("native text export bridge", () => {
       },
     });
 
-    expect(shareHtmlAsPdf("my_custody_case_report.pdf", "<h1>Report</h1>")).toBe(true);
+    expect(shareHtmlAsPdf("custody_folio_report.pdf", "<h1>Report</h1>")).toBe(true);
 
     expect(postMessage).toHaveBeenCalledWith({
-      fileName: "my_custody_case_report.pdf",
+      fileName: "custody_folio_report.pdf",
       body: "<h1>Report</h1>",
       contentType: "text/html",
       renderAsPDF: true,

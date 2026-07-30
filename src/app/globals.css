@@ -5,12 +5,39 @@
 
 :root {
   color-scheme: light;
+  --cf-page: #f4f7fc;
+  --cf-page-accent: #eaf2fb;
+  --cf-surface: #ffffff;
+  --cf-surface-elevated: #ffffff;
+  --cf-surface-muted: #f8fafc;
+  --cf-border: #cbd5e1;
+  --cf-text: #0f172a;
+  --cf-text-muted: #475569;
+  --cf-text-faint: #64748b;
+  --cf-chart-grid: #e2e8f0;
+}
+
+html.dark {
+  color-scheme: dark;
+  --cf-page: #07111f;
+  --cf-page-accent: #0b192a;
+  --cf-surface: #0f1d2d;
+  --cf-surface-elevated: #142438;
+  --cf-surface-muted: #101c2a;
+  --cf-border: #334a62;
+  --cf-text: #f1f5f9;
+  --cf-text-muted: #bdcad8;
+  --cf-text-faint: #91a2b5;
+  --cf-chart-grid: #334155;
 }
 
 body {
   margin: 0;
+  background: var(--cf-page);
+  color: var(--cf-text);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
     "SF Pro Display", ui-sans-serif, sans-serif;
+  transition: background-color 160ms ease, color 160ms ease;
 }
 
 .records-workspace,
@@ -98,6 +125,227 @@ body {
   }
 }
 
+/*
+ * The existing product uses Tailwind's neutral utility palette throughout.
+ * These mappings keep that hierarchy intact in dark mode without making every
+ * feature own a separate theme implementation.
+ */
+html.dark body,
+html.dark main {
+  background-color: var(--cf-page) !important;
+  color: var(--cf-text) !important;
+}
+
+html.dark .records-app-shell {
+  background-color: var(--cf-page) !important;
+  background-image: linear-gradient(145deg, #07111f, #0a1a2b 52%, #0b1726) !important;
+}
+
+html.dark :where(
+  [class~="bg-white"],
+  [class~="bg-white/95"],
+  [class~="bg-white/90"],
+  [class~="bg-white/80"],
+  [class~="bg-white/75"],
+  [class~="bg-white/60"]
+) {
+  background-color: var(--cf-surface) !important;
+}
+
+html.dark :where(
+  [class~="bg-slate-50"],
+  [class~="bg-slate-50/80"],
+  [class~="bg-slate-50/70"],
+  [class~="bg-slate-100"],
+  [class~="bg-slate-200/45"],
+  [class~="bg-[#F8FAFC]"],
+  [class~="bg-[#f8fafc]"],
+  [class~="bg-[#e8f1fb]"]
+) {
+  background-color: var(--cf-surface-muted) !important;
+}
+
+html.dark :where(
+  [class~="bg-slate-200"],
+  [class~="bg-slate-200/80"],
+  [class~="bg-slate-300"],
+  [class~="bg-[#E2E8F0]"]
+) {
+  background-color: #26394d !important;
+}
+
+html.dark :where(
+  [class~="bg-[#f4f7f6]"],
+  [class~="bg-[#f4f7fc]"],
+  [class~="bg-[#f6f8f7]"]
+) {
+  background-color: var(--cf-page) !important;
+}
+
+html.dark :where(.text-slate-950, .text-slate-900) {
+  color: var(--cf-text) !important;
+}
+
+html.dark :where(.text-slate-800, .text-slate-700) {
+  color: #d6e0ea !important;
+}
+
+html.dark :where(.text-slate-600, .text-slate-500) {
+  color: var(--cf-text-muted) !important;
+}
+
+html.dark :where(.text-slate-400) {
+  color: var(--cf-text-faint) !important;
+}
+
+html.dark :where(
+  .border-slate-100,
+  .border-slate-200,
+  [class~="border-slate-200/90"],
+  [class~="border-slate-200/80"],
+  .border-slate-300,
+  [class~="border-[#CBD5E1]"]
+) {
+  border-color: var(--cf-border) !important;
+}
+
+html.dark :where(.divide-slate-100, .divide-slate-200) > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--cf-border) !important;
+}
+
+html.dark :where(input, select, textarea, .input) {
+  background-color: var(--cf-surface-elevated) !important;
+  border-color: #405a73 !important;
+  color: var(--cf-text) !important;
+}
+
+html.dark :where(input, textarea)::placeholder {
+  color: var(--cf-text-faint) !important;
+}
+
+html.dark :where(input:disabled, select:disabled, textarea:disabled, input[readonly]) {
+  background-color: #1b2b3d !important;
+  color: #9fb0c2 !important;
+}
+
+html.dark :where(.btn-secondary) {
+  background-color: var(--cf-surface-elevated) !important;
+  border-color: #4b647d !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark :where(.btn-secondary:hover) {
+  border-color: #5eead4 !important;
+  color: #ffffff !important;
+}
+
+html.dark :where(.btn-primary, [class~="bg-teal-700"], [class~="bg-teal-800"]) {
+  background-color: #0f8b83 !important;
+}
+
+html.dark :where(.btn-primary:hover, [class~="hover:bg-teal-800"]:hover) {
+  background-color: #14a39a !important;
+}
+
+html.dark :where(.bg-teal-50, [class~="bg-teal-50/40"], [class~="bg-teal-50/30"]) {
+  background-color: #0b3738 !important;
+}
+
+html.dark :where(.border-teal-200, .border-teal-300, .border-teal-500, .border-teal-600) {
+  border-color: #2a817c !important;
+}
+
+html.dark :where(.text-teal-700, .text-teal-800, .text-teal-900, .text-teal-950) {
+  color: #75e5d8 !important;
+}
+
+html.dark :where(.bg-blue-50) {
+  background-color: #132f52 !important;
+}
+
+html.dark :where(.border-blue-200, .border-blue-400) {
+  border-color: #3b6d9f !important;
+}
+
+html.dark :where(.text-blue-700, .text-blue-950) {
+  color: #9cc9ff !important;
+}
+
+html.dark :where(.bg-amber-50, [class~="bg-amber-50/80"], [class~="bg-amber-50/60"], [class~="bg-amber-50/30"]) {
+  background-color: #3b2b10 !important;
+}
+
+html.dark :where(.border-amber-200) {
+  border-color: #8a6723 !important;
+}
+
+html.dark :where(.text-amber-700, .text-amber-900, .text-amber-950) {
+  color: #fbd38d !important;
+}
+
+html.dark :where(.bg-red-50, .bg-rose-50) {
+  background-color: #421d29 !important;
+}
+
+html.dark :where(.border-red-200, .border-red-400, .border-rose-200) {
+  border-color: #9f5268 !important;
+}
+
+html.dark :where(.text-red-700, .text-rose-900) {
+  color: #fda4af !important;
+}
+
+html.dark :where(.bg-emerald-50) {
+  background-color: #11372e !important;
+}
+
+html.dark :where(.border-emerald-200, .border-emerald-300, .border-emerald-500) {
+  border-color: #388d72 !important;
+}
+
+html.dark :where(.text-emerald-700, .text-emerald-900) {
+  color: #7ee2bd !important;
+}
+
+html.dark :where([class~="bg-[#1E3A5F]"]) {
+  background-color: #3973ad !important;
+}
+
+html.dark :where([class~="hover:bg-[#E2E8F0]"]:hover) {
+  background-color: #26394d !important;
+}
+
+html.dark :where([class~="bg-[#F5F3FF]"]) {
+  background-color: #2f2450 !important;
+}
+
+html.dark :where([class~="border-[#C4B5FD]"]) {
+  border-color: #806dba !important;
+}
+
+html.dark :where([class~="text-[#4C1D95]"], [class~="text-[#5B21B6]"]) {
+  color: #d8c9ff !important;
+}
+
+html.dark :where(.recharts-cartesian-grid line) {
+  stroke: var(--cf-chart-grid) !important;
+}
+
+html.dark :where(.recharts-cartesian-axis-tick text, .recharts-legend-item-text) {
+  fill: var(--cf-text-muted) !important;
+  color: var(--cf-text-muted) !important;
+}
+
+html.dark :where(.recharts-default-tooltip) {
+  background-color: var(--cf-surface-elevated) !important;
+  border-color: var(--cf-border) !important;
+  color: var(--cf-text) !important;
+}
+
+html.dark :focus-visible {
+  outline-color: #5eead4;
+}
+
 @media print {
   @page {
     size: letter;
@@ -172,6 +420,7 @@ body {
   }
 
   .report-surface {
+    background: white !important;
     color: #0f172a !important;
     font-size: 10pt !important;
     line-height: 1.45 !important;
@@ -180,6 +429,27 @@ body {
     min-width: 0 !important;
     padding: 0 !important;
     width: 100% !important;
+  }
+
+  .report-surface :where(
+    [class~="bg-white"],
+    [class~="bg-slate-50"],
+    [class~="bg-slate-100"],
+    [class~="bg-teal-50"],
+    [class~="bg-amber-50"]
+  ) {
+    background: white !important;
+  }
+
+  .report-surface :where(
+    .text-slate-950,
+    .text-slate-900,
+    .text-slate-800,
+    .text-slate-700,
+    .text-slate-600,
+    .text-slate-500
+  ) {
+    color: #0f172a !important;
   }
 
   .report-surface h2 {

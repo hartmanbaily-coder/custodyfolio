@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+
 export const siteName = "Custody Folio";
 export const recordsTagline = "Remove the emotion. Track the data.";
 export const siteDescription =
@@ -17,6 +19,33 @@ export const policyLastUpdated = "July 26, 2026";
 export const publicPolicyLinks = [
   { href: "/privacy", label: "Privacy" },
   { href: "/terms", label: "Terms" },
+  { href: "/security", label: "Security" },
+  { href: "/ai-data-use", label: "AI data use" },
+  { href: "/subprocessors", label: "Subprocessors" },
+  { href: "/accessibility", label: "Accessibility" },
   { href: "/contact", label: "Contact" },
   { href: accountDeletionPath, label: "Account deletion" },
 ];
+
+export function pageMetadata({
+  title,
+  description,
+  canonical,
+}: {
+  title: string;
+  description: string;
+  canonical: string;
+}): Metadata {
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      type: "website",
+      url: canonical,
+      siteName,
+      title,
+      description,
+    },
+  };
+}
