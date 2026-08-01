@@ -4,7 +4,8 @@ import {
   recordAttorneyAccessEvent,
 } from "@/lib/records/attorneyAccess";
 import { sealAttorneyHandle } from "@/lib/records/attorneyCrypto";
-import { getAttorneyAuthContext } from "@/lib/records/attorneyServer";
+import { getAttorneyGuestAuthContext } from "@/lib/records/attorneyServer";
+import { attachRefreshedRecordsSession } from "@/lib/records/authServer";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
 
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     windowMs: 60 * 1000,
   });
   if (rateLimit.limited) return rateLimitExceededResponse(rateLimit);
-  const context = await getAttorneyAuthContext(request);
+  const context = await getAttorneyGuestAuthContext(request);
   if ("error" in context) return context.error;
   const now = new Date().toISOString();
   const { data, error } = await context.supabase
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
     .order("granted_at", { ascending: false })
     .limit(10);
   if (error) return NextResponse.json({ error: "Unable to load shared matters." }, { status: 500 });
-  return NextResponse.json(
+  const response = NextResponse.json(
     {
       matters: (data || []).map((grant, index) => ({
         accessHandle: sealAttorneyHandle({
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest) {
     },
     { headers: { "Cache-Control": "no-store" } }
   );
+  return attachRefreshedRecordsSession(request, response, context);
 }
 
 export async function POST(request: NextRequest) {
@@ -57,7 +59,7 @@ export async function POST(request: NextRequest) {
   });
   if (rateLimit.limited) return rateLimitExceededResponse(rateLimit);
   if (!verifyRecordsCsrf(request).ok) return recordsCsrfError();
-  const context = await getAttorneyAuthContext(request);
+  const context = await getAttorneyGuestAuthContext(request);
   if ("error" in context) return context.error;
   const body = (await request.json().catch(() => ({}))) as { accessHandle?: unknown };
   const accessHandle = typeof body.accessHandle === "string" ? body.accessHandle : "";
@@ -90,7 +92,7 @@ export async function POST(request: NextRequest) {
       { status: 503, headers: { "Cache-Control": "no-store" } }
     );
   }
-  return NextResponse.json(
+  const response = NextResponse.json(
     {
       accessHandle,
       projection: shared.projection,
@@ -100,4 +102,5 @@ export async function POST(request: NextRequest) {
     },
     { headers: { "Cache-Control": "no-store, private" } }
   );
+  return attachRefreshedRecordsSession(request, response, context);
 }
