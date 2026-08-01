@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import {
+  getAccessTokenAal,
   getRecordsAuthContext,
   isSupabaseRecordsMode,
+  recordsAccessCookieName,
+  recordsRefreshCookieName,
+  recordsSessionScopeCookieName,
   type RecordsAuthContext,
 } from "./authServer";
+import { createServerSupabaseAuthClient } from "@/lib/supabaseClient";
+import { defaultCaseIdForUser } from "./accountBoundary";
 import {
   attorneyEmailHash,
   constantTimeEqualStrings,
@@ -202,6 +208,74 @@ export function attorneyDisabledResponse() {
     { error: "Attorney access is not enabled." },
     { status: 501, headers: { "Cache-Control": "no-store" } }
   );
+}
+
+function attorneyGuestAuthError(message = "Open the secure attorney access link from your email.") {
+  return NextResponse.json(
+    { error: message },
+    { status: 401, headers: { "Cache-Control": "no-store" } }
+  );
+}
+
+export async function getAttorneyGuestAuthContext(
+  request: NextRequest
+): Promise<RecordsAuthContext | { error: NextResponse }> {
+  if (!isSupabaseRecordsMode()) return { error: attorneyDisabledResponse() } as const;
+  if (request.cookies.get(recordsSessionScopeCookieName)?.value !== "attorney_guest") {
+    return { error: attorneyGuestAuthError() } as const;
+  }
+
+  const accessToken = request.cookies.get(recordsAccessCookieName)?.value || "";
+  const refreshToken = request.cookies.get(recordsRefreshCookieName)?.value || "";
+  if (!accessToken && !refreshToken) {
+    return { error: attorneyGuestAuthError() } as const;
+  }
+
+  const supabase = createSupabaseAdminClient();
+  if (accessToken) {
+    const { data, error } = await supabase.auth.getUser(accessToken);
+    if (!error && data.user?.id && data.user.email && data.user.email_confirmed_at) {
+      return {
+        supabase,
+        userId: data.user.id,
+        email: data.user.email,
+        emailConfirmedAt: data.user.email_confirmed_at,
+        assuranceLevel: getAccessTokenAal(accessToken),
+        caseId: defaultCaseIdForUser(data.user.id),
+        sessionScope: "attorney_guest",
+      };
+    }
+  }
+
+  if (refreshToken) {
+    const authClient = createServerSupabaseAuthClient();
+    const { data, error } = await authClient.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
+    const refreshed = data.session;
+    const user = data.user || refreshed?.user;
+    if (
+      !error &&
+      refreshed?.access_token &&
+      refreshed.refresh_token &&
+      user?.id &&
+      user.email &&
+      user.email_confirmed_at
+    ) {
+      return {
+        supabase,
+        userId: user.id,
+        email: user.email,
+        emailConfirmedAt: user.email_confirmed_at,
+        assuranceLevel: getAccessTokenAal(refreshed.access_token),
+        caseId: defaultCaseIdForUser(user.id),
+        sessionScope: "attorney_guest",
+        refreshedSession: refreshed,
+      };
+    }
+  }
+
+  return { error: attorneyGuestAuthError("Attorney access has expired. Ask the record owner for a new invitation.") } as const;
 }
 
 export async function getAttorneyAuthContext(

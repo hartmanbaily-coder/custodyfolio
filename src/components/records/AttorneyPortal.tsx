@@ -15,7 +15,6 @@ import { attorneyMutation, getRecordsCsrfToken } from "@/lib/records/attorneyCli
 import {
   downloadBlobFile,
   downloadTextFile,
-  readRecordsSession,
   signOutRecordsSession,
 } from "@/lib/records/clientStore";
 import type { SharedCaseProjection, SharedEvidenceItem } from "@/lib/records/attorneyProjection";
@@ -86,13 +85,22 @@ export default function AttorneyPortal() {
   useEffect(() => {
     let active = true;
     async function load() {
-      const session = await readRecordsSession().catch(() => ({ status: "signed_out" as const }));
+      const response = await fetch("/api/records/attorney/portal", {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        matters?: MatterChoice[];
+        error?: string;
+      };
       if (!active) return;
-      if (session.status !== "signed_in") {
+      if (response.status === 401) {
         setSessionState("signed_out");
         return;
       }
+      if (!response.ok) throw new Error(body.error || "Unable to load shared matters.");
       setSessionState("ready");
+      setMatters(body.matters || []);
       const saved = window.sessionStorage.getItem("l2f.attorney.access") || "";
       if (saved) {
         try {
@@ -102,11 +110,6 @@ export default function AttorneyPortal() {
           window.sessionStorage.removeItem("l2f.attorney.access");
         }
       }
-      const response = await fetch("/api/records/attorney/portal", { cache: "no-store", credentials: "same-origin" });
-      const body = (await response.json().catch(() => ({}))) as { matters?: MatterChoice[]; error?: string };
-      if (!response.ok) throw new Error(body.error || "Unable to load shared matters.");
-      if (!active) return;
-      setMatters(body.matters || []);
       if (body.matters?.length === 1) await loadPortal(body.matters[0].accessHandle);
     }
     void load().catch((error: unknown) => {
@@ -253,12 +256,12 @@ export default function AttorneyPortal() {
   async function logout() {
     await signOutRecordsSession();
     window.sessionStorage.removeItem("l2f.attorney.access");
-    window.location.replace("/records?next=/attorney");
+    window.location.replace("/");
   }
 
   if (sessionState === "loading") return <main className="grid min-h-screen place-items-center bg-[#f4f7f6]"><p>Opening shared matters…</p></main>;
   if (sessionState === "signed_out") {
-    return <main className="grid min-h-screen place-items-center bg-[#f4f7f6] px-4"><section className="max-w-lg rounded-lg border bg-white p-6 shadow-sm"><h1 className="text-2xl font-semibold">Shared With Me</h1><p className="mt-3 text-sm text-slate-600">Sign in with a confirmed adult account and complete authenticator verification.</p><Link href="/records?next=/attorney" className="btn-primary mt-5 inline-block">Sign in</Link></section></main>;
+    return <main className="grid min-h-screen place-items-center bg-[#f4f7f6] px-4"><section className="max-w-lg rounded-lg border bg-white p-6 shadow-sm"><h1 className="text-2xl font-semibold">Shared With Me</h1><p className="mt-3 text-sm text-slate-600">Open the secure Custody Folio access link sent to the invited email address. If that link has expired, ask the record owner to send a new invitation.</p><Link href="/" className="btn-primary mt-5 inline-block">Custody Folio home</Link></section></main>;
   }
 
   if (!portal) {

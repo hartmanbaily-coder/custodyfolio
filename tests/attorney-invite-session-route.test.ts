@@ -5,39 +5,30 @@ import { resetRateLimitStore } from "@/lib/security/rateLimit";
 
 const getClaims = vi.hoisted(() => vi.fn());
 const getUser = vi.hoisted(() => vi.fn());
-const listFactors = vi.hoisted(() => vi.fn());
-const unenroll = vi.hoisted(() => vi.fn());
-const enroll = vi.hoisted(() => vi.fn());
-const findPendingAttorneyOnboardingForEmail = vi.hoisted(() => vi.fn());
+const findPendingAttorneyInvitationForEmail = vi.hoisted(() => vi.fn());
 const checkAttorneyGuestEntitlement = vi.hoisted(() => vi.fn());
-const recordsProfileExists = vi.hoisted(() => vi.fn());
 const setRecordsSessionCookies = vi.hoisted(() => vi.fn());
-const setRecordsPasswordRecoveryCookie = vi.hoisted(() => vi.fn());
-const setAttorneyAcceptanceCookie = vi.hoisted(() => vi.fn((response) => response));
-const setAttorneyMailboxProofCookie = vi.hoisted(() => vi.fn((response) => response));
-const setAttorneyPasswordSetupCookie = vi.hoisted(() => vi.fn((response) => response));
+const clearAttorneyAcceptanceCookie = vi.hoisted(() => vi.fn((response) => response));
+const clearAttorneyMailboxProofCookie = vi.hoisted(() => vi.fn((response) => response));
+const clearAttorneyPasswordSetupCookie = vi.hoisted(() => vi.fn((response) => response));
 const rpc = vi.hoisted(() => vi.fn());
 const recordSecurityEvent = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/supabaseClient", () => ({
   createServerSupabaseAuthClient: () => ({ auth: { getClaims } }),
-  createServerSupabaseSessionClient: vi.fn(async () => ({
-    auth: { getUser, mfa: { enroll, listFactors, unenroll } },
-  })),
+  createServerSupabaseSessionClient: vi.fn(async () => ({ auth: { getUser } })),
 }));
 vi.mock("@/lib/records/authServer", () => ({
   isSupabaseRecordsMode: () => true,
-  setRecordsPasswordRecoveryCookie,
   setRecordsSessionCookies,
 }));
 vi.mock("@/lib/records/attorneyServer", () => ({
-  findPendingAttorneyOnboardingForEmail,
-  setAttorneyAcceptanceCookie,
-  setAttorneyMailboxProofCookie,
-  setAttorneyPasswordSetupCookie,
+  clearAttorneyAcceptanceCookie,
+  clearAttorneyMailboxProofCookie,
+  clearAttorneyPasswordSetupCookie,
+  findPendingAttorneyInvitationForEmail,
 }));
 vi.mock("@/lib/records/attorneyEntitlement", () => ({ checkAttorneyGuestEntitlement }));
-vi.mock("@/lib/records/profileServer", () => ({ recordsProfileExists }));
 vi.mock("@/lib/supabaseAdmin", () => ({ createSupabaseAdminClient: () => ({ rpc }) }));
 vi.mock("@/lib/security/securityEvents", () => ({ recordSecurityEvent }));
 
@@ -56,7 +47,7 @@ function request(overrides: { token?: string; accessToken?: string; refreshToken
     body: JSON.stringify({
       accessToken: overrides.accessToken ?? "mailbox-access-token-long-enough",
       refreshToken: overrides.refreshToken ?? "mailbox-refresh-token-long-enough",
-      onboardingToken: overrides.token ?? "onboarding-token-long-enough",
+      onboardingToken: overrides.token ?? "original-invitation-token-long-enough",
       expiresIn: 3600,
     }),
   });
@@ -89,117 +80,49 @@ describe("mailbox-verified attorney session", () => {
       },
       error: null,
     });
-    findPendingAttorneyOnboardingForEmail.mockResolvedValue({
+    findPendingAttorneyInvitationForEmail.mockResolvedValue({
       id: "invite-1",
-      onboarding_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-      onboarding_password_required: false,
+      owner_user_id: "owner-1",
+      case_id: "case-1",
     });
-    recordsProfileExists.mockResolvedValue(false);
-    rpc.mockResolvedValue({ data: true, error: null });
-    listFactors.mockResolvedValue({ data: { totp: [] }, error: null });
-    unenroll.mockResolvedValue({ error: null });
-    enroll.mockResolvedValue({
-      data: { id: "factor-1", totp: { qr_code: "data:image/svg+xml,qr", secret: "secret" } },
+    rpc.mockResolvedValue({
+      data: [{
+        grant_id: "grant-1",
+        owner_user_id: "owner-1",
+        case_key: "default",
+        case_id: "case-1",
+        access_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      }],
       error: null,
     });
   });
 
-  it("provisions only after mailbox proof and requires a new password for an unapproved identity", async () => {
-    const response = await POST(request());
-
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
-      ok: true,
-      passwordSetupRequired: true,
-      mfaRequired: false,
-      mfaEnrollmentRequired: false,
-    });
-    expect(findPendingAttorneyOnboardingForEmail).toHaveBeenCalledWith({
-      token: "onboarding-token-long-enough",
-      email: "counsel@example.test",
-    });
-    expect(rpc).toHaveBeenCalledWith("complete_records_attorney_onboarding", {
-      p_invitation_id: "invite-1",
-      p_onboarding_token_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
-      p_acceptance_token_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
-      p_attorney_user_id: "attorney-1",
-      p_invited_email_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
-      p_email: "counsel@example.test",
-      p_password_setup_required: true,
-    });
-    expect(setRecordsPasswordRecoveryCookie).toHaveBeenCalledWith(response, {
-      userId: "attorney-1",
-      sessionId: "mailbox-session-id",
-    });
-    expect(setRecordsSessionCookies).toHaveBeenCalled();
-    expect(setAttorneyPasswordSetupCookie).toHaveBeenCalledWith(
-      response,
-      expect.objectContaining({ invitationId: "invite-1", userId: "attorney-1" })
-    );
-    expect(setAttorneyAcceptanceCookie).toHaveBeenCalledWith(
-      response,
-      "onboarding-token-long-enough"
-    );
-    expect(setAttorneyMailboxProofCookie).toHaveBeenCalledWith(
-      response,
-      expect.objectContaining({
-        invitationId: "invite-1",
-        userId: "attorney-1",
-        token: "onboarding-token-long-enough",
-      })
-    );
-  });
-
-  it("continues an already-approved account without forcing a password change", async () => {
-    recordsProfileExists.mockReset();
-    recordsProfileExists.mockResolvedValue(true);
-
-    const response = await POST(request());
-
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
-      ok: true,
-      passwordSetupRequired: false,
-      mfaRequired: true,
-      mfaEnrollmentRequired: true,
-      enrollment: {
-        factorId: "factor-1",
-        qrCode: "data:image/svg+xml,qr",
-        secret: "secret",
-      },
-    });
-    expect(rpc).toHaveBeenCalled();
-    expect(setRecordsPasswordRecoveryCookie).not.toHaveBeenCalled();
-    expect(setAttorneyPasswordSetupCookie).not.toHaveBeenCalled();
-    expect(setRecordsSessionCookies).toHaveBeenCalled();
-    expect(setAttorneyMailboxProofCookie).toHaveBeenCalled();
-    expect(enroll).toHaveBeenCalledWith({ factorType: "totp", issuer: "Custody Folio" });
-  });
-
-  it("resumes interrupted password setup even after the records profile exists", async () => {
-    recordsProfileExists.mockResolvedValue(true);
-    findPendingAttorneyOnboardingForEmail.mockResolvedValue({
-      id: "invite-1",
-      onboarding_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-      onboarding_password_required: true,
-    });
-
+  it("opens the scoped read only case immediately after fresh mailbox proof", async () => {
     const response = await POST(request());
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
-      passwordSetupRequired: true,
-      mfaEnrollmentRequired: false,
+      ok: true,
+      accepted: true,
+      accessHandle: expect.any(String),
+      accessExpiresAt: expect.any(String),
     });
-    expect(listFactors).not.toHaveBeenCalled();
-    expect(rpc).toHaveBeenCalledWith(
-      "complete_records_attorney_onboarding",
-      expect.objectContaining({ p_password_setup_required: true })
-    );
-    expect(setAttorneyPasswordSetupCookie).toHaveBeenCalled();
+    expect(findPendingAttorneyInvitationForEmail).toHaveBeenCalledWith({
+      token: "original-invitation-token-long-enough",
+      email: "counsel@example.test",
+    });
+    expect(rpc).toHaveBeenCalledWith("accept_records_attorney_invitation", {
+      p_token_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+      p_attorney_user_id: "attorney-1",
+      p_invited_email_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+    expect(setRecordsSessionCookies).toHaveBeenCalled();
+    expect(clearAttorneyAcceptanceCookie).toHaveBeenCalledWith(response);
+    expect(clearAttorneyMailboxProofCookie).toHaveBeenCalledWith(response);
+    expect(clearAttorneyPasswordSetupCookie).toHaveBeenCalledWith(response);
   });
 
-  it("rejects a password-authenticated token that lacks fresh email proof", async () => {
+  it("rejects a password session that lacks fresh mailbox proof", async () => {
     getClaims.mockResolvedValue({
       data: {
         claims: {
@@ -214,13 +137,12 @@ describe("mailbox-verified attorney session", () => {
     const response = await POST(request());
 
     expect(response.status).toBe(401);
-    expect(findPendingAttorneyOnboardingForEmail).not.toHaveBeenCalled();
+    expect(findPendingAttorneyInvitationForEmail).not.toHaveBeenCalled();
     expect(rpc).not.toHaveBeenCalled();
-    expect(setRecordsSessionCookies).not.toHaveBeenCalled();
   });
 
-  it("rejects valid email proof when the pending invitation token or email does not match", async () => {
-    findPendingAttorneyOnboardingForEmail.mockResolvedValue(null);
+  it("rejects valid mailbox proof when the invitation token or email does not match", async () => {
+    findPendingAttorneyInvitationForEmail.mockResolvedValue(null);
 
     const response = await POST(request());
 
@@ -229,13 +151,28 @@ describe("mailbox-verified attorney session", () => {
     expect(setRecordsSessionCookies).not.toHaveBeenCalled();
   });
 
-  it("fails closed when the atomic invitation/profile finalization does not persist", async () => {
-    rpc.mockResolvedValue({ data: false, error: null });
+  it("fails closed when the atomic invitation acceptance does not return a grant", async () => {
+    rpc.mockResolvedValue({ data: [], error: null });
 
     const response = await POST(request());
 
     expect(response.status).toBe(401);
-    expect(rpc).toHaveBeenCalled();
+    expect(setRecordsSessionCookies).not.toHaveBeenCalled();
+  });
+
+  it("never grants a user access to their own invitation", async () => {
+    rpc.mockResolvedValue({
+      data: [{
+        grant_id: "grant-1",
+        owner_user_id: "attorney-1",
+        access_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      }],
+      error: null,
+    });
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(401);
     expect(setRecordsSessionCookies).not.toHaveBeenCalled();
   });
 });

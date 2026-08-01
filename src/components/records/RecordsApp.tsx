@@ -1177,21 +1177,9 @@ function LoginScreen({
         onboardingToken: attorneyOnboardingToken,
       })
         .then((result) => {
-          if (result.passwordSetupRequired) {
-            setInvitedAttorneySignup(true);
-            setMode("update_password");
-            setMessage("Invited email verified. Choose the account password before continuing.");
-            return;
-          }
-          if (result.mfaEnrollmentRequired && result.enrollment) {
-            setMfaEnrollment(result.enrollment);
-            setMfaMode("enroll");
-            setMessage("Invited email verified. Set up your authenticator to continue.");
-            return;
-          }
-          setMfaEnrollment(null);
-          setMfaMode("verify");
-          setMessage("Invited email verified. Enter the current code from your authenticator app.");
+          window.sessionStorage.setItem("l2f.attorney.access", result.accessHandle);
+          setMessage("Invited email verified. Opening the shared read only case…");
+          window.location.replace("/attorney");
         })
         .catch((inviteError: unknown) => {
           setMode("login");
