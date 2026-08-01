@@ -4,12 +4,12 @@ import { sealAttorneyHandle } from "@/lib/records/attorneyCrypto";
 import { recordsCsrfCookieName } from "@/lib/security/csrf";
 import { resetRateLimitStore } from "@/lib/security/rateLimit";
 
-const getAttorneyAuthContext = vi.hoisted(() => vi.fn());
+const getAttorneyGuestAuthContext = vi.hoisted(() => vi.fn());
 const resolveActiveAttorneyGrant = vi.hoisted(() => vi.fn());
 const recordAttorneyAccessEvent = vi.hoisted(() => vi.fn());
 const getAuthoritativeEvidenceItem = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/records/attorneyServer", () => ({ getAttorneyAuthContext }));
+vi.mock("@/lib/records/attorneyServer", () => ({ getAttorneyGuestAuthContext }));
 vi.mock("@/lib/records/attorneyAccess", () => ({
   recordAttorneyAccessEvent,
   resolveActiveAttorneyGrant,
@@ -58,7 +58,7 @@ describe("attorney evidence download authorization", () => {
     vi.clearAllMocks();
     resetRateLimitStore();
     process.env.ATTORNEY_PORTAL_SECRET = secret;
-    getAttorneyAuthContext.mockResolvedValue({
+    getAttorneyGuestAuthContext.mockResolvedValue({
       userId: "attorney-1",
       assuranceLevel: "aal2",
       email: "counsel@example.com",

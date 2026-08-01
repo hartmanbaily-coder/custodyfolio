@@ -618,6 +618,21 @@ test("attorney portal is a separate read-only mobile experience", async ({ page 
     auditLogs: [],
   };
   await page.route("**/api/records/attorney/portal", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          matters: [{
+            accessHandle: "opaque-access",
+            label: "Shared matter 1",
+            grantedAt: now,
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          }],
+        }),
+      });
+      return;
+    }
     expect(route.request().method()).toBe("POST");
     expect(route.request().postDataJSON()).toEqual({ accessHandle: "opaque-access" });
     await route.fulfill({
@@ -666,7 +681,7 @@ test("attorney portal is a separate read-only mobile experience", async ({ page 
   expect(fitsViewport).toBe(true);
 });
 
-test("a signed-in invited attorney is granted access automatically", async ({ page }) => {
+test("an attorney invitation requests mailbox verification without using an ambient account", async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem(
       "l2f.records.session.v1",
@@ -679,7 +694,6 @@ test("a signed-in invited attorney is granted access automatically", async ({ pa
     );
   });
 
-  let acceptanceCalls = 0;
   await page.route("**/api/records/auth/csrf", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
@@ -690,50 +704,19 @@ test("a signed-in invited attorney is granted access automatically", async ({ pa
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ ok: true }),
-    });
-  });
-  await page.route("**/api/records/attorney/accept", async (route) => {
-    acceptanceCalls += 1;
-    expect(route.request().method()).toBe("POST");
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
       body: JSON.stringify({
         ok: true,
-        accessHandle: "new-opaque-access",
-        accessExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        message: "A secure access link was sent to the invited email address.",
       }),
     });
   });
-  await page.route("**/api/records/attorney/portal", (route) => route.fulfill({
-    status: 503,
-    contentType: "application/json",
-    body: JSON.stringify({ error: "Portal fixture intentionally stopped after acceptance." }),
-  }));
 
   await page.goto("/attorney/accept#token=private-invitation-token");
-  await page.waitForURL(/\/attorney$/);
-
-  expect(acceptanceCalls).toBe(1);
+  await expect(page.getByRole("heading", { name: "Open a read only shared case" })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("secure access link was sent");
+  await expect(page).toHaveURL(/\/attorney\/accept$/);
   expect(await page.evaluate(() => window.sessionStorage.getItem("l2f.attorney.access")))
-    .toBe("new-opaque-access");
-});
-
-test("attorney email callback takes priority over an ambient signed-in session", async ({ page }) => {
-  await page.goto("/records");
-  await page.getByRole("button", { name: "Enter records workspace" }).click();
-  await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
-
-  await page.goto(
-    "/records?auth=attorney-invite&next=%2Fattorney%2Faccept&invite=1&attorney_token=onboarding-token-long-enough#access_token=mailbox-access-token-long-enough&refresh_token=mailbox-refresh-token-long-enough&type=invite&expires_in=3600"
-  );
-
-  await expect(page.getByRole("heading", { name: "Sign in", exact: true })).toBeVisible();
-  expect(page.url()).toContain("auth=attorney-invite");
-  expect(page.url()).toContain("attorney_token=onboarding-token-long-enough");
-  expect(page.url()).toContain("type=invite");
-  await expect(page).not.toHaveURL(/\/attorney\/accept$/);
+    .toBeNull();
 });
 
 test("mobile create flows stay visible across every record tab and reload with a stale case session", async ({ page }) => {

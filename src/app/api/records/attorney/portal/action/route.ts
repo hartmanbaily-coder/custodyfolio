@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordAttorneyAccessEvent, resolveActiveAttorneyGrant } from "@/lib/records/attorneyAccess";
-import { getAttorneyAuthContext } from "@/lib/records/attorneyServer";
+import { getAttorneyGuestAuthContext } from "@/lib/records/attorneyServer";
+import { attachRefreshedRecordsSession } from "@/lib/records/authServer";
 import type { ReportType } from "@/lib/records/types";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
   });
   if (rateLimit.limited) return rateLimitExceededResponse(rateLimit);
   if (!verifyRecordsCsrf(request).ok) return recordsCsrfError();
-  const context = await getAttorneyAuthContext(request);
+  const context = await getAttorneyGuestAuthContext(request);
   if ("error" in context) return context.error;
   const body = (await request.json().catch(() => ({}))) as {
     accessHandle?: unknown;
@@ -69,7 +70,8 @@ export async function POST(request: NextRequest) {
       grantId: access.grant.id,
       eventType: "attorney_left",
     });
-    return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+    const response = NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+    return attachRefreshedRecordsSession(request, response, context);
   }
 
   const reportType = typeof body.reportType === "string" && reportTypes.has(body.reportType as ReportType)
@@ -91,5 +93,6 @@ export async function POST(request: NextRequest) {
       { status: 503, headers: { "Cache-Control": "no-store" } }
     );
   }
-  return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+  const response = NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+  return attachRefreshedRecordsSession(request, response, context);
 }

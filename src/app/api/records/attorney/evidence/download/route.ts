@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { openAttorneyHandle } from "@/lib/records/attorneyCrypto";
 import { recordAttorneyAccessEvent, resolveActiveAttorneyGrant } from "@/lib/records/attorneyAccess";
-import { getAttorneyAuthContext } from "@/lib/records/attorneyServer";
+import { getAttorneyGuestAuthContext } from "@/lib/records/attorneyServer";
+import { attachRefreshedRecordsSession } from "@/lib/records/authServer";
 import {
   assertEvidenceItemAccess,
   getAuthoritativeEvidenceItem,
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
   });
   if (rateLimit.limited) return rateLimitExceededResponse(rateLimit);
   if (!verifyRecordsCsrf(request).ok) return recordsCsrfError();
-  const context = await getAttorneyAuthContext(request);
+  const context = await getAttorneyGuestAuthContext(request);
   if ("error" in context) return context.error;
   const body = (await request.json().catch(() => ({}))) as {
     accessHandle?: unknown;
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
       { status: 503, headers: { "Cache-Control": "no-store" } }
     );
   }
-  return new NextResponse(data, {
+  const response = new NextResponse(data, {
     headers: {
       "Cache-Control": "no-store, private",
       "Content-Disposition": `attachment; filename="${safeDownloadName(storedEvidence.originalFileName)}"`,
@@ -103,4 +104,5 @@ export async function POST(request: NextRequest) {
       "X-Content-Type-Options": "nosniff",
     },
   });
+  return attachRefreshedRecordsSession(request, response, context);
 }

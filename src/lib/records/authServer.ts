@@ -18,6 +18,9 @@ export const recordsRefreshCookieName = secureCookies
   ? "__Host-l2f-records-refresh"
   : "l2f-records-refresh";
 export const recordsCaseCookieName = secureCookies ? "__Host-l2f-records-case" : "l2f-records-case";
+export const recordsSessionScopeCookieName = secureCookies
+  ? "__Host-l2f-records-scope"
+  : "l2f-records-scope";
 export const recordsPasswordRecoveryCookieName = secureCookies
   ? "__Host-l2f-records-recovery"
   : "l2f-records-recovery";
@@ -32,6 +35,7 @@ export interface RecordsAuthContext {
   emailConfirmedAt?: string;
   assuranceLevel: "aal1" | "aal2" | null;
   caseId: string;
+  sessionScope?: "records" | "attorney_guest";
   refreshedSession?: Session;
 }
 
@@ -143,7 +147,8 @@ function baseCookieOptions(maxAge: number) {
 export function setRecordsSessionCookies(
   response: NextResponse,
   session: Pick<Session, "access_token" | "expires_in" | "refresh_token">,
-  caseId: string
+  caseId: string,
+  sessionScope: "records" | "attorney_guest" = "records"
 ) {
   response.cookies.set(
     recordsAccessCookieName,
@@ -156,12 +161,18 @@ export function setRecordsSessionCookies(
     baseCookieOptions(refreshCookieMaxAge)
   );
   response.cookies.set(recordsCaseCookieName, caseId, baseCookieOptions(refreshCookieMaxAge));
+  response.cookies.set(
+    recordsSessionScopeCookieName,
+    sessionScope,
+    baseCookieOptions(refreshCookieMaxAge)
+  );
 }
 
 export function clearRecordsSessionCookies(response: NextResponse) {
   response.cookies.set(recordsAccessCookieName, "", baseCookieOptions(0));
   response.cookies.set(recordsRefreshCookieName, "", baseCookieOptions(0));
   response.cookies.set(recordsCaseCookieName, "", baseCookieOptions(0));
+  response.cookies.set(recordsSessionScopeCookieName, "", baseCookieOptions(0));
   response.cookies.set(recordsPasswordRecoveryCookieName, "", baseCookieOptions(0));
 }
 
@@ -300,12 +311,25 @@ export function attachRefreshedRecordsSession(
   context: RecordsAuthContext
 ) {
   if (context.refreshedSession) {
-    setRecordsSessionCookies(response, context.refreshedSession, context.caseId);
+    setRecordsSessionCookies(
+      response,
+      context.refreshedSession,
+      context.caseId,
+      context.sessionScope
+    );
   }
   return response;
 }
 
 export async function getRecordsAuthContext(request: NextRequest) {
+  if (request.cookies.get(recordsSessionScopeCookieName)?.value === "attorney_guest") {
+    return {
+      error: NextResponse.json(
+        { error: "This session is limited to the read only attorney portal." },
+        { status: 403, headers: { "Cache-Control": "no-store" } }
+      ),
+    } as const;
+  }
   const accessToken =
     request.cookies.get(recordsAccessCookieName)?.value || getAllowedBearerToken(request);
   const refreshToken = request.cookies.get(recordsRefreshCookieName)?.value;

@@ -488,20 +488,23 @@ export async function acceptAttorneyInviteSession(input: {
   });
   const body = (await response.json().catch(() => ({}))) as {
     ok?: boolean;
-    passwordSetupRequired?: boolean;
-    mfaRequired?: boolean;
-    mfaEnrollmentRequired?: boolean;
-    enrollment?: RecordsMfaEnrollment;
+    accepted?: boolean;
+    accessHandle?: string;
+    accessExpiresAt?: string;
     error?: string;
   };
-  if (!response.ok || body.ok !== true) {
+  if (
+    !response.ok ||
+    body.ok !== true ||
+    body.accepted !== true ||
+    !body.accessHandle ||
+    !body.accessExpiresAt
+  ) {
     throw new Error(body.error || `Attorney account link failed with ${response.status}.`);
   }
   return {
-    passwordSetupRequired: body.passwordSetupRequired === true,
-    mfaRequired: body.mfaRequired === true,
-    mfaEnrollmentRequired: body.mfaEnrollmentRequired === true,
-    enrollment: body.enrollment,
+    accessHandle: body.accessHandle,
+    accessExpiresAt: body.accessExpiresAt,
   };
 }
 

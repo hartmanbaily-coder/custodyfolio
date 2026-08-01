@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   isSupabaseRecordsMode,
-  setRecordsPasswordRecoveryCookie,
   setRecordsSessionCookies,
 } from "@/lib/records/authServer";
 import {
-  findPendingAttorneyOnboardingForEmail,
-  setAttorneyAcceptanceCookie,
-  setAttorneyMailboxProofCookie,
-  setAttorneyPasswordSetupCookie,
+  clearAttorneyAcceptanceCookie,
+  clearAttorneyMailboxProofCookie,
+  clearAttorneyPasswordSetupCookie,
+  findPendingAttorneyInvitationForEmail,
 } from "@/lib/records/attorneyServer";
 import { checkAttorneyGuestEntitlement } from "@/lib/records/attorneyEntitlement";
-import { recordsProfileExists } from "@/lib/records/profileServer";
 import {
   attorneyEmailHash,
   hashAttorneyInvitationToken,
+  sealAttorneyHandle,
 } from "@/lib/records/attorneyCrypto";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import {
@@ -22,7 +21,6 @@ import {
   createServerSupabaseSessionClient,
 } from "@/lib/supabaseClient";
 import { defaultCaseIdForUser } from "@/lib/records/accountBoundary";
-import { selectTotpFactorForVerification } from "@/lib/records/mfaServer";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
@@ -36,7 +34,7 @@ function tokenValue(value: unknown) {
 
 function rejected() {
   return NextResponse.json(
-    { error: "Attorney account link is invalid, expired, or does not match this invitation." },
+    { error: "Attorney access link is invalid, expired, or does not match this invitation." },
     { status: 401, headers: { "Cache-Control": "no-store" } }
   );
 }
@@ -69,9 +67,9 @@ export async function POST(request: NextRequest) {
   };
   const accessToken = tokenValue(body.accessToken);
   const refreshToken = tokenValue(body.refreshToken);
-  const onboardingToken = tokenValue(body.onboardingToken);
+  const invitationToken = tokenValue(body.onboardingToken);
   const expiresIn = Number(body.expiresIn || 3600);
-  if (!accessToken || !refreshToken || !onboardingToken) return rejected();
+  if (!accessToken || !refreshToken || !invitationToken) return rejected();
 
   try {
     const claimsClient = createServerSupabaseAuthClient();
@@ -107,50 +105,21 @@ export async function POST(request: NextRequest) {
       return rejected();
     }
 
-    const invitation = await findPendingAttorneyOnboardingForEmail({
-      token: onboardingToken,
+    const invitation = await findPendingAttorneyInvitationForEmail({
+      token: invitationToken,
       email: user.email,
     });
     if (!invitation) return rejected();
 
-    const profileAlreadyApproved = await recordsProfileExists(user.id);
-    const passwordSetupRequired =
-      invitation.onboarding_password_required === true || !profileAlreadyApproved;
-    let enrollment: { factorId: string; qrCode: string; secret: string } | undefined;
-    if (!passwordSetupRequired) {
-      const factors = await authClient.auth.mfa.listFactors();
-      if (factors.error) throw factors.error;
-      const verifiedFactor = selectTotpFactorForVerification(factors.data.totp || []);
-      if (!verifiedFactor) {
-        for (const factor of factors.data.totp || []) {
-          const unenrollment = await authClient.auth.mfa.unenroll({ factorId: factor.id });
-          if (unenrollment.error) throw unenrollment.error;
-        }
-        const started = await authClient.auth.mfa.enroll({
-          factorType: "totp",
-          issuer: "Custody Folio",
-        });
-        if (started.error) throw started.error;
-        enrollment = {
-          factorId: started.data.id,
-          qrCode: started.data.totp.qr_code,
-          secret: started.data.totp.secret,
-        };
-      }
-    }
-
     const admin = createSupabaseAdminClient();
-    const completed = await admin.rpc("complete_records_attorney_onboarding", {
-      p_invitation_id: invitation.id,
-      p_onboarding_token_hash: hashAttorneyInvitationToken(onboardingToken),
-      p_acceptance_token_hash: hashAttorneyInvitationToken(onboardingToken),
+    const accepted = await admin.rpc("accept_records_attorney_invitation", {
+      p_token_hash: hashAttorneyInvitationToken(invitationToken),
       p_attorney_user_id: user.id,
       p_invited_email_hash: attorneyEmailHash(user.email),
-      p_email: user.email,
-      p_password_setup_required: passwordSetupRequired,
     });
-    if (completed.error || completed.data !== true) {
-      throw completed.error || new Error("Attorney onboarding could not be finalized.");
+    const row = Array.isArray(accepted.data) ? accepted.data[0] : null;
+    if (accepted.error || !row?.grant_id || row.owner_user_id === user.id) {
+      throw accepted.error || new Error("Attorney invitation acceptance failed.");
     }
 
     await recordSecurityEvent({
@@ -159,16 +128,20 @@ export async function POST(request: NextRequest) {
       request,
       userId: user.id,
       status: 200,
-      detail: "Mailbox-verified attorney onboarding session accepted.",
+      detail: "Mailbox-verified attorney invitation accepted into a scoped guest session.",
     });
 
     const response = NextResponse.json(
       {
         ok: true,
-        passwordSetupRequired,
-        mfaRequired: !passwordSetupRequired,
-        mfaEnrollmentRequired: Boolean(enrollment),
-        enrollment,
+        accepted: true,
+        accessExpiresAt: row.access_expires_at,
+        accessHandle: sealAttorneyHandle({
+          kind: "grant",
+          id: row.grant_id,
+          subject: user.id,
+          expiresAt: Date.now() + 60 * 60 * 1000,
+        }),
       },
       { headers: { "Cache-Control": "no-store" } }
     );
@@ -179,36 +152,19 @@ export async function POST(request: NextRequest) {
         refresh_token: refreshToken,
         expires_in: Number.isFinite(expiresIn) ? expiresIn : 3600,
       },
-      defaultCaseIdForUser(user.id)
+      defaultCaseIdForUser(user.id),
+      "attorney_guest"
     );
-    if (passwordSetupRequired) {
-      const parsedOnboardingExpiry = new Date(invitation.onboarding_expires_at).getTime();
-      setRecordsPasswordRecoveryCookie(response, { userId: user.id, sessionId });
-      setAttorneyPasswordSetupCookie(response, {
-        invitationId: invitation.id,
-        userId: user.id,
-        expiresAt: Number.isFinite(parsedOnboardingExpiry)
-          ? parsedOnboardingExpiry
-          : Date.now() + 60 * 60 * 1000,
-      });
-    }
-    const parsedOnboardingExpiry = new Date(invitation.onboarding_expires_at).getTime();
-    setAttorneyMailboxProofCookie(response, {
-      invitationId: invitation.id,
-      userId: user.id,
-      token: onboardingToken,
-      expiresAt: Number.isFinite(parsedOnboardingExpiry)
-        ? parsedOnboardingExpiry
-        : Date.now() + 60 * 60 * 1000,
-    });
-    return setAttorneyAcceptanceCookie(response, onboardingToken);
+    clearAttorneyMailboxProofCookie(response);
+    clearAttorneyPasswordSetupCookie(response);
+    return clearAttorneyAcceptanceCookie(response);
   } catch {
     await recordSecurityEvent({
       type: "auth_email_confirm_failed",
       severity: "warning",
       request,
       status: 401,
-      detail: "Mailbox-verified attorney onboarding session was rejected.",
+      detail: "Mailbox-verified attorney invitation acceptance was rejected.",
     });
     return rejected();
   }
