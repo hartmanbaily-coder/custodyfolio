@@ -26,7 +26,7 @@ The iOS app is a native SwiftUI shell with:
 2. Create the app record in App Store Connect.
 3. Configure signing, bundle identifier, app category, privacy details, age rating, and export compliance.
 4. Archive from Xcode and upload to App Store Connect.
-5. Use TestFlight for internal testing.
+5. Use internal TestFlight while iterating. For any public/external beta, follow the mandatory `External Beta` completion gate in `TESTFLIGHT_RELEASE.md`; upload completion alone does not release a new build to external testers.
 6. Submit for App Review after privacy/legal copy and screenshots are final.
 
 Before App Review, create a dedicated synthetic review account and make sure the review notes explain device unlock, login/MFA, native policy/support tabs, and the Support tab self-service deletion path at `https://custodyfolio.com/account/delete`, including the signed-in "Permanently delete my account" control.

@@ -3,6 +3,8 @@
 # Archive and upload the native Custody Folio shell to App Store Connect.
 # Xcode chooses an unused build number during upload, so a completed TestFlight
 # build is never accidentally re-uploaded with the same version/build string.
+# Upload is phase one only. A public TestFlight release is not complete until
+# the new build is added to External Beta and its status is Testing.
 
 set -euo pipefail
 
@@ -18,6 +20,10 @@ usage() {
 Usage: npm run ios:testflight [-- --dry-run]
 
 Creates a Release archive and uploads it to App Store Connect for TestFlight.
+
+This command performs the upload phase only. Do not announce the release to
+external testers until the new build has been added to External Beta and its
+status in that group is Testing.
 
 The command only runs from a clean checkout at exactly origin/main. It uses
 automatic signing from the Apple account signed in to Xcode and lets Xcode
@@ -108,5 +114,11 @@ xcodebuild \
 
 echo
 echo "Upload submitted. App Store Connect must finish processing before the build appears in TestFlight."
-echo "Open Apps > Custody Folio: Organizer > TestFlight > iOS > Build Uploads and wait for Complete."
+echo "Open Apps > Custody Folio > TestFlight > iOS > Build Uploads and wait for Complete."
 echo "The Internal Testing group will receive it automatically only after Automatic distribution is enabled in App Store Connect."
+echo
+echo "PUBLIC TESTFLIGHT RELEASE IS NOT COMPLETE."
+echo "After processing completes, open External Testing > External Beta > Builds and add the exact new build."
+echo "Enter What to Test notes, keep Automatically notify testers enabled, and submit for Beta App Review or start testing."
+echo "Do not announce the build or close the release task until that exact build shows Testing in External Beta."
+echo "Finally, confirm that the public link is enabled and still resolves to https://testflight.apple.com/join/rVmv2VAF."
