@@ -30,7 +30,10 @@
     "verify:backup-restore": "node scripts/verify-backup-restore-evidence.mjs",
     "cleanup:retired-grant-bucket": "node scripts/delete-retired-grant-bucket.mjs",
     "ios:testflight": "bash scripts/ios/release-testflight.sh",
-    "ios:testflight:dry-run": "bash scripts/ios/release-testflight.sh --dry-run"
+    "ios:testflight:dry-run": "bash scripts/ios/release-testflight.sh --dry-run",
+    "ios:testflight:external": "node scripts/ios/distribute-testflight-external.mjs",
+    "ios:testflight:verify": "node scripts/ios/distribute-testflight-external.mjs --verify-only",
+    "test:ios:testflight": "node --test scripts/ios/distribute-testflight-external.test.mjs"
   },
   "dependencies": {
     "@playwright/test": "^1.60.0",

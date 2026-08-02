@@ -114,10 +114,9 @@ For every supported record type: create, locate in source and derived views, rel
 - [ ] Confirm subscriptions/paid claims match the build and metadata promises no unavailable functionality.
 - [ ] Obtain qualified privacy/legal review; do not represent draft review as approval.
 - [ ] If native code or metadata changed, upload a new build and complete TestFlight/internal-device testing before submission.
-- [ ] For a public beta release, add the exact new build to `External Beta`; upload status `Complete` or build status `Ready to Submit` is not sufficient.
-- [ ] Enter **What to Test**, keep **Automatically notify testers** enabled unless intentionally overridden, and submit/start testing.
-- [ ] Verify the exact new build says `Testing` inside `External Beta` before announcing it to testers or TesterBuddy.
-- [ ] Verify the public TestFlight link is enabled, has capacity, and still opens the Custody Folio beta; verify TesterBuddy maps to that same link.
+- [ ] For a public beta release, run `npm run ios:testflight`; do not use an upload-only lane.
+- [ ] Record the command's final `PUBLIC TESTFLIGHT RELEASE COMPLETE` line, including the exact build number. The command must fail unless that build is `Testing` inside `External Beta`.
+- [ ] Confirm the command enabled automatic notification, submitted Beta App Review, verified public-link capacity, and verified TesterBuddy maps to the Custody Folio TestFlight link.
 - [ ] Result: `__________`
 
 ## 10. Deployment and migration handoff

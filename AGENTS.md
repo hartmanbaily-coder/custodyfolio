@@ -2,9 +2,9 @@
 
 These instructions apply to the entire repository.
 
-## TestFlight releases are two-phase releases
+## TestFlight releases must finish automatically
 
-A native TestFlight release is **not complete** when Xcode finishes uploading or when App Store Connect shows the upload as `Complete` or the build as `Ready to Submit`.
+A native TestFlight release is **not complete** when Xcode finishes uploading or when App Store Connect shows the upload as `Complete` or the build as `Ready to Submit`. Use `npm run ios:testflight`; do not stop after its Xcode upload phase or substitute an upload-only command.
 
 Whenever a user asks to upload, release, publish, or update the iOS TestFlight build, Codex must complete and verify both phases:
 
@@ -21,5 +21,9 @@ Internal testing, upload status `Complete`, and build status `Ready to Submit` d
 The TestFlight public link targets the external group rather than a specific build. The current public link is `https://testflight.apple.com/join/rVmv2VAF`, and the TesterBuddy enrollment page is expected to resolve to that URL. Re-verify both if the public link is ever disabled, recreated, or changed.
 
 Never claim a TestFlight release is finished without observing the exact new build in `External Beta` with status `Testing`. If authentication, processing, review, or user approval prevents that verification, report the release as incomplete and state the remaining gate.
+
+The release command must automate steps 2–7 through the App Store Connect API. It performs an authenticated API and public-link preflight **before** archiving, identifies the one build uploaded during that release, refuses to guess if multiple builds match, and exits successfully only after that exact build reaches `IN_BETA_TESTING`. For an existing upload, run `npm run ios:testflight:external -- --build-number NUMBER`; to audit an existing build without changing it, run `npm run ios:testflight:verify -- --build-number NUMBER`.
+
+App Store Connect API credentials belong only in the ignored `.env.testflight` file and an external `.p8` key path. If credentials or API authorization are missing, do not upload a new build and do not silently fall back to manual completion.
 
 Do not print, copy into documentation, or commit App Store Connect credentials, review-account passwords, API private keys, or other secrets.
