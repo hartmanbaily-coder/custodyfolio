@@ -80,7 +80,7 @@ head_commit="$(git -C "$ROOT_DIR" rev-parse HEAD)"
 [[ "$head_commit" == "$origin_main" ]] || fail "Release checkout is not at origin/main. Merge and push the release first, then update this checkout."
 
 marketing_version="$(awk -F ' = ' '/MARKETING_VERSION = / {gsub(/;/, "", $2); print $2; exit}' "$PROJECT_PATH/project.pbxproj")"
-configured_build="$(cd "$PROJECT_DIR" && xcrun agvtool what-version -terse)"
+configured_build="$(cd "$PROJECT_DIR" && xcrun agvtool what-version -terse | tail -n 1)"
 
 [[ -n "$marketing_version" ]] || fail "Could not read MARKETING_VERSION from the Xcode project."
 
