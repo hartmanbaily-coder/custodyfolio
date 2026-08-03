@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
     {
       ok: true,
       message:
-        "A secure access link was sent to the invited email address. Opening it verifies the mailbox and opens the shared read-only case.",
+        "The email provider accepted the secure access message for delivery. Look for “Your secure Custody Folio attorney access link” from Custody Folio; opening it verifies the mailbox and opens the shared read-only case.",
     },
     { headers: { "Cache-Control": "no-store" } }
   );

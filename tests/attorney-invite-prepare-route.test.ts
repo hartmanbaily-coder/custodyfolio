@@ -97,7 +97,7 @@ describe("automatic attorney mailbox verification", () => {
     });
     await expect(response.json()).resolves.toMatchObject({
       ok: true,
-      message: expect.stringContaining("opens the shared read-only case"),
+      message: expect.stringContaining("email provider accepted"),
     });
     expect(setAttorneyAcceptanceCookie).toHaveBeenCalledWith(response, token);
   });

@@ -20,7 +20,10 @@ export default function AttorneyAccept() {
       });
       setState("email_sent");
       setMessage(
-        String(result.message || "A secure access link was sent to the invited email address.")
+        String(
+          result.message ||
+            "The email provider accepted the secure Custody Folio access message for delivery."
+        )
       );
     } catch (error) {
       setState("error");
@@ -63,8 +66,9 @@ export default function AttorneyAccept() {
         </p>
         {state === "email_sent" ? (
           <p className="mt-4 text-sm leading-6 text-slate-600">
-            Open the Custody Folio message in the invited mailbox and select the secure access link.
-            That link will take you directly to the shared case.
+            Look for the subject “Your secure Custody Folio attorney access link” from Custody
+            Folio. Delivery can take a few minutes, so check junk or spam before sending another
+            message. Open its one-time link to go directly to the shared case.
           </p>
         ) : null}
         <div className="mt-5 flex flex-wrap gap-2">

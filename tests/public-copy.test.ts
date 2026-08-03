@@ -110,6 +110,16 @@ describe("customer facing copy", () => {
     expect(attorneyAccess).not.toContain("Privacy-safe access history");
   });
 
+  it("tells invited attorneys how to find the branded secure access email", () => {
+    const attorneyAccept = readFileSync(
+      resolve(process.cwd(), "src/components/records/AttorneyAccept.tsx"),
+      "utf8"
+    );
+    expect(attorneyAccept).toContain("Your secure Custody Folio attorney access link");
+    expect(attorneyAccept).toContain("check junk or spam");
+    expect(attorneyAccept).not.toContain("A secure access link was sent");
+  });
+
   it("keeps recurring exchange setup out of the primary exchange logging flow", () => {
     const recordsApp = readFileSync(
       resolve(process.cwd(), "src/components/records/RecordsApp.tsx"),

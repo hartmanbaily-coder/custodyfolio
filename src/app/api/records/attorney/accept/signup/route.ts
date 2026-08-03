@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
     {
       ok: true,
       message:
-        "Open the secure link sent to the invited email. You will establish or secure the account before authenticator verification and case access.",
+        "The email provider accepted the secure account message for delivery. Look for “Your secure Custody Folio attorney access link” from Custody Folio, then open it before authenticator verification and case access.",
     },
     { headers: { "Cache-Control": "no-store" } }
   );

@@ -104,7 +104,7 @@ describe("mailbox-verified attorney onboarding request", () => {
     );
     await expect(response.json()).resolves.toMatchObject({
       ok: true,
-      message: expect.stringContaining("secure link"),
+      message: expect.stringContaining("email provider accepted"),
     });
   });
 

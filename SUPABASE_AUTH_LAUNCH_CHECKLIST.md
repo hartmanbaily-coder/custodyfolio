@@ -40,11 +40,13 @@ Open Supabase Dashboard for project `cieuilbpnwuvnrxrlczj`.
 2. Custom SMTP
    - Go to Authentication > Emails > SMTP Settings.
    - Configure a production sender on the `custodyfolio.com` domain or an approved transactional email domain.
+   - Current production fallback is `no-reply@lendori.io` because that is the verified Resend domain on the free account. Do not use `support@lendori.io`; migrate to `no-reply@custodyfolio.com` only after `custodyfolio.com` is added and verified in Resend.
    - Set **Sender name** exactly to `Custody Folio`; do not use the retired `My Custody Case` name.
    - Disable provider link tracking for auth links if the provider offers it.
    - Send and receive a test confirmation/reset email using a synthetic account.
    - Confirm the received confirmation/reset email displays `Custody Folio` as the sender name.
-   - Confirm the Invite user template retains `{{ .ConfirmationURL }}` so server-admin attorney invitations deliver the mailbox-verification link.
+   - Set the Invite user subject exactly to `Your secure Custody Folio attorney access link` and retain `{{ .ConfirmationURL }}` so server-admin attorney invitations deliver the mailbox-verification link.
+   - For a missing attorney email, verify all three layers before changing app code: a successful `/invite` or OTP request in Supabase Auth logs, `delivered` or a specific failure in Resend Emails, and the recipient's junk/spam mailbox. A successful Supabase response only confirms provider handoff; it does not prove inbox placement.
    - After verification, set Listhaus repo variable `LOSTTOFOUND_SUPABASE_CUSTOM_SMTP_ENABLED=true`.
 
 3. Redirect URLs
