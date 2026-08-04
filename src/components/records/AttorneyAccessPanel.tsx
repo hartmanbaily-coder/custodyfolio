@@ -170,7 +170,7 @@ export default function AttorneyAccessPanel({
     try {
       await navigator.share({
         title: "Custody Folio attorney access",
-        text: "Private read-only attorney access invitation. Open this link using the attorney account that was invited.",
+        text: "Private read-only attorney access invitation. Open this one link, use the exact invited email, create or sign in, and complete authenticator verification. Custody Folio will not send another invitation email.",
         url: invitationUrl,
       });
       setMessage("Invitation share sheet opened.");
@@ -206,6 +206,18 @@ export default function AttorneyAccessPanel({
           </p>
         </div>
       </div>
+
+      <section className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4" aria-labelledby="attorney-access-steps-heading">
+        <h3 id="attorney-access-steps-heading" className="text-sm font-semibold text-slate-900">
+          How to give an attorney access
+        </h3>
+        <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-5 text-slate-700">
+          <li><strong>Enter the attorney&apos;s exact email address</strong> and select Create invitation.</li>
+          <li><strong>Send the one private link yourself</strong> using Share Link, Copy Link, or the QR code. Custody Folio does not email it.</li>
+          <li><strong>Tell the attorney to open that link</strong>, use the same email address, create a free account or sign in, and complete authenticator verification.</li>
+          <li><strong>Review or revoke access here at any time.</strong> Accepted access stays active until you revoke it, the attorney leaves the matter, or the case/account is deleted.</li>
+        </ul>
+      </section>
 
       <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
         Revocation blocks future requests immediately, but Custody Folio cannot recall copies already downloaded.
@@ -244,6 +256,11 @@ export default function AttorneyAccessPanel({
           <p className="mt-1 text-xs leading-5 text-teal-950">
             This link is shown only for sharing now. It expires in {attorneyInvitationDurationDays} days and becomes unusable after acceptance. Accepted access remains active until you revoke it.
           </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5 text-teal-950">
+            <li>Send it only to the attorney whose email you entered.</li>
+            <li>Do not post it publicly or forward it to anyone else.</li>
+            <li>The attorney finishes account setup directly from this link; no second invitation email is sent.</li>
+          </ul>
           <div className="mt-3 grid gap-3 sm:grid-cols-[132px_1fr] sm:items-center">
             <div className="w-fit rounded-md border border-teal-200 bg-white p-2" aria-label="Attorney invitation QR code">
               <QRCode value={invitationUrl} size={112} bgColor="#ffffff" fgColor="#0f172a" />

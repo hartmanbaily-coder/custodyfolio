@@ -848,6 +848,9 @@ test("an attorney invitation opens direct account access without sending another
 
   await page.goto("/attorney/accept#token=private-invitation-token");
   await expect(page.getByRole("heading", { name: "Open a read-only shared matter" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Before you begin" })).toBeVisible();
+  await expect(page.getByText("Use the exact email address the client invited.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Have an authenticator app ready.", { exact: false })).toBeVisible();
   await expect(page.getByRole("status")).toContainText("No second invitation email was sent");
   await expect(page.getByRole("button", { name: "Create account", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();

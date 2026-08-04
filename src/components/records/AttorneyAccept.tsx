@@ -164,6 +164,18 @@ export default function AttorneyAccept() {
             complete authenticator verification.
           </p>
 
+          <section className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4" aria-labelledby="attorney-start-heading">
+            <h2 id="attorney-start-heading" className="text-sm font-semibold text-slate-900">
+              Before you begin
+            </h2>
+            <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-5 text-slate-700">
+              <li><strong>Use the exact email address the client invited.</strong> A different email cannot open the matter.</li>
+              <li><strong>Choose Create account</strong> if this is your first Custody Folio invitation, or <strong>Sign in</strong> if you already have an attorney account.</li>
+              <li><strong>Have an authenticator app ready.</strong> After your password, you will scan a QR code or enter a setup key and submit the current code.</li>
+              <li><strong>Complete every step on this page.</strong> No second invitation email will arrive. Successful verification opens your read-only shared matters.</li>
+            </ul>
+          </section>
+
           {message ? (
             <p role="status" aria-live="polite" className="mt-4 rounded-md border border-teal-200 bg-teal-50 p-3 text-sm text-teal-950">
               {message}
@@ -217,6 +229,25 @@ export default function AttorneyAccept() {
 
           {state === "mfa" ? (
             <form onSubmit={verifyMfa} className="mt-5 space-y-4">
+              <section className="rounded-md border border-slate-200 bg-slate-50 p-4" aria-labelledby="attorney-mfa-steps-heading">
+                <h2 id="attorney-mfa-steps-heading" className="text-sm font-semibold text-slate-900">
+                  {enrollment ? "Set up your authenticator" : "Verify your authenticator"}
+                </h2>
+                <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-5 text-slate-700">
+                  {enrollment ? (
+                    <>
+                      <li>Open your authenticator app and scan the QR code below, or enter the manual setup key.</li>
+                      <li>Enter the current code shown for Custody Folio, then select Open attorney portal.</li>
+                      <li>Keep this authenticator entry. You will use a new code from it whenever you sign in.</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>Open the authenticator app already connected to your Custody Folio account.</li>
+                      <li>Enter its current code below, then select Open attorney portal.</li>
+                    </>
+                  )}
+                </ul>
+              </section>
               {enrollment ? (
                 <div className="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-4">
                   {/* Supabase supplies a QR image or SVG data URI for TOTP enrollment. */}

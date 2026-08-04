@@ -199,6 +199,19 @@ export default function AttorneySignIn() {
               Attorney accounts are free, invitation-gated, and limited to read-only matters a client has shared.
             </p>
 
+            {mode === "login" ? (
+              <section className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4" aria-labelledby="returning-attorney-steps-heading">
+                <h2 id="returning-attorney-steps-heading" className="text-sm font-semibold text-slate-900">
+                  Returning attorney sign-in
+                </h2>
+                <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-5 text-slate-700">
+                  <li>Enter the email and password for your free attorney account.</li>
+                  <li>Enter the current code from your authenticator app when prompted.</li>
+                  <li>Choose a client and matter from the attorney portal. Access remains read-only until the client revokes it or you leave.</li>
+                </ul>
+              </section>
+            ) : null}
+
             {message ? <p role="status" className="mt-4 rounded-md border border-teal-200 bg-teal-50 p-3 text-sm text-teal-950">{message}</p> : null}
             {error ? <p role="alert" className="mt-4 text-sm font-medium text-red-700">{error}</p> : null}
 

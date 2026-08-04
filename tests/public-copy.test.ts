@@ -108,6 +108,9 @@ describe("customer facing copy", () => {
     );
     expect(attorneyAccess).toContain("Privacy safe access history");
     expect(attorneyAccess).not.toContain("Privacy-safe access history");
+    expect(attorneyAccess).toContain("How to give an attorney access");
+    expect(attorneyAccess).toContain("Send the one private link yourself");
+    expect(attorneyAccess).toContain("Review or revoke access here at any time");
   });
 
   it("tells invited attorneys that the private invitation is a single-link flow", () => {
@@ -118,6 +121,9 @@ describe("customer facing copy", () => {
     expect(attorneyAccept).toContain("This private link is the only attorney invitation");
     expect(attorneyAccept).toContain("will not send a second");
     expect(attorneyAccept).toContain("Create account and continue");
+    expect(attorneyAccept).toContain("Before you begin");
+    expect(attorneyAccept).toContain("Use the exact email address the client invited");
+    expect(attorneyAccept).toContain("Set up your authenticator");
     expect(attorneyAccept).not.toContain("Check Inbox and Junk");
   });
 
