@@ -20,9 +20,9 @@ usage() {
   cat <<'EOF'
 Usage: npm run ios:testflight [-- --dry-run] [--what-to-test TEXT]
 
-Creates a Release archive, uploads it to App Store Connect, adds the exact new
-build to External Beta, submits it for Beta App Review, waits until it is
-Testing, and verifies the public TestFlight and TesterBuddy links.
+Creates a Release archive, uploads it to App Store Connect, makes the exact new
+build the only build in External Beta, submits it for Beta App Review, waits
+until it is Testing, and verifies the public TestFlight and TesterBuddy links.
 
 The command only runs from a clean checkout at exactly origin/main. It uses
 automatic signing from the Apple account signed in to Xcode and lets Xcode

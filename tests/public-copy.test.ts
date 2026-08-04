@@ -116,7 +116,8 @@ describe("customer facing copy", () => {
       "utf8"
     );
     expect(attorneyAccept).toContain("Your secure Custody Folio attorney access link");
-    expect(attorneyAccept).toContain("check junk or spam");
+    expect(attorneyAccept).toContain("Check Inbox and Junk");
+    expect(attorneyAccept).toContain("still missing after five");
     expect(attorneyAccept).not.toContain("A secure access link was sent");
   });
 

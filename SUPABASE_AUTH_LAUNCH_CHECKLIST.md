@@ -40,12 +40,14 @@ Open Supabase Dashboard for project `cieuilbpnwuvnrxrlczj`.
 2. Custom SMTP
    - Go to Authentication > Emails > SMTP Settings.
    - Configure a production sender on the `custodyfolio.com` domain or an approved transactional email domain.
-   - Current production fallback is `no-reply@lendori.io` because that is the verified Resend domain on the free account. Do not use `support@lendori.io`; migrate to `no-reply@custodyfolio.com` only after `custodyfolio.com` is added and verified in Resend.
+   - Current production fallback is `support@lendori.io` because `lendori.io` is the verified Resend domain on the free account and Resend flags `no-reply` senders as a deliverability risk. Migrate to `support@custodyfolio.com` only after `custodyfolio.com` is added and verified in Resend.
+   - Keep `_dmarc.lendori.io` published as `v=DMARC1; p=none;` while monitoring delivery, then tighten the policy only after all legitimate senders are confirmed aligned.
    - Set **Sender name** exactly to `Custody Folio`; do not use the retired `My Custody Case` name.
    - Disable provider link tracking for auth links if the provider offers it.
    - Send and receive a test confirmation/reset email using a synthetic account.
    - Confirm the received confirmation/reset email displays `Custody Folio` as the sender name.
    - Set the Invite user subject exactly to `Your secure Custody Folio attorney access link` and retain `{{ .ConfirmationURL }}` so server-admin attorney invitations deliver the mailbox-verification link.
+   - After any sender or template change, inspect a new message in Resend. Treat `delivered` only as recipient-server acceptance; resolve every deliverability warning and verify the message appears in the actual destination mailbox before closing the issue.
    - For a missing attorney email, verify all three layers before changing app code: a successful `/invite` or OTP request in Supabase Auth logs, `delivered` or a specific failure in Resend Emails, and the recipient's junk/spam mailbox. A successful Supabase response only confirms provider handoff; it does not prove inbox placement.
    - After verification, set Listhaus repo variable `LOSTTOFOUND_SUPABASE_CUSTOM_SMTP_ENABLED=true`.
 

@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
     {
       ok: true,
       message:
-        "The email provider accepted the secure account message for delivery. Look for “Your secure Custody Folio attorney access link” from Custody Folio, then open it before authenticator verification and case access.",
+        "The email provider accepted a fresh secure account message for delivery. Look for “Your secure Custody Folio attorney access link” from Custody Folio. Check Inbox and Junk for the invited address. If it is still missing after five minutes, ask the record owner to replace the invitation with an address that is confirmed to receive external mail.",
     },
     { headers: { "Cache-Control": "no-store" } }
   );

@@ -6,6 +6,7 @@ import {
   createAppStoreConnectToken,
   extractTestFlightUrl,
   selectUploadedBuild,
+  selectSupersededGroupBuilds,
 } from "./distribute-testflight-external.mjs";
 
 function decodeJson(segment) {
@@ -113,4 +114,17 @@ test("extracts the TestFlight target from the TesterBuddy wrapper", () => {
     "https://testflight.apple.com/join/rVmv2VAF",
   );
   assert.equal(extractTestFlightUrl("<html>no link</html>"), null);
+});
+
+test("selects every public build except the exact release build for removal", () => {
+  const builds = ["55", "56", "60"].map((version) => ({
+    id: `build-${version}`,
+    attributes: { version },
+  }));
+
+  assert.deepEqual(
+    selectSupersededGroupBuilds(builds, "build-60").map((build) => build.id),
+    ["build-55", "build-56"],
+  );
+  assert.deepEqual(selectSupersededGroupBuilds([builds[2]], "build-60"), []);
 });

@@ -104,6 +104,10 @@ export function extractTestFlightUrl(html) {
   );
 }
 
+export function selectSupersededGroupBuilds(builds, expectedBuildId) {
+  return builds.filter((build) => build.id !== expectedBuildId);
+}
+
 function parseArguments(argv) {
   const options = {
     preflight: false,
@@ -185,9 +189,10 @@ function usage() {
   node scripts/ios/distribute-testflight-external.mjs --build-number NUMBER [--what-to-test TEXT]
   node scripts/ios/distribute-testflight-external.mjs --verify-only --build-number NUMBER
 
-The command finds the exact build, waits for processing, adds it to External
-Beta, enables automatic tester notification, submits it for Beta App Review,
-waits for IN_BETA_TESTING, and verifies the TestFlight and TesterBuddy links.
+The command finds the exact build, waits for processing, makes it the only build
+in External Beta, enables automatic tester notification, submits it for Beta App
+Review, waits for IN_BETA_TESTING, and verifies the TestFlight and TesterBuddy
+links.
 Credentials are loaded from the environment or .env.testflight.`;
 }
 
@@ -426,23 +431,42 @@ async function ensureWhatsNew(client, buildId, whatsNew) {
   console.log(`Updated What to Test (${DEFAULTS.locale}).`);
 }
 
-async function ensureBuildInGroup(client, buildId) {
+async function ensureOnlyBuildInGroup(client, buildId) {
   const { payload } = await client.request(
     query(`/v1/betaGroups/${DEFAULTS.betaGroupId}/builds`, {
       "fields[builds]": "version",
       limit: "200",
     }),
   );
-  if (payload.data.some((build) => build.id === buildId)) return;
+  if (!payload.data.some((build) => build.id === buildId)) {
+    await client.request(
+      `/v1/betaGroups/${DEFAULTS.betaGroupId}/relationships/builds`,
+      {
+        method: "POST",
+        body: { data: [{ type: "builds", id: buildId }] },
+      },
+    );
+    console.log(`Added build to ${DEFAULTS.betaGroupName}.`);
+  }
+
+  const supersededBuilds = selectSupersededGroupBuilds(payload.data, buildId);
+  if (supersededBuilds.length === 0) return;
 
   await client.request(
     `/v1/betaGroups/${DEFAULTS.betaGroupId}/relationships/builds`,
     {
-      method: "POST",
-      body: { data: [{ type: "builds", id: buildId }] },
+      method: "DELETE",
+      body: {
+        data: supersededBuilds.map((build) => ({
+          type: "builds",
+          id: build.id,
+        })),
+      },
     },
   );
-  console.log(`Added build to ${DEFAULTS.betaGroupName}.`);
+  console.log(
+    `Removed ${supersededBuilds.length} superseded build${supersededBuilds.length === 1 ? "" : "s"} from ${DEFAULTS.betaGroupName}.`,
+  );
 }
 
 async function getReviewSubmission(client, buildId) {
@@ -550,8 +574,16 @@ async function verifyGroup(client, { expectedBuildId } = {}) {
         limit: "200",
       }),
     );
-    if (!builds.data.some((build) => build.id === expectedBuildId)) {
-      throw new Error("The selected build is not assigned to External Beta.");
+    if (
+      builds.data.length !== 1 ||
+      builds.data[0]?.id !== expectedBuildId
+    ) {
+      const versions = builds.data
+        .map((build) => build.attributes?.version ?? build.id)
+        .join(", ");
+      throw new Error(
+        `External Beta must contain only the selected build; current builds: ${versions || "none"}.`,
+      );
     }
   }
 
@@ -672,7 +704,7 @@ async function run(options) {
   if (!options.verifyOnly) {
     await ensureWhatsNew(client, build.id, options.whatsNew);
     await ensureAutomaticNotification(client, build.id);
-    await ensureBuildInGroup(client, build.id);
+    await ensureOnlyBuildInGroup(client, build.id);
     await ensureReviewSubmitted(client, build.id);
   }
 

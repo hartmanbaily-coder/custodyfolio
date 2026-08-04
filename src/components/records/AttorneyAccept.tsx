@@ -67,8 +67,9 @@ export default function AttorneyAccept() {
         {state === "email_sent" ? (
           <p className="mt-4 text-sm leading-6 text-slate-600">
             Look for the subject “Your secure Custody Folio attorney access link” from Custody
-            Folio. Delivery can take a few minutes, so check junk or spam before sending another
-            message. Open its one-time link to go directly to the shared case.
+            Folio. Check Inbox and Junk for the invited address. If it is still missing after five
+            minutes, ask the record owner to replace this invitation with an address that is
+            confirmed to receive external mail.
           </p>
         ) : null}
         <div className="mt-5 flex flex-wrap gap-2">
