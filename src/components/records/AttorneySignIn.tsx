@@ -25,7 +25,7 @@ function qrCodeSrc(qrCode: string) {
 }
 
 export default function AttorneySignIn() {
-  const [mode, setMode] = useState<"email" | "login" | "reset" | "mfa">("email");
+  const [mode, setMode] = useState<"email" | "login" | "reset" | "mfa">("login");
   const [enrollment, setEnrollment] = useState<MfaEnrollment | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -236,7 +236,7 @@ export default function AttorneySignIn() {
                 <label className="flex items-start gap-2 text-sm text-slate-700"><input name="adult" type="checkbox" defaultChecked className="mt-1" /><span>I am the adult attorney using this read-only account.</span></label>
                 <button type="submit" className="btn-primary w-full" disabled={busy}>{busy ? "Signing in…" : "Open attorney portal"}</button>
                 <button type="button" className="w-full text-sm font-semibold text-teal-700" onClick={() => { setMode("reset"); setError(""); setMessage(""); }}>Forgot password?</button>
-                <button type="button" className="w-full text-sm font-semibold text-teal-700" onClick={() => { setMode("email"); setError(""); setMessage(""); }}>Email a secure sign-in link</button>
+                <button type="button" className="w-full text-sm font-semibold text-teal-700" onClick={() => { setMode("email"); setError(""); setMessage(""); }}>Email a sign-in link instead</button>
               </form>
             )}
 

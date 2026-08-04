@@ -12,6 +12,9 @@ const recordsProfileExists = vi.hoisted(() => vi.fn());
 const upsertRecordsProfile = vi.hoisted(() => vi.fn());
 const recordsAttorneyProfileIsAuthorized = vi.hoisted(() => vi.fn());
 const recordSecurityEvent = vi.hoisted(() => vi.fn());
+const findPendingAttorneyInvitationForEmail = vi.hoisted(() => vi.fn());
+const clearAttorneyAcceptanceCookie = vi.hoisted(() => vi.fn((response) => response));
+const rpc = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/supabaseClient", () => ({
   createServerSupabaseAuthClient: () => ({
@@ -30,6 +33,16 @@ vi.mock("@/lib/records/profileServer", () => ({
 
 vi.mock("@/lib/records/attorneyProfileServer", () => ({
   recordsAttorneyProfileIsAuthorized,
+}));
+
+vi.mock("@/lib/records/attorneyServer", () => ({
+  attorneyAcceptanceCookieName: "l2f-attorney-invite",
+  clearAttorneyAcceptanceCookie,
+  findPendingAttorneyInvitationForEmail,
+}));
+
+vi.mock("@/lib/supabaseAdmin", () => ({
+  createSupabaseAdminClient: () => ({ rpc }),
 }));
 
 vi.mock("@/lib/security/securityEvents", () => ({
@@ -74,11 +87,14 @@ describe("records login route", () => {
       NEXT_PUBLIC_SUPABASE_ANON_KEY: fakeJwt({ role: "anon" }),
       RECORDS_ENFORCE_MFA: "false",
       SUPABASE_MFA_POLICY: "optional",
+      ATTORNEY_PORTAL_SECRET: "single-link-login-test-secret-that-is-long-enough",
       RECORDS_SIGNUPS_ENABLED: "true",
       NEXT_PUBLIC_RECORDS_SIGNUPS_ENABLED: "true",
     };
     recordsProfileExists.mockResolvedValue(true);
     recordsAttorneyProfileIsAuthorized.mockResolvedValue(true);
+    findPendingAttorneyInvitationForEmail.mockResolvedValue(null);
+    rpc.mockResolvedValue({ data: [], error: null });
     setSession.mockResolvedValue({ data: {}, error: null });
     signOut.mockResolvedValue({ error: null });
   });
@@ -234,6 +250,52 @@ describe("records login route", () => {
     expect(upsertRecordsProfile).not.toHaveBeenCalled();
     expect(signOut).toHaveBeenCalledWith({ scope: "local" });
     expect(setSession).not.toHaveBeenCalled();
+  });
+
+  it("accepts the one private invitation after password authentication without sending email", async () => {
+    signInWithPassword.mockResolvedValue({
+      data: {
+        session: {
+          access_token: fakeJwt({ aal: "aal1" }),
+          refresh_token: "refresh-token",
+          expires_in: 3600,
+          user: { id: "invited-attorney", email: "counsel@example.test" },
+        },
+        user: { id: "invited-attorney", email: "counsel@example.test" },
+      },
+      error: null,
+    });
+    findPendingAttorneyInvitationForEmail.mockResolvedValue({
+      id: "invite-1",
+      owner_user_id: "owner-1",
+      case_id: "case-1",
+    });
+    rpc.mockResolvedValue({
+      data: [{
+        grant_id: "grant-1",
+        owner_user_id: "owner-1",
+        case_key: "default",
+        case_id: "case-1",
+        access_expires_at: null,
+      }],
+      error: null,
+    });
+
+    const response = await POST(
+      makeRequest("counsel@example.test", "single-private-invitation-token", "attorney")
+    );
+
+    expect(response.status).toBe(200);
+    expect(findPendingAttorneyInvitationForEmail).toHaveBeenCalledWith({
+      token: "single-private-invitation-token",
+      email: "counsel@example.test",
+    });
+    expect(rpc).toHaveBeenCalledWith("accept_records_attorney_invitation", {
+      p_token_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+      p_attorney_user_id: "invited-attorney",
+      p_invited_email_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+    expect(clearAttorneyAcceptanceCookie).toHaveBeenCalledWith(response);
   });
 
   it("returns a scoped attorney session only for an active invitation-gated attorney profile", async () => {

@@ -816,7 +816,7 @@ test("attorney portal is a separate read-only mobile experience", async ({ page 
   expect(fitsViewport).toBe(true);
 });
 
-test("an attorney invitation requests mailbox verification without using an ambient account", async ({ page }) => {
+test("an attorney invitation opens direct account access without sending another email", async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem(
       "l2f.records.session.v1",
@@ -841,14 +841,17 @@ test("an attorney invitation requests mailbox verification without using an ambi
       contentType: "application/json",
       body: JSON.stringify({
         ok: true,
-        message: "A secure access link was sent to the invited email address.",
+        message: "Invitation verified. Create or sign in below. No second invitation email was sent.",
       }),
     });
   });
 
   await page.goto("/attorney/accept#token=private-invitation-token");
-  await expect(page.getByRole("heading", { name: "Open a read only shared case" })).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("secure access link was sent");
+  await expect(page.getByRole("heading", { name: "Open a read-only shared matter" })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("No second invitation email was sent");
+  await expect(page.getByRole("button", { name: "Create account", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create account and continue" })).toBeVisible();
   await expect(page).toHaveURL(/\/attorney\/accept$/);
   expect(await page.evaluate(() => window.sessionStorage.getItem("l2f.attorney.access")))
     .toBeNull();

@@ -1305,16 +1305,16 @@ function LoginScreen({
     if (
       !adultConfirmed ||
       !email.includes("@") ||
-      (!invitedAttorneySignup && password.length < minimumPasswordLength)
+      password.length < minimumPasswordLength
     ) {
       setError(
         invitedAttorneySignup
-          ? "Enter the invited email and confirm adult use."
+          ? `Enter the invited email, confirm adult use, and use at least ${minimumPasswordLength} characters.`
           : `Enter an email, confirm adult use, and use at least ${minimumPasswordLength} characters.`
       );
       return;
     }
-    if (!invitedAttorneySignup && password !== confirmPassword) {
+    if (password !== confirmPassword) {
       setError("Passwords do not match.");
       return;
     }
@@ -1330,7 +1330,7 @@ function LoginScreen({
         invitedAttorneySignup
       );
       setMessage(result.message);
-      if (!invitedAttorneySignup) setMode("login");
+      setMode("login");
     } catch (signupError) {
       setError(signupError instanceof Error ? signupError.message : "Account creation failed.");
     } finally {
@@ -1453,7 +1453,7 @@ function LoginScreen({
       ? "Set up authenticator"
       : "Verify authenticator"
     : mode === "signup"
-      ? invitedAttorneySignup ? "Verify invited attorney email" : "Create account"
+      ? invitedAttorneySignup ? "Create invited attorney account" : "Create account"
       : mode === "resend_confirmation"
         ? "Resend confirmation"
       : mode === "reset"
@@ -1514,13 +1514,15 @@ function LoginScreen({
 
             {invitedAttorneySignup ? (
               <p className="mt-4 rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-sm leading-6 text-teal-950">
-                Use the exact email address named in the attorney invitation. We will email a secure link so the mailbox owner—not someone holding a copied invite URL—establishes the account. Open it, then set a password and complete authenticator verification.
+                Use the exact email address named in the private attorney invitation. Create the account here, then sign in and complete authenticator verification. Custody Folio will not send another invitation email.
               </p>
             ) : null}
 
             {mfaMode ? (
               <p className="mt-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-6 text-slate-700">
-                Email confirmation proves you control the account address. This authenticator code is a separate second factor that protects custody records if the password or email account is compromised.
+                {invitedAttorneySignup
+                  ? "The private invitation and account password establish this attorney account. This authenticator code is a separate second factor that protects shared records if the password is compromised."
+                  : "Email confirmation proves you control the account address. This authenticator code is a separate second factor that protects custody records if the password or email account is compromised."}
               </p>
             ) : null}
 
@@ -1662,21 +1664,17 @@ function LoginScreen({
                     spellCheck={false}
                   />
                 </Field>
-                {!invitedAttorneySignup ? (
-                  <>
-                    <Field label="Password">
-                      <input name="password" type="password" className="input" autoComplete="new-password" />
-                    </Field>
-                    <Field label="Confirm password">
-                      <input
-                        name="confirmPassword"
-                        type="password"
-                        className="input"
-                        autoComplete="new-password"
-                      />
-                    </Field>
-                  </>
-                ) : null}
+                <Field label="Password">
+                  <input name="password" type="password" className="input" autoComplete="new-password" />
+                </Field>
+                <Field label="Confirm password">
+                  <input
+                    name="confirmPassword"
+                    type="password"
+                    className="input"
+                    autoComplete="new-password"
+                  />
+                </Field>
                 <label className="flex items-start gap-2 text-sm leading-5 text-slate-700">
                   <input name="adult" type="checkbox" defaultChecked className="mt-1" />
                   <span>
@@ -1692,8 +1690,8 @@ function LoginScreen({
                   className="min-h-11 w-full rounded-md bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-800"
                 >
                   {submitting
-                    ? invitedAttorneySignup ? "Sending..." : "Creating..."
-                    : invitedAttorneySignup ? "Email secure account link" : "Create account"}
+                    ? "Creating..."
+                    : invitedAttorneySignup ? "Create attorney account" : "Create account"}
                 </button>
                 <button
                   type="button"

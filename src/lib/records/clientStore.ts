@@ -470,7 +470,7 @@ export async function signUpRecordsAccount(
     credentials: "same-origin",
     headers,
     body: JSON.stringify(
-      invitedAttorney ? { email, adultConfirmed } : { email, password, adultConfirmed }
+      { email, password, adultConfirmed }
     ),
   });
 
@@ -490,7 +490,7 @@ export async function signUpRecordsAccount(
     message:
       body.message ||
       (invitedAttorney
-        ? "Look for “Your secure Custody Folio attorney access link” from Custody Folio. Check Inbox and Junk for the invited address; if it is still missing after five minutes, ask the owner to replace the invitation with an address confirmed to receive external mail."
+        ? "Attorney account created from the private invitation. Sign in and complete authenticator verification to open the shared matter."
         : "Step 1 of 2: check your email to confirm that you own the address. After you sign in, you will separately set up an authenticator as the second security factor."),
   };
 }

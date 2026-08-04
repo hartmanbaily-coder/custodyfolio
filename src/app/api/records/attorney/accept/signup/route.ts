@@ -1,21 +1,23 @@
+import { isAuthApiError } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { createServerSupabaseAuthClient } from "@/lib/supabaseClient";
-import { isSupabaseRecordsMode, recordsAppBaseUrl } from "@/lib/records/authServer";
+import {
+  isStrongRecordsPassword,
+  isSupabaseRecordsMode,
+  recordsPasswordMinimumLength,
+} from "@/lib/records/authServer";
 import {
   attorneyAcceptanceCookieName,
-  findPendingAttorneyOnboardingForEmail,
   findPendingAttorneyInvitationForEmail,
 } from "@/lib/records/attorneyServer";
-import {
-  createAttorneyInvitationToken,
-  hashAttorneyInvitationToken,
-  normalizeAttorneyEmail,
-} from "@/lib/records/attorneyCrypto";
+import { normalizeAttorneyEmail } from "@/lib/records/attorneyCrypto";
 import { checkAttorneyGuestEntitlement } from "@/lib/records/attorneyEntitlement";
-import { attorneyOnboardingEmailDurationMs } from "@/lib/records/attorneyPolicy";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
+import {
+  checkPwnedPassword,
+  isPwnedPasswordCheckEnabled,
+} from "@/lib/security/pwnedPasswords";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
 
 export const dynamic = "force-dynamic";
@@ -28,13 +30,41 @@ function unavailableInvitation() {
   );
 }
 
-function isExistingAuthIdentityError(error: { code?: string } | null) {
-  return error?.code === "email_exists" || error?.code === "user_already_exists";
+function existingIdentity(error: unknown) {
+  return isAuthApiError(error) &&
+    (error.code === "email_exists" || error.code === "user_already_exists");
+}
+
+async function findUnclaimedLegacyInvite(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  email: string
+) {
+  const perPage = 200;
+  for (let page = 1; page <= 5; page += 1) {
+    const result = await admin.auth.admin.listUsers({ page, perPage });
+    if (result.error) throw result.error;
+    const user = result.data.users.find(
+      (candidate) => normalizeAttorneyEmail(candidate.email || "") === email
+    );
+    if (user) {
+      return user.invited_at &&
+        !user.last_sign_in_at &&
+        !user.email_confirmed_at &&
+        !user.confirmed_at
+        ? user
+        : null;
+    }
+    if (result.data.users.length < perPage) return null;
+  }
+  return null;
 }
 
 export async function POST(request: NextRequest) {
   if (!isSupabaseRecordsMode()) {
-    return NextResponse.json({ error: "Records account access is not enabled." }, { status: 501 });
+    return NextResponse.json(
+      { error: "Records account access is not enabled." },
+      { status: 501, headers: { "Cache-Control": "no-store" } }
+    );
   }
   const entitlement = checkAttorneyGuestEntitlement("");
   if (!entitlement.allowed) {
@@ -54,26 +84,25 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json().catch(() => ({}))) as {
     email?: unknown;
+    password?: unknown;
     adultConfirmed?: unknown;
   };
   const email = typeof body.email === "string" ? normalizeAttorneyEmail(body.email) : "";
+  const password = typeof body.password === "string" ? body.password : "";
   const adultConfirmed = body.adultConfirmed === true;
-  if (!adultConfirmed || !email.includes("@")) {
+  const minimumPasswordLength = recordsPasswordMinimumLength();
+  if (!adultConfirmed || !email.includes("@") || !isStrongRecordsPassword(password)) {
     return NextResponse.json(
-      { error: "Enter the invited email and confirm adult use." },
+      {
+        error: `Enter the invited email, confirm adult use, and use a password between ${minimumPasswordLength} and 128 characters.`,
+      },
       { status: 400, headers: { "Cache-Control": "no-store" } }
     );
   }
 
   const token = request.cookies.get(attorneyAcceptanceCookieName)?.value || "";
-  let invitation:
-    | Awaited<ReturnType<typeof findPendingAttorneyInvitationForEmail>>
-    | Awaited<ReturnType<typeof findPendingAttorneyOnboardingForEmail>>;
   try {
-    invitation = await findPendingAttorneyInvitationForEmail({ token, email });
-    if (!invitation) {
-      invitation = await findPendingAttorneyOnboardingForEmail({ token, email });
-    }
+    const invitation = await findPendingAttorneyInvitationForEmail({ token, email });
     if (!invitation) return unavailableInvitation();
   } catch {
     return NextResponse.json(
@@ -82,71 +111,91 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const redirectUrl = new URL("/records", recordsAppBaseUrl(request));
-  redirectUrl.searchParams.set("auth", "attorney-invite");
-  redirectUrl.searchParams.set("next", "/attorney/accept");
-  redirectUrl.searchParams.set("invite", "1");
-  const onboardingToken = createAttorneyInvitationToken();
-  const onboardingTokenHash = hashAttorneyInvitationToken(onboardingToken);
-  const onboardingExpiresAt = new Date(
-    Date.now() + attorneyOnboardingEmailDurationMs
-  ).toISOString();
-  redirectUrl.searchParams.set("attorney_token", onboardingToken);
+  if (isPwnedPasswordCheckEnabled()) {
+    const passwordSafety = await checkPwnedPassword(password);
+    if (passwordSafety.status === "compromised") {
+      await recordSecurityEvent({
+        type: "auth_signup_compromised_password_blocked",
+        severity: "warning",
+        request,
+        status: 400,
+      });
+      return NextResponse.json(
+        { error: "Choose a different password that has not appeared in known data breaches." },
+        { status: 400, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+    if (passwordSafety.status === "unavailable") {
+      await recordSecurityEvent({
+        type: "auth_password_safety_check_unavailable",
+        severity: "high",
+        request,
+        status: 503,
+        detail: "Invited attorney signup paused because password safety verification was unavailable.",
+      });
+      return NextResponse.json(
+        { error: "Password safety verification is temporarily unavailable. Try again shortly." },
+        { status: 503, headers: { "Cache-Control": "no-store", "Retry-After": "60" } }
+      );
+    }
+  }
 
   const admin = createSupabaseAdminClient();
-  let onboardingStored = false;
-  try {
-    const onboardingUpdate = await admin
-      .from("records_attorney_invitations")
-      .update({
-        onboarding_token_hash: onboardingTokenHash,
-        onboarding_expires_at: onboardingExpiresAt,
-        last_sent_at: new Date().toISOString(),
-      })
-      .eq("id", invitation.id)
-      .eq("status", "pending")
-      .select("id")
-      .maybeSingle();
-    if (onboardingUpdate.error || !onboardingUpdate.data?.id) {
-      throw onboardingUpdate.error || new Error("Attorney onboarding binding was not stored.");
-    }
-    onboardingStored = true;
-
-    const invited = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: redirectUrl.toString(),
-    });
-
-    if (invited.error && isExistingAuthIdentityError(invited.error)) {
-      const authClient = createServerSupabaseAuthClient();
-      const existingAccountLink = await authClient.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: redirectUrl.toString(),
-          shouldCreateUser: false,
-        },
+  const created = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+  let accountUser = created.data.user;
+  let recoveredLegacyInvite = false;
+  if (existingIdentity(created.error)) {
+    try {
+      const legacyInvite = await findUnclaimedLegacyInvite(admin, email);
+      if (legacyInvite) {
+        const recovered = await admin.auth.admin.updateUserById(legacyInvite.id, {
+          password,
+          email_confirm: true,
+        });
+        if (recovered.error || !recovered.data.user?.id) {
+          throw recovered.error || new Error("Legacy invited identity recovery failed.");
+        }
+        accountUser = recovered.data.user;
+        recoveredLegacyInvite = true;
+      }
+    } catch {
+      await recordSecurityEvent({
+        type: "auth_signup_failed",
+        severity: "high",
+        request,
+        status: 503,
+        detail: "Unable to safely inspect or recover an unclaimed legacy attorney invitation.",
       });
-      if (existingAccountLink.error) throw existingAccountLink.error;
-    } else if (invited.error || !invited.data.user?.id) {
-      throw invited.error || new Error("Supabase did not create an invited identity.");
+      return NextResponse.json(
+        { error: "Attorney account verification is temporarily unavailable. Try again shortly." },
+        { status: 503, headers: { "Cache-Control": "no-store", "Retry-After": "60" } }
+      );
     }
-  } catch {
-    if (onboardingStored) {
-      await admin
-        .from("records_attorney_invitations")
-        .update({ onboarding_token_hash: null, onboarding_expires_at: null })
-        .eq("id", invitation.id)
-        .eq("onboarding_token_hash", onboardingTokenHash);
-    }
+  }
+  if ((created.error && !recoveredLegacyInvite) || !accountUser?.id) {
     await recordSecurityEvent({
       type: "auth_signup_failed",
       severity: "warning",
       request,
-      status: 503,
-      detail: "Secure invited-attorney email delivery failed.",
+      status: existingIdentity(created.error) ? 409 : 400,
+      detail: existingIdentity(created.error)
+        ? "Invited attorney attempted account creation for an existing identity."
+        : "Direct invited-attorney account creation failed.",
     });
     return NextResponse.json(
-      { error: "Unable to send the secure attorney account link. Try again shortly." },
-      { status: 503, headers: { "Cache-Control": "no-store", "Retry-After": "60" } }
+      {
+        error: existingIdentity(created.error)
+          ? "An account already uses that email. Choose Sign in to existing account instead."
+          : "Unable to create the invited attorney account.",
+      },
+      {
+        status: existingIdentity(created.error) ? 409 : 400,
+        headers: { "Cache-Control": "no-store" },
+      }
     );
   }
 
@@ -154,16 +203,18 @@ export async function POST(request: NextRequest) {
     type: "auth_signup_requested",
     severity: "info",
     request,
-    status: 200,
-    detail: "Mailbox-verified attorney onboarding link requested.",
+    userId: accountUser.id,
+    status: 201,
+    detail: recoveredLegacyInvite
+      ? "Unclaimed legacy attorney invite converted to a password account from the original private link."
+      : "Invitation-gated attorney account created directly from the single private link.",
   });
 
   return NextResponse.json(
     {
       ok: true,
-      message:
-        "The email provider accepted a fresh secure account message for delivery. Look for “Your secure Custody Folio attorney access link” from Custody Folio. Check Inbox and Junk for the invited address. If it is still missing after five minutes, ask the record owner to replace the invitation with an address that is confirmed to receive external mail.",
+      message: "Attorney account created. Continue with authenticator verification to open the shared matter.",
     },
-    { headers: { "Cache-Control": "no-store" } }
+    { status: 201, headers: { "Cache-Control": "no-store" } }
   );
 }

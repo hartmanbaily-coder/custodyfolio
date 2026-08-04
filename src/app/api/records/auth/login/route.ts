@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthApiError, type Session } from "@supabase/supabase-js";
 import { createServerSupabaseAuthClient } from "@/lib/supabaseClient";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import {
   getAccessTokenAal,
   isRecordsMfaRequired,
@@ -11,6 +12,15 @@ import {
 import { defaultCaseIdForUser } from "@/lib/records/accountBoundary";
 import { recordsProfileIsAuthorized, upsertRecordsProfile } from "@/lib/records/profileServer";
 import { recordsAttorneyProfileIsAuthorized } from "@/lib/records/attorneyProfileServer";
+import {
+  attorneyAcceptanceCookieName,
+  clearAttorneyAcceptanceCookie,
+  findPendingAttorneyInvitationForEmail,
+} from "@/lib/records/attorneyServer";
+import {
+  attorneyEmailHash,
+  hashAttorneyInvitationToken,
+} from "@/lib/records/attorneyCrypto";
 import { recordsCsrfError, verifyRecordsTrustedJsonRequest } from "@/lib/security/csrf";
 import { checkRateLimit, rateLimitClientAddress, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
@@ -97,6 +107,27 @@ function sessionBody(input: { userId: string; email: string }) {
     email: input.email,
     authMode: "supabase" as const,
   };
+}
+
+async function acceptPasswordAuthenticatedAttorneyInvitation(input: {
+  token: string;
+  userId: string;
+  email: string;
+}) {
+  const invitation = await findPendingAttorneyInvitationForEmail({
+    token: input.token,
+    email: input.email,
+  });
+  if (!invitation) return false;
+
+  const admin = createSupabaseAdminClient();
+  const accepted = await admin.rpc("accept_records_attorney_invitation", {
+    p_token_hash: hashAttorneyInvitationToken(input.token),
+    p_attorney_user_id: input.userId,
+    p_invited_email_hash: attorneyEmailHash(input.email),
+  });
+  const row = Array.isArray(accepted.data) ? accepted.data[0] : null;
+  return !accepted.error && Boolean(row?.grant_id) && row.owner_user_id !== input.userId;
 }
 
 async function mfaResponse(input: {
@@ -277,6 +308,33 @@ async function handleLoginPost(request: NextRequest) {
 
   failedLogins.delete(key);
 
+  const attorneyInvitationToken = attorneyWorkspace
+    ? request.cookies.get(attorneyAcceptanceCookieName)?.value || ""
+    : "";
+  let acceptedAttorneyInvitation = false;
+  if (attorneyInvitationToken) {
+    acceptedAttorneyInvitation = await acceptPasswordAuthenticatedAttorneyInvitation({
+      token: attorneyInvitationToken,
+      userId: data.user.id,
+      email: data.user.email || email,
+    });
+    if (!acceptedAttorneyInvitation) {
+      await supabase.auth.signOut({ scope: "local" });
+      await recordSecurityEvent({
+        type: "auth_login_unregistered_identity_blocked",
+        severity: "warning",
+        request,
+        userId: data.user.id,
+        status: 403,
+        detail: "Password-authenticated attorney invitation was invalid, used, expired, or email-mismatched.",
+      });
+      return NextResponse.json(
+        { error: "This invitation is invalid, expired, already used, or belongs to another account." },
+        { status: 403, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+  }
+
   const identityAuthorized = attorneyWorkspace
     ? await recordsAttorneyProfileIsAuthorized({
         userId: data.user.id,
@@ -319,7 +377,9 @@ async function handleLoginPost(request: NextRequest) {
       session: data.session,
       sessionScope: attorneyWorkspace ? "attorney_mfa_pending" : "records",
     });
-    if (mfa) return mfa;
+    if (mfa) {
+      return acceptedAttorneyInvitation ? clearAttorneyAcceptanceCookie(mfa) : mfa;
+    }
   }
 
   const session = sessionBody({ userId: data.user.id, email: data.user.email || email });
@@ -346,7 +406,7 @@ async function handleLoginPost(request: NextRequest) {
     defaultCaseIdForUser(data.user.id),
     attorneyWorkspace ? "attorney_guest" : "records"
   );
-  return response;
+  return acceptedAttorneyInvitation ? clearAttorneyAcceptanceCookie(response) : response;
 }
 
 export async function POST(request: NextRequest) {

@@ -110,15 +110,15 @@ describe("customer facing copy", () => {
     expect(attorneyAccess).not.toContain("Privacy-safe access history");
   });
 
-  it("tells invited attorneys how to find the branded secure access email", () => {
+  it("tells invited attorneys that the private invitation is a single-link flow", () => {
     const attorneyAccept = readFileSync(
       resolve(process.cwd(), "src/components/records/AttorneyAccept.tsx"),
       "utf8"
     );
-    expect(attorneyAccept).toContain("Your secure Custody Folio attorney access link");
-    expect(attorneyAccept).toContain("Check Inbox and Junk");
-    expect(attorneyAccept).toContain("still missing after five");
-    expect(attorneyAccept).not.toContain("A secure access link was sent");
+    expect(attorneyAccept).toContain("This private link is the only attorney invitation");
+    expect(attorneyAccept).toContain("will not send a second");
+    expect(attorneyAccept).toContain("Create account and continue");
+    expect(attorneyAccept).not.toContain("Check Inbox and Junk");
   });
 
   it("keeps recurring exchange setup out of the primary exchange logging flow", () => {

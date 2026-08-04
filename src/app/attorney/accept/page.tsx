@@ -3,7 +3,7 @@ import { pageMetadata } from "@/lib/site";
 
 export const metadata = pageMetadata({
   title: "Accept Attorney Access",
-  description: "Review and accept a time-limited Custody Folio attorney access invitation.",
+  description: "Review and accept a private Custody Folio attorney access invitation.",
   canonical: "/attorney/accept",
 });
 
