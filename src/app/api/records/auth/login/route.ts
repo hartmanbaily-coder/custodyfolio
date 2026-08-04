@@ -10,6 +10,7 @@ import {
 } from "@/lib/records/authServer";
 import { defaultCaseIdForUser } from "@/lib/records/accountBoundary";
 import { recordsProfileIsAuthorized, upsertRecordsProfile } from "@/lib/records/profileServer";
+import { recordsAttorneyProfileIsAuthorized } from "@/lib/records/attorneyProfileServer";
 import { recordsCsrfError, verifyRecordsTrustedJsonRequest } from "@/lib/security/csrf";
 import { checkRateLimit, rateLimitClientAddress, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
@@ -102,6 +103,7 @@ async function mfaResponse(input: {
   request: NextRequest;
   authClient: ReturnType<typeof createServerSupabaseAuthClient>;
   session: Session;
+  sessionScope: "records" | "attorney_mfa_pending";
 }) {
   const assurance = await input.authClient.auth.mfa.getAuthenticatorAssuranceLevel();
   if (assurance.error) {
@@ -145,7 +147,8 @@ async function mfaResponse(input: {
     setRecordsSessionCookies(
       response,
       input.session,
-      defaultCaseIdForUser(input.session.user.id)
+      defaultCaseIdForUser(input.session.user.id),
+      input.sessionScope
     );
     await recordSecurityEvent({
       type: "auth_mfa_required",
@@ -203,7 +206,8 @@ async function mfaResponse(input: {
   setRecordsSessionCookies(
     response,
     input.session,
-    defaultCaseIdForUser(input.session.user.id)
+    defaultCaseIdForUser(input.session.user.id),
+    input.sessionScope
   );
   await recordSecurityEvent({
     type: "auth_mfa_enrollment_started",
@@ -232,10 +236,16 @@ async function handleLoginPost(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const body = parsed as { email?: unknown; password?: unknown; adultConfirmed?: unknown };
+  const body = parsed as {
+    email?: unknown;
+    password?: unknown;
+    adultConfirmed?: unknown;
+    workspace?: unknown;
+  };
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body.password === "string" ? body.password : "";
   const adultConfirmed = body.adultConfirmed === true;
+  const attorneyWorkspace = body.workspace === "attorney";
 
   if (!adultConfirmed || !email.includes("@") || password.length < 8) {
     return NextResponse.json({ error: "Check your email, password, and adult use confirmation." }, { status: 400 });
@@ -267,10 +277,15 @@ async function handleLoginPost(request: NextRequest) {
 
   failedLogins.delete(key);
 
-  if (
-    !isRecordsSignupEnabled() &&
-    !(await recordsProfileIsAuthorized(data.user.id, data.session.access_token))
-  ) {
+  const identityAuthorized = attorneyWorkspace
+    ? await recordsAttorneyProfileIsAuthorized({
+        userId: data.user.id,
+        email: data.user.email || email,
+        accessToken: data.session.access_token,
+      })
+    : isRecordsSignupEnabled() ||
+      await recordsProfileIsAuthorized(data.user.id, data.session.access_token);
+  if (!identityAuthorized) {
     await supabase.auth.signOut({ scope: "local" });
     await recordSecurityEvent({
       type: "auth_login_unregistered_identity_blocked",
@@ -278,10 +293,16 @@ async function handleLoginPost(request: NextRequest) {
       request,
       userId: data.user.id,
       status: 403,
-      detail: "Supabase identity has no approved records profile.",
+      detail: attorneyWorkspace
+        ? "Supabase identity has no active invitation-gated attorney grant."
+        : "Supabase identity has no approved records profile.",
     });
     return NextResponse.json(
-      { error: "This account is not enabled for Custody Folio." },
+      {
+        error: attorneyWorkspace
+          ? "No active shared matters are available for this attorney account."
+          : "This account is not enabled for Custody Folio.",
+      },
       { status: 403, headers: { "Cache-Control": "no-store" } }
     );
   }
@@ -292,12 +313,19 @@ async function handleLoginPost(request: NextRequest) {
   });
 
   if (isRecordsMfaRequired()) {
-    const mfa = await mfaResponse({ request, authClient: supabase, session: data.session });
+    const mfa = await mfaResponse({
+      request,
+      authClient: supabase,
+      session: data.session,
+      sessionScope: attorneyWorkspace ? "attorney_mfa_pending" : "records",
+    });
     if (mfa) return mfa;
   }
 
   const session = sessionBody({ userId: data.user.id, email: data.user.email || email });
-  await upsertRecordsProfile({ userId: session.userId, email: session.email });
+  if (!attorneyWorkspace) {
+    await upsertRecordsProfile({ userId: session.userId, email: session.email });
+  }
   await recordSecurityEvent({
     type: "auth_login_success",
     severity: "info",
@@ -312,7 +340,12 @@ async function handleLoginPost(request: NextRequest) {
     },
     { headers: { "Cache-Control": "no-store" } }
   );
-  setRecordsSessionCookies(response, data.session, defaultCaseIdForUser(data.user.id));
+  setRecordsSessionCookies(
+    response,
+    data.session,
+    defaultCaseIdForUser(data.user.id),
+    attorneyWorkspace ? "attorney_guest" : "records"
+  );
   return response;
 }
 

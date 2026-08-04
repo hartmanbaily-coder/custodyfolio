@@ -275,7 +275,7 @@ export async function getAttorneyGuestAuthContext(
     }
   }
 
-  return { error: attorneyGuestAuthError("Attorney access has expired. Ask the record owner for a new invitation.") } as const;
+  return { error: attorneyGuestAuthError("Attorney session expired. Sign in again to open active shared matters.") } as const;
 }
 
 export async function getAttorneyAuthContext(

@@ -35,12 +35,19 @@ import {
 type PortalView = "Overview" | "Timeline" | "Calendar" | "Exchanges" | "Notes" | "Files" | "Child Support" | "Expenses" | "Reports";
 const portalViews: PortalView[] = ["Overview", "Timeline", "Calendar", "Exchanges", "Notes", "Files", "Child Support", "Expenses", "Reports"];
 
-type MatterChoice = { accessHandle: string; label: string; grantedAt: string; expiresAt: string };
+type MatterChoice = {
+  accessHandle: string;
+  label: string;
+  clientName: string;
+  caseName: string;
+  grantedAt: string;
+  expiresAt: string | null;
+};
 type PortalResponse = {
   accessHandle: string;
   projection: SharedCaseProjection;
   updatedAt: string | null;
-  accessExpiresAt: string;
+  accessExpiresAt: string | null;
   readOnly: true;
 };
 
@@ -73,6 +80,7 @@ export default function AttorneyPortal() {
   const [generatedReport, setGeneratedReport] = useState<{ type: ReportType; range: DateRange } | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState("");
+  const [matterSearch, setMatterSearch] = useState("");
 
   async function loadPortal(accessHandle: string) {
     const body = await attorneyMutation("/api/records/attorney/portal", { accessHandle }) as unknown as PortalResponse;
@@ -101,15 +109,6 @@ export default function AttorneyPortal() {
       if (!response.ok) throw new Error(body.error || "Unable to load shared matters.");
       setSessionState("ready");
       setMatters(body.matters || []);
-      const saved = window.sessionStorage.getItem("l2f.attorney.access") || "";
-      if (saved) {
-        try {
-          await loadPortal(saved);
-          return;
-        } catch {
-          window.sessionStorage.removeItem("l2f.attorney.access");
-        }
-      }
       if (body.matters?.length === 1) await loadPortal(body.matters[0].accessHandle);
     }
     void load().catch((error: unknown) => {
@@ -119,13 +118,13 @@ export default function AttorneyPortal() {
   }, []);
 
   useEffect(() => {
-    if (!portal) return;
+    if (!portal?.accessExpiresAt) return;
     const expiresAt = new Date(portal.accessExpiresAt).getTime();
     const endAccess = () => {
       window.sessionStorage.removeItem("l2f.attorney.access");
       setPortal(null);
       setMatters([]);
-      setMessage("This 30-day access period has ended. Ask the record owner to send a new invitation.");
+      setMessage("This legacy access period has ended. Ask the client to send a new invitation.");
     };
     let timer: number | undefined;
     const checkExpiry = () => {
@@ -159,6 +158,11 @@ export default function AttorneyPortal() {
       : null,
     [dataset, generatedReport]
   );
+  const visibleMatters = useMemo(() => {
+    const query = matterSearch.trim().toLocaleLowerCase();
+    if (!query) return matters;
+    return matters.filter((matter) => matter.label.toLocaleLowerCase().includes(query));
+  }, [matterSearch, matters]);
 
   async function downloadEvidence(item: SharedEvidenceItem) {
     if (!portal) return;
@@ -244,7 +248,7 @@ export default function AttorneyPortal() {
       });
       window.sessionStorage.removeItem("l2f.attorney.access");
       setPortal(null);
-      setMatters([]);
+      setMatters((current) => current.filter((matter) => matter.accessHandle !== portal.accessHandle));
       setMessage("You left the shared matter. Future access is blocked.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to leave the matter.");
@@ -256,22 +260,24 @@ export default function AttorneyPortal() {
   async function logout() {
     await signOutRecordsSession();
     window.sessionStorage.removeItem("l2f.attorney.access");
-    window.location.replace("/");
+    window.location.replace("/attorney/sign-in");
   }
 
   if (sessionState === "loading") return <main className="grid min-h-screen place-items-center bg-[#f4f7f6]"><p>Opening shared matters…</p></main>;
   if (sessionState === "signed_out") {
-    return <main className="grid min-h-screen place-items-center bg-[#f4f7f6] px-4"><section className="max-w-lg rounded-lg border bg-white p-6 shadow-sm"><h1 className="text-2xl font-semibold">Shared With Me</h1><p className="mt-3 text-sm text-slate-600">Open the secure Custody Folio access link sent to the invited email address. If that link has expired, ask the record owner to send a new invitation.</p><Link href="/" className="btn-primary mt-5 inline-block">Custody Folio home</Link></section></main>;
+    return <main className="grid min-h-screen place-items-center bg-[#f4f7f6] px-4"><section className="max-w-lg rounded-lg border bg-white p-6 shadow-sm"><h1 className="text-2xl font-semibold">Shared With Me</h1><p className="mt-3 text-sm text-slate-600">Sign in with the attorney account created through your first client invitation. A new client can share another matter with the same account.</p><div className="mt-5 flex flex-wrap gap-2"><Link href="/attorney/sign-in" className="btn-primary">Attorney sign in</Link><Link href="/" className="btn-secondary">Custody Folio home</Link></div></section></main>;
   }
 
   if (!portal) {
     return (
       <main className="min-h-screen bg-[#f4f7f6] px-4 py-8 text-slate-950">
         <section className="mx-auto max-w-2xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-wrap justify-between gap-3"><div><h1 className="text-2xl font-semibold">Shared With Me</h1><p className="mt-2 text-sm text-slate-600">Read-only matters shared with this account.</p></div><Link href="/records" className="btn-secondary">My Records</Link></div>
+          <div className="flex flex-wrap justify-between gap-3"><div><h1 className="text-2xl font-semibold">Shared With Me</h1><p className="mt-2 text-sm text-slate-600">Read-only client matters available until each client revokes access.</p></div><button type="button" className="btn-secondary" onClick={() => void logout()}>Sign out</button></div>
           {message ? <p role="status" className="mt-4 rounded-md border bg-slate-50 p-3 text-sm">{message}</p> : null}
+          {matters.length > 1 ? <label className="mt-5 grid gap-1.5 text-sm font-medium text-slate-700">Search clients or cases<input type="search" className="input" value={matterSearch} onChange={(event) => setMatterSearch(event.target.value)} placeholder="Client or case name" /></label> : null}
           <div className="mt-5 space-y-3">
-            {matters.map((matter) => <button key={matter.accessHandle} type="button" className="btn-secondary w-full text-left" onClick={() => void loadPortal(matter.accessHandle)}>{matter.label} · granted {new Date(matter.grantedAt).toLocaleDateString()} · access ends {new Date(matter.expiresAt).toLocaleString()}</button>)}
+            {visibleMatters.map((matter) => <button key={matter.accessHandle} type="button" className="btn-secondary w-full text-left" onClick={() => void loadPortal(matter.accessHandle)}><span className="block font-semibold text-slate-900">{matter.label}</span><span className="mt-1 block text-xs text-slate-500">Granted {new Date(matter.grantedAt).toLocaleDateString()} · {matter.expiresAt ? `legacy access ends ${new Date(matter.expiresAt).toLocaleString()}` : "active until client revocation"}</span></button>)}
+            {matters.length > 0 && visibleMatters.length === 0 ? <p className="text-sm text-slate-500">No client or case matches that search.</p> : null}
             {!matters.length ? <p className="text-sm text-slate-500">No active shared matters are available. An invitation may still need to be accepted.</p> : null}
           </div>
         </section>
@@ -280,6 +286,7 @@ export default function AttorneyPortal() {
   }
 
   const matter = dataset?.matters[0];
+  const selectedMatter = matters.find((choice) => choice.accessHandle === portal.accessHandle);
   const supportObligations = dataset
     ? generateChildSupportObligations(
         dataset.childSupportOrders,
@@ -298,12 +305,18 @@ export default function AttorneyPortal() {
     <div className="min-h-screen overflow-x-hidden bg-[#f4f7f6] text-slate-950">
       <header className="border-b border-slate-200 bg-white px-4 py-4">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
-          <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Read-only attorney guest</p><h1 className="mt-1 text-xl font-semibold">{matter?.caseName || "Shared matter"}</h1></div>
-          <div className="flex flex-wrap gap-2"><Link href="/records" className="btn-secondary">My Records</Link><button type="button" className="btn-secondary" onClick={() => void logout()}>Logout</button><button type="button" className="btn-secondary text-red-700" disabled={busy === "leave"} onClick={() => void leaveMatter()}>{busy === "leave" ? "Leaving…" : "Leave matter"}</button></div>
+          <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Read-only attorney portal</p><h1 className="mt-1 text-xl font-semibold">{selectedMatter?.label || matter?.caseName || "Shared matter"}</h1></div>
+          <div className="flex flex-wrap items-center gap-2">
+            {matters.length > 1 ? <label className="sr-only" htmlFor="attorney-matter-switcher">Switch client matter</label> : null}
+            {matters.length > 1 ? <select id="attorney-matter-switcher" className="input min-w-56" value={portal.accessHandle} onChange={(event) => void loadPortal(event.target.value)}>{matters.map((choice) => <option key={choice.accessHandle} value={choice.accessHandle}>{choice.label}</option>)}</select> : null}
+            {matters.length > 1 ? <button type="button" className="btn-secondary" onClick={() => setPortal(null)}>All matters</button> : null}
+            <button type="button" className="btn-secondary" onClick={() => void logout()}>Sign out</button>
+            <button type="button" className="btn-secondary text-red-700" disabled={busy === "leave"} onClick={() => void leaveMatter()}>{busy === "leave" ? "Leaving…" : "Leave matter"}</button>
+          </div>
         </div>
       </header>
       <div className="mx-auto max-w-7xl px-4 py-5">
-        <div className="rounded-md border border-teal-200 bg-teal-50 p-3 text-sm leading-6 text-teal-950">Read only access through {new Date(portal.accessExpiresAt).toLocaleString()}. You may return as often as needed before then. You cannot create, edit, delete, upload, change report inclusion, invite others, or access the owner’s account settings. Custody Folio organizes user provided information and does not verify allegations or provide legal advice.</div>
+        <div className="rounded-md border border-teal-200 bg-teal-50 p-3 text-sm leading-6 text-teal-950">{portal.accessExpiresAt ? `This legacy grant remains read only through ${new Date(portal.accessExpiresAt).toLocaleString()}.` : "This grant remains read only until the client revokes it or you leave the matter."} You may return through attorney sign in without asking for another invitation. You cannot create, edit, delete, upload, change report inclusion, invite others, or access the client’s account settings. Custody Folio organizes user provided information and does not verify allegations or provide legal advice.</div>
         <nav className="mt-4 flex max-w-full gap-2 overflow-x-auto pb-2" aria-label="Shared matter sections">{portalViews.map((item) => <button key={item} type="button" onClick={() => setView(item)} className={`shrink-0 rounded-md px-3 py-2 text-sm font-semibold ${view === item ? "bg-teal-700 text-white" : "border border-slate-200 bg-white text-slate-700"}`}>{item}</button>)}</nav>
         {message ? <p role="status" aria-live="polite" className="mt-3 rounded-md border border-slate-200 bg-white p-3 text-sm">{message}</p> : null}
         <main className="mt-4 min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">

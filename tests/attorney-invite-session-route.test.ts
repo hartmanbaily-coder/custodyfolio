@@ -91,7 +91,7 @@ describe("mailbox-verified attorney session", () => {
         owner_user_id: "owner-1",
         case_key: "default",
         case_id: "case-1",
-        access_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        access_expires_at: null,
       }],
       error: null,
     });
@@ -105,7 +105,7 @@ describe("mailbox-verified attorney session", () => {
       ok: true,
       accepted: true,
       accessHandle: expect.any(String),
-      accessExpiresAt: expect.any(String),
+      accessExpiresAt: null,
     });
     expect(findPendingAttorneyInvitationForEmail).toHaveBeenCalledWith({
       token: "original-invitation-token-long-enough",
@@ -165,7 +165,7 @@ describe("mailbox-verified attorney session", () => {
       data: [{
         grant_id: "grant-1",
         owner_user_id: "attorney-1",
-        access_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        access_expires_at: null,
       }],
       error: null,
     });

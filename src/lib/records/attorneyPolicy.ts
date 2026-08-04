@@ -1,5 +1,4 @@
 export const attorneyInvitationDurationDays = 7;
-export const attorneyAccessDurationDays = 30;
 
 const dayMs = 24 * 60 * 60 * 1000;
 

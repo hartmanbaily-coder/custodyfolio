@@ -197,11 +197,29 @@ describe("attorney migration controls", () => {
       "revoke all on function public.complete_records_attorney_onboarding"
     );
 
+    const permanentAccountsMigration = await readFile(
+      new URL(
+        "../supabase/migrations/20260804090000_permanent_attorney_accounts.sql",
+        import.meta.url
+      ),
+      "utf8"
+    );
+    expect(permanentAccountsMigration).toContain("create table if not exists public.records_attorney_profiles");
+    expect(permanentAccountsMigration).toContain("alter table public.records_attorney_profiles enable row level security");
+    expect(permanentAccountsMigration).toContain("from public, anon, authenticated");
+    expect(permanentAccountsMigration).toContain("to service_role");
+    expect(permanentAccountsMigration).toContain("alter column expires_at drop not null");
+    expect(permanentAccountsMigration).toContain("expires_at is null or expires_at > granted_at");
+    expect(permanentAccountsMigration).toContain("and (g.expires_at is null or g.expires_at > now())");
+    expect(permanentAccountsMigration).toMatch(/'read_only',\s+now\(\),\s+null/);
+    expect(permanentAccountsMigration).toContain("insert into public.records_attorney_profiles");
+    expect(permanentAccountsMigration).not.toContain("user_metadata");
+
     const productionSchema = await readFile(
       new URL("../database/supabase/production_schema.sql", import.meta.url),
       "utf8"
     );
-    expect(productionSchema).toContain("now(), now() + interval '30 days'");
+    expect(productionSchema).toContain("records_attorney_profiles");
   });
 
   it("keeps the attorney portal and all protected APIs out of service-worker caches", async () => {

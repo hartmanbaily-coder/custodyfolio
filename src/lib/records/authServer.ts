@@ -35,7 +35,7 @@ export interface RecordsAuthContext {
   emailConfirmedAt?: string;
   assuranceLevel: "aal1" | "aal2" | null;
   caseId: string;
-  sessionScope?: "records" | "attorney_guest";
+  sessionScope?: "records" | "attorney_guest" | "attorney_mfa_pending";
   refreshedSession?: Session;
 }
 
@@ -148,7 +148,7 @@ export function setRecordsSessionCookies(
   response: NextResponse,
   session: Pick<Session, "access_token" | "expires_in" | "refresh_token">,
   caseId: string,
-  sessionScope: "records" | "attorney_guest" = "records"
+  sessionScope: "records" | "attorney_guest" | "attorney_mfa_pending" = "records"
 ) {
   response.cookies.set(
     recordsAccessCookieName,
@@ -322,7 +322,10 @@ export function attachRefreshedRecordsSession(
 }
 
 export async function getRecordsAuthContext(request: NextRequest) {
-  if (request.cookies.get(recordsSessionScopeCookieName)?.value === "attorney_guest") {
+  if (
+    request.cookies.get(recordsSessionScopeCookieName)?.value === "attorney_guest" ||
+    request.cookies.get(recordsSessionScopeCookieName)?.value === "attorney_mfa_pending"
+  ) {
     return {
       error: NextResponse.json(
         { error: "This session is limited to the read only attorney portal." },

@@ -583,13 +583,29 @@ create table if not exists public.records_attorney_grants (
   case_id text not null check (char_length(case_id) between 1 and 180),
   permission_scope text not null default 'read_only' check (permission_scope = 'read_only'),
   granted_at timestamptz not null default now(),
-  expires_at timestamptz not null,
+  expires_at timestamptz,
   revoked_at timestamptz,
   left_at timestamptz,
   revocation_reason text,
   check (owner_user_id <> attorney_user_id),
-  check (expires_at > granted_at)
+  check (expires_at is null or expires_at > granted_at)
 );
+
+create table if not exists public.records_attorney_profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  email_hash text not null check (char_length(email_hash) = 64),
+  credential_version text
+    check (credential_version is null or char_length(credential_version) = 43),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists records_attorney_profiles_email_hash_idx
+  on public.records_attorney_profiles(email_hash);
+create index if not exists records_attorney_invitations_accepted_by_idx
+  on public.records_attorney_invitations(accepted_by_user_id);
+create index if not exists records_attorney_invitations_replaced_by_idx
+  on public.records_attorney_invitations(replaced_by_invitation_id);
 
 create table if not exists public.records_attorney_access_events (
   id bigint generated always as identity primary key,
@@ -636,11 +652,13 @@ create index if not exists records_attorney_events_grant_created_idx
 
 alter table public.records_attorney_invitations enable row level security;
 alter table public.records_attorney_grants enable row level security;
+alter table public.records_attorney_profiles enable row level security;
 alter table public.records_attorney_access_events enable row level security;
 
 revoke all on
   public.records_attorney_invitations,
   public.records_attorney_grants,
+  public.records_attorney_profiles,
   public.records_attorney_access_events
 from public, anon, authenticated;
 revoke all on sequence public.records_attorney_access_events_id_seq
@@ -649,6 +667,7 @@ from public, anon, authenticated;
 grant select, insert, update, delete on
   public.records_attorney_invitations,
   public.records_attorney_grants,
+  public.records_attorney_profiles,
   public.records_attorney_access_events
 to service_role;
 grant usage, select on sequence public.records_attorney_access_events_id_seq to service_role;
@@ -695,13 +714,12 @@ begin
     return false;
   end if;
 
-  -- A new identity is not approved for application login until its password has
-  -- been replaced. Existing approved identities use the immediate branch.
+  -- Attorney identity is separate from client-workspace authorization.
   if not p_password_setup_required then
-    insert into public.records_profiles (user_id, email, updated_at)
-    values (p_attorney_user_id, lower(trim(p_email)), now())
+    insert into public.records_attorney_profiles (user_id, email_hash, updated_at)
+    values (p_attorney_user_id, p_invited_email_hash, now())
     on conflict (user_id) do update
-    set email = excluded.email, updated_at = excluded.updated_at;
+    set email_hash = excluded.email_hash, updated_at = excluded.updated_at;
   end if;
 
   return true;
@@ -751,11 +769,13 @@ begin
     return false;
   end if;
 
-  insert into public.records_profiles (user_id, email, credential_version, updated_at)
-  values (p_attorney_user_id, lower(trim(p_email)), p_credential_version, now())
+  insert into public.records_attorney_profiles (
+    user_id, email_hash, credential_version, updated_at
+  )
+  values (p_attorney_user_id, p_invited_email_hash, p_credential_version, now())
   on conflict (user_id) do update
   set
-    email = excluded.email,
+    email_hash = excluded.email_hash,
     credential_version = excluded.credential_version,
     updated_at = excluded.updated_at;
 
@@ -812,6 +832,7 @@ begin
     where g.owner_user_id = invitation.owner_user_id
       and g.revoked_at is null
       and g.left_at is null
+      and g.expires_at is not null
       and g.expires_at <= now()
     returning g.id, g.owner_user_id, g.case_id, g.invitation_id
   )
@@ -820,14 +841,14 @@ begin
   )
   select expired_grants.owner_user_id, expired_grants.case_id,
     expired_grants.invitation_id, expired_grants.id, 'access_expired',
-    jsonb_build_object('reason', 'access_period_ended')
+    jsonb_build_object('reason', 'legacy_access_period_ended')
   from expired_grants;
 
   if exists (
     select 1 from public.records_attorney_grants g
     where g.owner_user_id = invitation.owner_user_id
       and g.revoked_at is null and g.left_at is null
-      and g.expires_at > now()
+      and (g.expires_at is null or g.expires_at > now())
   ) then
     return;
   end if;
@@ -838,12 +859,17 @@ begin
   ) values (
     invitation.owner_user_id, p_attorney_user_id, invitation.id,
     invitation.case_key, invitation.case_id, 'read_only',
-    now(), now() + interval '30 days'
+    now(), null
   ) returning * into created_grant;
 
   update public.records_attorney_invitations
   set status = 'accepted', accepted_at = now(), accepted_by_user_id = p_attorney_user_id
   where id = invitation.id and status = 'pending';
+
+  insert into public.records_attorney_profiles (user_id, email_hash, updated_at)
+  values (p_attorney_user_id, p_invited_email_hash, now())
+  on conflict (user_id) do update
+  set email_hash = excluded.email_hash, updated_at = excluded.updated_at;
 
   insert into public.records_attorney_access_events (
     owner_user_id, actor_user_id, case_id, invitation_id, grant_id, event_type

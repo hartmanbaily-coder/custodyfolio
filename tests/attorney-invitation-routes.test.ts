@@ -55,7 +55,7 @@ describe("attorney invitation owner routes", () => {
             select: () => query,
             eq: () => query,
             is: () => query,
-            gt: () => query,
+            or: () => query,
             maybeSingle: async () => ({ data: null, error: null }),
           };
           return query;

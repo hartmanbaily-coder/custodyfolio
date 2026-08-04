@@ -3,12 +3,14 @@ import { AuthApiError } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
 import { POST } from "@/app/api/records/auth/login/route";
 import { resetRateLimitStore } from "@/lib/security/rateLimit";
+import { recordsSessionScopeCookieName } from "@/lib/records/authServer";
 
 const signInWithPassword = vi.hoisted(() => vi.fn());
 const setSession = vi.hoisted(() => vi.fn());
 const signOut = vi.hoisted(() => vi.fn());
 const recordsProfileExists = vi.hoisted(() => vi.fn());
 const upsertRecordsProfile = vi.hoisted(() => vi.fn());
+const recordsAttorneyProfileIsAuthorized = vi.hoisted(() => vi.fn());
 const recordSecurityEvent = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/supabaseClient", () => ({
@@ -26,6 +28,10 @@ vi.mock("@/lib/records/profileServer", () => ({
   upsertRecordsProfile,
 }));
 
+vi.mock("@/lib/records/attorneyProfileServer", () => ({
+  recordsAttorneyProfileIsAuthorized,
+}));
+
 vi.mock("@/lib/security/securityEvents", () => ({
   recordSecurityEvent,
 }));
@@ -36,7 +42,7 @@ function fakeJwt(payload: Record<string, unknown>) {
   return `${encode({ alg: "none" })}.${encode(payload)}.signature`;
 }
 
-function makeRequest(email: string, invitationToken = "") {
+function makeRequest(email: string, invitationToken = "", workspace: "records" | "attorney" = "records") {
   return new NextRequest("https://custodyfolio.com/api/records/auth/login", {
     method: "POST",
     headers: {
@@ -49,6 +55,7 @@ function makeRequest(email: string, invitationToken = "") {
       adultConfirmed: true,
       email,
       password: "not-the-real-password",
+      workspace,
     }),
   });
 }
@@ -71,6 +78,7 @@ describe("records login route", () => {
       NEXT_PUBLIC_RECORDS_SIGNUPS_ENABLED: "true",
     };
     recordsProfileExists.mockResolvedValue(true);
+    recordsAttorneyProfileIsAuthorized.mockResolvedValue(true);
     setSession.mockResolvedValue({ data: {}, error: null });
     signOut.mockResolvedValue({ error: null });
   });
@@ -226,5 +234,30 @@ describe("records login route", () => {
     expect(upsertRecordsProfile).not.toHaveBeenCalled();
     expect(signOut).toHaveBeenCalledWith({ scope: "local" });
     expect(setSession).not.toHaveBeenCalled();
+  });
+
+  it("returns a scoped attorney session only for an active invitation-gated attorney profile", async () => {
+    signInWithPassword.mockResolvedValue({
+      data: {
+        session: {
+          access_token: fakeJwt({ aal: "aal1" }),
+          refresh_token: "refresh-token",
+          expires_in: 3600,
+        },
+        user: { id: "attorney-user", email: "counsel@example.test" },
+      },
+      error: null,
+    });
+
+    const response = await POST(makeRequest("counsel@example.test", "", "attorney"));
+
+    expect(response.status).toBe(200);
+    expect(recordsAttorneyProfileIsAuthorized).toHaveBeenCalledWith({
+      userId: "attorney-user",
+      email: "counsel@example.test",
+      accessToken: expect.any(String),
+    });
+    expect(response.cookies.get(recordsSessionScopeCookieName)?.value).toBe("attorney_guest");
+    expect(upsertRecordsProfile).not.toHaveBeenCalled();
   });
 });

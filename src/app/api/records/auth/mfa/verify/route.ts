@@ -4,6 +4,7 @@ import {
   isRecordsSignupEnabled,
   isSupabaseRecordsMode,
   recordsAccessCookieName,
+  recordsSessionScopeCookieName,
   setRecordsSessionCookies,
 } from "@/lib/records/authServer";
 import {
@@ -13,6 +14,7 @@ import {
   sessionFromMfaVerify,
 } from "@/lib/records/mfaServer";
 import { recordsProfileIsAuthorized, upsertRecordsProfile } from "@/lib/records/profileServer";
+import { recordsAttorneyProfileIsAuthorized } from "@/lib/records/attorneyProfileServer";
 import { defaultCaseIdForUser } from "@/lib/records/accountBoundary";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
@@ -81,10 +83,17 @@ export async function POST(request: NextRequest) {
 
   const session = sessionFromMfaVerify(verify.data);
   const originatingAccessToken = request.cookies.get(recordsAccessCookieName)?.value || "";
-  if (
-    !isRecordsSignupEnabled() &&
-    !(await recordsProfileIsAuthorized(session.userId, originatingAccessToken))
-  ) {
+  const attorneyWorkspace =
+    request.cookies.get(recordsSessionScopeCookieName)?.value === "attorney_mfa_pending";
+  const identityAuthorized = attorneyWorkspace
+    ? await recordsAttorneyProfileIsAuthorized({
+        userId: session.userId,
+        email: session.email,
+        accessToken: originatingAccessToken,
+      })
+    : isRecordsSignupEnabled() ||
+      await recordsProfileIsAuthorized(session.userId, originatingAccessToken);
+  if (!identityAuthorized) {
     await authClient.auth.signOut({ scope: "local" });
     await recordSecurityEvent({
       type: "auth_login_unregistered_identity_blocked",
@@ -92,14 +101,22 @@ export async function POST(request: NextRequest) {
       request,
       userId: session.userId,
       status: 403,
-      detail: "MFA verification was rejected because the records profile is not approved.",
+      detail: attorneyWorkspace
+        ? "MFA verification was rejected because no active attorney grant is available."
+        : "MFA verification was rejected because the records profile is not approved.",
     });
     return NextResponse.json(
-      { error: "This account is not enabled for Custody Folio." },
+      {
+        error: attorneyWorkspace
+          ? "No active shared matters are available for this attorney account."
+          : "This account is not enabled for Custody Folio.",
+      },
       { status: 403, headers: { "Cache-Control": "no-store" } }
     );
   }
-  await upsertRecordsProfile({ userId: session.userId, email: session.email });
+  if (!attorneyWorkspace) {
+    await upsertRecordsProfile({ userId: session.userId, email: session.email });
+  }
   await recordSecurityEvent({
     type: "auth_mfa_verified",
     severity: "info",
@@ -109,6 +126,11 @@ export async function POST(request: NextRequest) {
   });
 
   const response = NextResponse.json({ session }, { headers: { "Cache-Control": "no-store" } });
-  setRecordsSessionCookies(response, verify.data, defaultCaseIdForUser(session.userId));
+  setRecordsSessionCookies(
+    response,
+    verify.data,
+    defaultCaseIdForUser(session.userId),
+    attorneyWorkspace ? "attorney_guest" : "records"
+  );
   return response;
 }

@@ -49,13 +49,13 @@ export default function AttorneyAccept() {
     <main className="grid min-h-screen place-items-center bg-[#f4f7f6] px-4 py-10 text-slate-950">
       <section className="w-full max-w-xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">
-          Attorney guest access
+          Attorney account access
         </p>
         <h1 className="mt-2 text-2xl font-semibold">Open a read only shared case</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
           Custody Folio verifies the invited email before opening the case. No parent account setup is
-          required. Access is limited to the selected case, remains read only, expires after 30 days,
-          and can be revoked by the record owner.
+          required. This creates or reuses a free attorney account. Access is limited to the selected
+          case, remains read only until the client revokes it, and can also be left by the attorney.
         </p>
         <p
           role="status"

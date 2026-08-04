@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { resetRateLimitStore } from "@/lib/security/rateLimit";
 
 const recordsProfileExists = vi.hoisted(() => vi.fn());
+const recordsAttorneyProfileIsAuthorized = vi.hoisted(() => vi.fn());
 const upsertRecordsProfile = vi.hoisted(() => vi.fn());
 const setRecordsSessionCookies = vi.hoisted(() => vi.fn());
 const recordSecurityEvent = vi.hoisted(() => vi.fn());
@@ -24,12 +25,17 @@ vi.mock("@/lib/records/authServer", () => ({
   isRecordsSignupEnabled: () => false,
   isSupabaseRecordsMode: () => true,
   recordsAccessCookieName: "l2f-records-access",
+  recordsSessionScopeCookieName: "l2f-records-scope",
   setRecordsSessionCookies,
 }));
 
 vi.mock("@/lib/records/profileServer", () => ({
   recordsProfileIsAuthorized: recordsProfileExists,
   upsertRecordsProfile,
+}));
+
+vi.mock("@/lib/records/attorneyProfileServer", () => ({
+  recordsAttorneyProfileIsAuthorized,
 }));
 
 vi.mock("@/lib/security/securityEvents", () => ({ recordSecurityEvent }));
@@ -44,10 +50,10 @@ const verifiedTokens = {
   user: { id: "provider-user", email: "user@example.test" },
 };
 
-function request(path: string, body: unknown) {
+function request(path: string, body: unknown, cookie = "") {
   return new NextRequest(`https://custodyfolio.com${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(cookie ? { Cookie: cookie } : {}) },
     body: JSON.stringify(body),
   });
 }
@@ -57,6 +63,7 @@ describe("MFA records-profile approval gate", () => {
     vi.clearAllMocks();
     resetRateLimitStore();
     recordsProfileExists.mockResolvedValue(false);
+    recordsAttorneyProfileIsAuthorized.mockResolvedValue(false);
     signOut.mockResolvedValue({ error: null });
     challenge.mockResolvedValue({ data: { id: "challenge-id" }, error: null });
     verify.mockResolvedValue({ data: verifiedTokens, error: null });
@@ -105,5 +112,31 @@ describe("MFA records-profile approval gate", () => {
       email: "user@example.test",
     });
     expect(setRecordsSessionCookies).toHaveBeenCalled();
+  });
+
+  it("preserves attorney-only scope after authenticator verification", async () => {
+    recordsAttorneyProfileIsAuthorized.mockResolvedValue(true);
+
+    const response = await verifyExistingFactor(
+      request(
+        "/api/records/auth/mfa/verify",
+        { code: "123456" },
+        "l2f-records-scope=attorney_mfa_pending; l2f-records-access=originating-token"
+      )
+    );
+
+    expect(response.status).toBe(200);
+    expect(recordsAttorneyProfileIsAuthorized).toHaveBeenCalledWith({
+      userId: "provider-user",
+      email: "user@example.test",
+      accessToken: "originating-token",
+    });
+    expect(upsertRecordsProfile).not.toHaveBeenCalled();
+    expect(setRecordsSessionCookies).toHaveBeenCalledWith(
+      expect.anything(),
+      verifiedTokens,
+      expect.any(String),
+      "attorney_guest"
+    );
   });
 });

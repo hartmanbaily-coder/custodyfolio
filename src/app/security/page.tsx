@@ -20,7 +20,7 @@ const sections: PolicySection[] = [
     title: "Keeping your records private",
     body: [
       "The app keeps each custody matter and its files tied to the account that created them.",
-      "Custody records are not public. Access by another app user is limited to sharing you initiate, such as 30-day Attorney Access, or an export or file you choose to send.",
+      "Custody records are not public. Access by another app user is limited to sharing you initiate, such as revocable read-only Attorney Access, or an export or file you choose to send.",
       "If you see records you do not recognize or believe someone else accessed your account, contact support promptly. Do not include sensitive case details in your initial message.",
     ],
   },

@@ -1927,7 +1927,7 @@ function DashboardView({
         >
           <span className="text-sm font-semibold text-[#4C1D95]">Share with an attorney</span>
           <span className="mt-1 block text-xs leading-5 text-[#5B21B6]">
-            Create or revoke 30-day read-only access and review access history.
+            Create or revoke read-only attorney access and review access history.
           </span>
         </button>
       </section>

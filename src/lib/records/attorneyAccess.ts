@@ -3,6 +3,7 @@ import type { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import type { RecordsDataset } from "./types";
 import { openAttorneyHandle, sealAttorneyHandle } from "./attorneyCrypto";
 import { projectSharedCaseDataset } from "./attorneyProjection";
+import { attorneyGrantExpiryFilter } from "./attorneyProfileServer";
 
 export type AttorneyAccessEventType =
   | "invitation_created"
@@ -28,7 +29,7 @@ export interface ActiveAttorneyGrant {
   case_id: string;
   permission_scope: "read_only";
   granted_at: string;
-  expires_at: string;
+  expires_at: string | null;
   revoked_at: string | null;
   left_at: string | null;
 }
@@ -65,7 +66,6 @@ export async function resolveActiveAttorneyGrant(input: {
   if (!handle) return { error: genericAttorneyAccessError() } as const;
 
   const supabase = input.supabase as ServiceSupabase;
-  const now = new Date().toISOString();
   const { data, error } = await supabase
     .from("records_attorney_grants")
     .select("id,owner_user_id,attorney_user_id,invitation_id,case_key,case_id,permission_scope,granted_at,expires_at,revoked_at,left_at")
@@ -73,7 +73,7 @@ export async function resolveActiveAttorneyGrant(input: {
     .eq("attorney_user_id", input.attorneyUserId)
     .is("revoked_at", null)
     .is("left_at", null)
-    .gt("expires_at", now)
+    .or(attorneyGrantExpiryFilter())
     .maybeSingle();
 
   if (error || !data || data.permission_scope !== "read_only") {

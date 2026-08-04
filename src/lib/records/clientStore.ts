@@ -407,13 +407,14 @@ export async function readRecordsSession() {
 export async function signInRecordsSession(
   email: string,
   password: string,
-  adultConfirmed: boolean
+  adultConfirmed: boolean,
+  workspace: "records" | "attorney" = "records"
 ): Promise<RecordsSignInResult> {
   const response = await fetch("/api/records/auth/login", {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, adultConfirmed }),
+    body: JSON.stringify({ email, password, adultConfirmed, workspace }),
   });
 
   const body = (await response.json().catch(() => ({}))) as {
@@ -526,21 +527,20 @@ export async function acceptAttorneyInviteSession(input: {
     ok?: boolean;
     accepted?: boolean;
     accessHandle?: string;
-    accessExpiresAt?: string;
+    accessExpiresAt?: string | null;
     error?: string;
   };
   if (
     !response.ok ||
     body.ok !== true ||
     body.accepted !== true ||
-    !body.accessHandle ||
-    !body.accessExpiresAt
+    !body.accessHandle
   ) {
     throw new Error(body.error || `Attorney account link failed with ${response.status}.`);
   }
   return {
     accessHandle: body.accessHandle,
-    accessExpiresAt: body.accessExpiresAt,
+    accessExpiresAt: body.accessExpiresAt || null,
   };
 }
 

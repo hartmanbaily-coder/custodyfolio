@@ -4,7 +4,9 @@ import {
   recordAttorneyAccessEvent,
 } from "@/lib/records/attorneyAccess";
 import { sealAttorneyHandle } from "@/lib/records/attorneyCrypto";
+import { attorneyGrantExpiryFilter } from "@/lib/records/attorneyProfileServer";
 import { getAttorneyGuestAuthContext } from "@/lib/records/attorneyServer";
+import { isRecordsDataset } from "@/lib/records/datasetIsolation";
 import { attachRefreshedRecordsSession } from "@/lib/records/authServer";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
@@ -21,30 +23,61 @@ export async function GET(request: NextRequest) {
   if (rateLimit.limited) return rateLimitExceededResponse(rateLimit);
   const context = await getAttorneyGuestAuthContext(request);
   if ("error" in context) return context.error;
-  const now = new Date().toISOString();
   const { data, error } = await context.supabase
     .from("records_attorney_grants")
-    .select("id,granted_at,expires_at")
+    .select("id,owner_user_id,case_key,case_id,granted_at,expires_at")
     .eq("attorney_user_id", context.userId)
     .is("revoked_at", null)
     .is("left_at", null)
-    .gt("expires_at", now)
+    .or(attorneyGrantExpiryFilter())
     .order("granted_at", { ascending: false })
-    .limit(10);
+    .limit(200);
   if (error) return NextResponse.json({ error: "Unable to load shared matters." }, { status: 500 });
+  const grants = data || [];
+  const ownerIds = Array.from(new Set(grants.map((grant) => grant.owner_user_id)));
+  const snapshots = ownerIds.length
+    ? await context.supabase
+        .from("records_case_snapshots")
+        .select("user_id,case_key,dataset")
+        .in("user_id", ownerIds)
+    : { data: [], error: null };
+  if (snapshots.error) {
+    return NextResponse.json({ error: "Unable to load shared matter names." }, { status: 500 });
+  }
+  const labels = new Map<string, { clientName: string; caseName: string }>();
+  for (const snapshot of snapshots.data || []) {
+    if (!isRecordsDataset(snapshot.dataset)) continue;
+    const owner = snapshot.dataset.users.find((user) => user.userId === snapshot.user_id);
+    const clientName = owner?.displayName?.trim().slice(0, 120) || "Client";
+    for (const matter of snapshot.dataset.matters) {
+      if (matter.userId !== snapshot.user_id) continue;
+      labels.set(`${snapshot.user_id}:${snapshot.case_key}:${matter.id}`, {
+        clientName,
+        caseName: matter.caseName.trim().slice(0, 160) || "Shared matter",
+      });
+    }
+  }
   const response = NextResponse.json(
     {
-      matters: (data || []).map((grant, index) => ({
-        accessHandle: sealAttorneyHandle({
-          kind: "grant",
-          id: grant.id,
-          subject: context.userId,
-          expiresAt: Date.now() + 60 * 60 * 1000,
-        }),
-        label: `Shared matter ${index + 1}`,
-        grantedAt: grant.granted_at,
-        expiresAt: grant.expires_at,
-      })),
+      matters: grants.map((grant) => {
+        const names = labels.get(`${grant.owner_user_id}:${grant.case_key}:${grant.case_id}`) || {
+          clientName: "Client",
+          caseName: "Shared matter",
+        };
+        return {
+          accessHandle: sealAttorneyHandle({
+            kind: "grant",
+            id: grant.id,
+            subject: context.userId,
+            expiresAt: Date.now() + 60 * 60 * 1000,
+          }),
+          label: `${names.clientName} — ${names.caseName}`,
+          clientName: names.clientName,
+          caseName: names.caseName,
+          grantedAt: grant.granted_at,
+          expiresAt: grant.expires_at,
+        };
+      }),
     },
     { headers: { "Cache-Control": "no-store" } }
   );

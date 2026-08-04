@@ -27,6 +27,22 @@ describe("attorney guest session boundary", () => {
     }
   });
 
+  it("blocks a password session from both workspaces until attorney MFA finishes", async () => {
+    const request = new NextRequest("https://custodyfolio.com/api/records/dataset", {
+      headers: { Cookie: `${recordsSessionScopeCookieName}=attorney_mfa_pending` },
+    });
+
+    const context = await getRecordsAuthContext(request);
+
+    expect("error" in context).toBe(true);
+    if ("error" in context) {
+      const errorResponse = context.error;
+      expect(errorResponse).toBeDefined();
+      if (!errorResponse) throw new Error("Expected a pending attorney MFA scope error.");
+      expect(errorResponse.status).toBe(403);
+    }
+  });
+
   it("marks and clears the scoped attorney guest session cookie", () => {
     const response = NextResponse.json({ ok: true });
     setRecordsSessionCookies(

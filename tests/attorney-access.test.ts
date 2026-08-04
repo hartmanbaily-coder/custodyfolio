@@ -34,7 +34,7 @@ describe("centralized attorney grant authorization", () => {
       select: () => query,
       eq: () => query,
       is: () => query,
-      gt: () => query,
+      or: () => query,
       maybeSingle: async () => ({ data: active ? grant : null, error: null }),
     };
     const supabase = { from: () => query };
@@ -64,7 +64,7 @@ describe("centralized attorney grant authorization", () => {
       select: () => query,
       eq: () => query,
       is: () => query,
-      gt: () => query,
+      or: () => query,
       maybeSingle: async () => ({ data: null, error: null }),
     };
     const supabase = { from: () => query };
@@ -88,13 +88,13 @@ describe("centralized attorney grant authorization", () => {
     expect(malformed).toEqual({ error: genericAttorneyAccessError() });
   });
 
-  it("requires the grant expiration to be later than the current request time", async () => {
-    const gt = vi.fn();
+  it("accepts permanent grants and filters out expired legacy grants", async () => {
+    const or = vi.fn();
     const query = {
       select: () => query,
       eq: () => query,
       is: () => query,
-      gt: (column: string, value: string) => { gt(column, value); return query; },
+      or: (value: string) => { or(value); return query; },
       maybeSingle: async () => ({ data: null, error: null }),
     };
     const handle = sealAttorneyHandle({
@@ -110,7 +110,9 @@ describe("centralized attorney grant authorization", () => {
       accessHandle: handle,
     });
 
-    expect(gt).toHaveBeenCalledWith("expires_at", expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/));
+    expect(or).toHaveBeenCalledWith(
+      expect.stringMatching(/^expires_at\.is\.null,expires_at\.gt\.\d{4}-\d{2}-\d{2}T/)
+    );
   });
 
   it("reports audit storage failures so protected routes can fail closed", async () => {

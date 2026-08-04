@@ -12,6 +12,10 @@ import {
 import { checkAttorneyGuestEntitlement } from "@/lib/records/attorneyEntitlement";
 import { recordAttorneyAccessEvent } from "@/lib/records/attorneyAccess";
 import {
+  attorneyGrantExpiryFilter,
+  attorneyGrantIsActive,
+} from "@/lib/records/attorneyProfileServer";
+import {
   attorneyInvitationDurationDays,
   attorneyInvitationDurationMs,
 } from "@/lib/records/attorneyPolicy";
@@ -88,7 +92,6 @@ export async function GET(request: NextRequest) {
   }
 
   const handleExpiry = Date.now() + 60 * 60 * 1000;
-  const now = Date.now();
   const entitlement = checkAttorneyGuestEntitlement(context.userId);
   const grantsByInvitation = new Map(
     (grantResult.data || []).map((grant) => [grant.invitation_id, grant])
@@ -124,7 +127,7 @@ export async function GET(request: NextRequest) {
         grant
         && !grant.revoked_at
         && !grant.left_at
-        && new Date(grant.expires_at).getTime() > now
+        && attorneyGrantIsActive(grant)
       ),
     };
   });
@@ -140,7 +143,7 @@ export async function GET(request: NextRequest) {
     expiresAt: row.expires_at,
     revokedAt: row.revoked_at,
     leftAt: row.left_at,
-    active: !row.revoked_at && !row.left_at && new Date(row.expires_at).getTime() > now,
+    active: attorneyGrantIsActive(row),
   }));
 
   return NextResponse.json(
@@ -214,7 +217,7 @@ export async function POST(request: NextRequest) {
       .eq("owner_user_id", context.userId)
       .is("revoked_at", null)
       .is("left_at", null)
-      .gt("expires_at", new Date().toISOString())
+      .or(attorneyGrantExpiryFilter())
       .maybeSingle(),
     context.supabase
       .from("records_attorney_invitations")

@@ -60,7 +60,7 @@ describe("attorney invitation acceptance", () => {
           owner_user_id: "owner-1",
           case_key: "default",
           case_id: "case-1",
-          access_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          access_expires_at: null,
         }],
         error: null,
       })
@@ -79,7 +79,7 @@ describe("attorney invitation acceptance", () => {
     await expect(accepted.json()).resolves.toMatchObject({
       ok: true,
       accessHandle: expect.any(String),
-      accessExpiresAt: expect.any(String),
+      accessExpiresAt: null,
     });
     const replay = await POST(request(token));
     expect(replay.status).toBe(404);
