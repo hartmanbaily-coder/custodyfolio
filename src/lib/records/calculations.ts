@@ -257,7 +257,7 @@ export function exchangeChartRows(logs: ExchangeLog[], range: DateRange) {
         actualMinute: log.actualExchangeAt
           ? new Date(log.actualExchangeAt).getUTCHours() * 60 + new Date(log.actualExchangeAt).getUTCMinutes()
           : null,
-        minutesEarlyOrLate: timing.minutesEarlyOrLate ?? 0,
+        minutesEarlyOrLate: timing.minutesEarlyOrLate,
         status: log.status,
       };
     });

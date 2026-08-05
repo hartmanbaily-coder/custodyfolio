@@ -4176,7 +4176,7 @@ function ExchangesView({
       <div className="min-w-0 space-y-4">
         <SectionExportPanel packet={sectionExport} onExport={onExportSection} />
 
-        <Panel title="Exchange timing graph" action={`${range.from} to ${range.to}`}>
+        <Panel title="Exchange outcomes and timing" action={`${exchangeTimingRows.length} in range`}>
           <ExchangeTimingChart rows={exchangeTimingRows} />
         </Panel>
 

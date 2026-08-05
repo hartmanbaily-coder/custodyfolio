@@ -934,6 +934,12 @@ test("mobile create flows stay visible across every record tab and reload with a
   await exchangeLogForm.getByLabel("Actual date").fill("2026-08-14");
   await exchangeLogForm.getByRole("button", { name: "Save exchange outcome" }).click();
   await expect(page.getByRole("status")).toContainText("Exchange outcome saved. It appears below");
+  const exchangeChart = page.getByTestId("exchange-timing-chart");
+  await expect(exchangeChart).toHaveAttribute("data-exchange-count", "1");
+  await expect(exchangeChart).toHaveAttribute("data-timed-count", "0");
+  await expect(exchangeChart).toHaveAttribute("data-outcomes", "completed_late:1");
+  await expect(exchangeChart).toContainText("All 1 saved exchange is included below");
+  await expect(exchangeChart).toContainText("Saved outcomes");
   const loggedExchanges = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Logged exchanges", exact: true }),
   });
@@ -998,6 +1004,7 @@ test("mobile create flows stay visible across every record tab and reload with a
   await page.getByRole("button", { name: "Exchanges", exact: true }).click();
   await expectPhoneWidth();
   await expect(loggedExchanges).toContainText("2026-08-14");
+  await expect(page.getByTestId("exchange-timing-chart")).toHaveAttribute("data-exchange-count", "1");
   await page.locator("nav").getByRole("button", { name: /^Files/ }).click();
   await expectPhoneWidth();
   await expect(page.getByText(fileName, { exact: true })).toBeVisible();

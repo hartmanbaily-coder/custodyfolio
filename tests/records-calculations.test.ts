@@ -14,6 +14,7 @@ import {
   childSupportHistoryRange,
   childSupportObligationChartRows,
   containsForbiddenGeneratedTerm,
+  exchangeChartRows,
   expenseHistoryRange,
   filterOwnedCaseRecords,
   generateChildSupportObligations,
@@ -73,6 +74,18 @@ describe("records calculations", () => {
       minutesEarlyOrLate: null,
       isMissed: true,
     });
+  });
+
+  it("keeps every exchange outcome in chart rows without converting missing timing to zero", () => {
+    const dataset = createRecordsSeed();
+    const logs = filterOwnedCaseRecords(dataset.exchangeLogs, demoUserId, demoCaseId);
+    const rows = exchangeChartRows(logs, range);
+
+    expect(rows).toHaveLength(4);
+    expect(rows.find((row) => row.status === "completed_on_time")?.minutesEarlyOrLate).toBe(0);
+    expect(rows.find((row) => row.status === "completed_late")?.minutesEarlyOrLate).toBe(32);
+    expect(rows.find((row) => row.status === "completed_early")?.minutesEarlyOrLate).toBe(-8);
+    expect(rows.find((row) => row.status === "missed")?.minutesEarlyOrLate).toBeNull();
   });
 
   it("generates recurring expected exchanges and range statistics", () => {

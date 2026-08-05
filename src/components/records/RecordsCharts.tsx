@@ -6,9 +6,11 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Legend,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -19,26 +21,112 @@ import type { ReportPreviewChart } from "@/lib/records/reports";
 export function ExchangeTimingChart({
   rows,
 }: {
-  rows: Array<{ date: string; minutesEarlyOrLate: number; status: string }>;
+  rows: Array<{ date: string; minutesEarlyOrLate: number | null; status: string }>;
 }) {
-  if (rows.length === 0) return <ChartEmpty label="No exchange records in this range." />;
+  const outcomeOrder = [
+    "completed_on_time",
+    "completed_early",
+    "completed_late",
+    "missed",
+    "refused",
+    "modified_by_agreement",
+    "canceled",
+    "other",
+  ];
+  const outcomeColors: Record<string, string> = {
+    completed_on_time: "#0f766e",
+    completed_early: "#2563eb",
+    completed_late: "#b45309",
+    missed: "#b91c1c",
+    refused: "#be123c",
+    modified_by_agreement: "#7c3aed",
+    canceled: "#64748b",
+    other: "#475569",
+  };
+  const outcomeRows = outcomeOrder
+    .map((status) => ({
+      status,
+      label: status.replace("completed_", "").replaceAll("_", " "),
+      count: rows.filter((row) => row.status === status).length,
+    }))
+    .filter((row) => row.count > 0);
+  const timedRows = rows.filter(
+    (row): row is typeof row & { minutesEarlyOrLate: number } =>
+      typeof row.minutesEarlyOrLate === "number"
+  );
+  const chartAttributes = {
+    "data-testid": "exchange-timing-chart",
+    "data-exchange-count": String(rows.length),
+    "data-timed-count": String(timedRows.length),
+    "data-outcomes": outcomeRows.map((row) => `${row.status}:${row.count}`).join(","),
+  };
+
+  if (rows.length === 0) {
+    return (
+      <div {...chartAttributes}>
+        <ChartEmpty label="No exchange records in this range." />
+      </div>
+    );
+  }
 
   return (
-    <ResponsiveContainer width="100%" height={240} minWidth={0}>
-      <BarChart data={rows}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-        <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-        <YAxis tick={{ fontSize: 11 }} />
-        <Tooltip />
-        <Bar
-          dataKey="minutesEarlyOrLate"
-          name="Minutes early or late"
-          fill="#0f766e"
-          radius={[4, 4, 0, 0]}
-          isAnimationActive={false}
-        />
-      </BarChart>
-    </ResponsiveContainer>
+    <div className="min-w-0" {...chartAttributes}>
+      <p className="text-xs leading-5 text-slate-600">
+        All {rows.length} saved exchange{rows.length === 1 ? " is" : "s are"} included below, even when an actual time was not recorded.
+      </p>
+      <div className="mt-3">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600">Saved outcomes</h4>
+        <ResponsiveContainer width="100%" height={Math.max(170, outcomeRows.length * 42)} minWidth={0}>
+          <BarChart data={outcomeRows} layout="vertical" margin={{ left: 20, right: 12 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+            <YAxis dataKey="label" type="category" tick={{ fontSize: 11 }} width={112} />
+            <Tooltip />
+            <Bar dataKey="count" name="Saved exchanges" radius={[0, 4, 4, 0]} isAnimationActive={false}>
+              {outcomeRows.map((row) => (
+                <Cell key={row.status} fill={outcomeColors[row.status] || outcomeColors.other} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="mt-5 border-t border-slate-200 pt-4">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-600">Minutes early or late</h4>
+        <p className="mt-1 text-xs leading-5 text-slate-500">
+          Positive values are late; negative values are early. On-time exchanges receive a visible baseline mark.
+        </p>
+        {timedRows.length > 0 ? (
+          <ResponsiveContainer width="100%" height={220} minWidth={0}>
+            <BarChart data={timedRows} margin={{ top: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip />
+              <ReferenceLine y={0} stroke="#64748b" />
+              <Bar
+                dataKey="minutesEarlyOrLate"
+                name="Minutes early or late"
+                radius={[4, 4, 0, 0]}
+                minPointSize={5}
+                isAnimationActive={false}
+              >
+                {timedRows.map((row, index) => (
+                  <Cell
+                    key={`${row.date}-${index}`}
+                    fill={row.minutesEarlyOrLate > 0 ? "#b45309" : row.minutesEarlyOrLate < 0 ? "#2563eb" : "#0f766e"}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="mt-3">
+            <ChartEmpty label="Add an actual date and time to graph early or late minutes. Saved outcomes are still graphed above." />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
