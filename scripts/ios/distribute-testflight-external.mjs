@@ -97,6 +97,14 @@ export function selectUploadedBuild(builds, { buildNumber, uploadedAfter }) {
   return matches[0] ?? null;
 }
 
+export function sortBuildsByUploadedDateDescending(builds) {
+  return [...builds].sort((left, right) => {
+    const leftUploadedAt = Date.parse(left.attributes?.uploadedDate) || 0;
+    const rightUploadedAt = Date.parse(right.attributes?.uploadedDate) || 0;
+    return rightUploadedAt - leftUploadedAt;
+  });
+}
+
 export function extractTestFlightUrl(html) {
   return (
     html.match(/https:\/\/testflight\.apple\.com\/join\/[A-Za-z0-9]+/)?.[0] ??
@@ -322,11 +330,10 @@ async function listBuilds(client) {
   const { payload } = await client.request(
     query(`/v1/apps/${DEFAULTS.appId}/builds`, {
       "fields[builds]": "version,uploadedDate,expired,processingState",
-      sort: "-uploadedDate",
       limit: "50",
     }),
   );
-  return payload.data;
+  return sortBuildsByUploadedDateDescending(payload.data);
 }
 
 async function waitForBuild(client, options, deadline) {

@@ -7,6 +7,7 @@ import {
   extractTestFlightUrl,
   selectUploadedBuild,
   selectSupersededGroupBuilds,
+  sortBuildsByUploadedDateDescending,
 } from "./distribute-testflight-external.mjs";
 
 function decodeJson(segment) {
@@ -105,6 +106,33 @@ test("refuses to guess when two builds were uploaded in the release window", () 
       }),
     /refusing to guess/,
   );
+});
+
+test("sorts App Store Connect builds locally by newest upload", () => {
+  const builds = [
+    {
+      id: "older",
+      attributes: { uploadedDate: "2026-08-01T20:01:00Z" },
+    },
+    {
+      id: "missing-date",
+      attributes: {},
+    },
+    {
+      id: "newer",
+      attributes: { uploadedDate: "2026-08-01T20:02:00Z" },
+    },
+  ];
+
+  assert.deepEqual(
+    sortBuildsByUploadedDateDescending(builds).map((build) => build.id),
+    ["newer", "older", "missing-date"],
+  );
+  assert.deepEqual(builds.map((build) => build.id), [
+    "older",
+    "missing-date",
+    "newer",
+  ]);
 });
 
 test("extracts the TestFlight target from the TesterBuddy wrapper", () => {
