@@ -51,9 +51,17 @@ function eventLabel(value: string) {
 export default function AttorneyAccessPanel({
   caseId,
   cloudStorageEnabled,
+  clientName,
+  caseName,
+  profileConfirmed,
+  onOpenProfileSetup,
 }: {
   caseId: string;
   cloudStorageEnabled: boolean;
+  clientName: string;
+  caseName: string;
+  profileConfirmed: boolean;
+  onOpenProfileSetup: () => void;
 }) {
   const [state, setState] = useState<AttorneyAccessState | null>(null);
   const [busy, setBusy] = useState("");
@@ -95,6 +103,10 @@ export default function AttorneyAccessPanel({
 
   async function invite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!profileReady) {
+      setMessage("Confirm the client name and case name shown to the attorney before creating an invitation.");
+      return;
+    }
     const form = event.currentTarget;
     const email = String(new FormData(form).get("attorneyEmail") || "");
     setBusy("create");
@@ -194,6 +206,7 @@ export default function AttorneyAccessPanel({
   const activeGrant = state?.grants.some((grant) => grant.active) || false;
   const pending = state?.invitations.find((invitation) => invitation.status === "pending");
   const newInvitationsEnabled = state?.featureEnabled === true;
+  const profileReady = profileConfirmed && clientName.trim().length >= 2 && caseName.trim().length >= 2;
 
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm" aria-labelledby="attorney-access-heading">
@@ -206,6 +219,24 @@ export default function AttorneyAccessPanel({
           </p>
         </div>
       </div>
+
+      <section className={`mt-4 rounded-md border p-4 ${profileReady ? "border-teal-200 bg-teal-50" : "border-amber-200 bg-amber-50"}`} aria-labelledby="attorney-visible-profile-heading">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 id="attorney-visible-profile-heading" className={`text-sm font-semibold ${profileReady ? "text-teal-950" : "text-amber-950"}`}>Profile the attorney will see</h3>
+            <dl className={`mt-2 grid gap-1 text-sm ${profileReady ? "text-teal-950" : "text-amber-950"}`}>
+              <div className="flex flex-wrap gap-1"><dt className="font-semibold">Client:</dt><dd>{clientName || "Not confirmed"}</dd></div>
+              <div className="flex flex-wrap gap-1"><dt className="font-semibold">Case:</dt><dd>{caseName || "Not confirmed"}</dd></div>
+            </dl>
+            <p className="mt-2 text-xs leading-5">
+              {profileReady
+                ? "Verify these labels before sharing. They identify this profile in the attorney's client-and-case dropdown."
+                : "Complete and save the client name and case name before creating an attorney invitation."}
+            </p>
+          </div>
+          <button type="button" className="btn-secondary" onClick={onOpenProfileSetup}>{profileReady ? "Review profile" : "Complete profile setup"}</button>
+        </div>
+      </section>
 
       <section className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4" aria-labelledby="attorney-access-steps-heading">
         <h3 id="attorney-access-steps-heading" className="text-sm font-semibold text-slate-900">
@@ -243,9 +274,9 @@ export default function AttorneyAccessPanel({
       <form onSubmit={invite} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
         <label className="grid gap-1.5 text-sm font-medium text-slate-700">
           Attorney email
-          <input name="attorneyEmail" type="email" autoComplete="email" className="input" required maxLength={254} disabled={!newInvitationsEnabled || activeGrant || Boolean(pending)} />
+          <input name="attorneyEmail" type="email" autoComplete="email" className="input" required maxLength={254} disabled={!profileReady || !newInvitationsEnabled || activeGrant || Boolean(pending)} />
         </label>
-        <button type="submit" className="btn-primary self-end" disabled={!newInvitationsEnabled || busy === "create" || activeGrant || Boolean(pending)}>
+        <button type="submit" className="btn-primary self-end" disabled={!profileReady || !newInvitationsEnabled || busy === "create" || activeGrant || Boolean(pending)}>
           {busy === "create" ? "Creating…" : "Create invitation"}
         </button>
       </form>
@@ -302,7 +333,7 @@ export default function AttorneyAccessPanel({
                   <button type="button" className="btn-secondary" disabled={busy === invitation.handle} onClick={() => void invitationAction(invitation, "resend")}>Replace with new link</button>
                 ) : null}
                 {invitation.status === "accepted" && invitation.accessExpiresAt && !invitation.accessActive ? (
-                  <button type="button" className="btn-secondary" disabled={busy === invitation.handle || !newInvitationsEnabled || Boolean(pending)} onClick={() => void reinvite(invitation)}>Invite again</button>
+                  <button type="button" className="btn-secondary" disabled={busy === invitation.handle || !profileReady || !newInvitationsEnabled || Boolean(pending)} onClick={() => void reinvite(invitation)}>Invite again</button>
                 ) : null}
                 {(invitation.status === "pending" || (invitation.status === "accepted" && invitation.accessActive)) ? (
                   <button type="button" className="btn-secondary text-red-700" disabled={busy === invitation.handle} onClick={() => void invitationAction(invitation, "revoke")}>Revoke access</button>

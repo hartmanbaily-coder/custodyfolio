@@ -29,6 +29,7 @@ import { createRecordsSeed, demoCaseId, demoUserId } from "@/lib/records/seed";
 import {
   buildReportPreview,
   buildSectionExportPacket,
+  fullProfileDateRange,
   reportTypeLabels,
   reportPreviewToCsv,
   reportsTabReportTypes,
@@ -585,6 +586,41 @@ describe("privacy and safety helpers", () => {
     expect(csv).toContain("Date,Time,Issue,Source,Title,Detail,Summary,Notes,Tags");
     expect(csv).not.toContain("caregiver_label");
     expect(csv).not.toContain("scheduled_exchange_time");
+  });
+
+  it("packages the full case profile with every record category and report-excluded items", () => {
+    const dataset = createRecordsSeed();
+    dataset.dateNotes[0].includeInReports = false;
+    dataset.dateNotes[0].body = "FULL PROFILE PRIVATE NOTE SENTINEL";
+    dataset.evidenceItems[0].includeInReports = false;
+    dataset.evidenceItems[0].displayFileName = "full-profile-private-file.pdf";
+    const fullRange = fullProfileDateRange(dataset, demoUserId, demoCaseId);
+    const preview = buildReportPreview(
+      dataset,
+      demoUserId,
+      demoCaseId,
+      fullRange,
+      "full_profile_export"
+    );
+    const titles = preview.tables.map((table) => table.title);
+    const csv = reportPreviewToCsv(preview);
+
+    expect(preview.title).toBe("Full Case Profile Export");
+    expect(fullRange.from.localeCompare("2026-05-01")).toBeLessThanOrEqual(0);
+    expect(titles).toEqual(expect.arrayContaining([
+      "Case profile",
+      "Custody day assignments",
+      "Chronological timeline",
+      "Logged exchange outcomes",
+      "Date based notes",
+      "File index",
+      "Support orders",
+      "Payment records",
+      "Expense records",
+    ]));
+    expect(csv).toContain("FULL PROFILE PRIVATE NOTE SENTINEL");
+    expect(csv).toContain("full-profile-private-file.pdf");
+    expect(preview.summaries.join(" ")).toContain("personal highlighting and annotation");
   });
 
   it("neutralizes spreadsheet formulas in CSV exports", () => {

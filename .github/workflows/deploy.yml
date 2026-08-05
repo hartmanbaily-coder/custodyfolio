@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: losttofound-validate-${{ github.ref }}
+  group: custodyfolio-validate-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

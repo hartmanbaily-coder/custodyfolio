@@ -86,7 +86,7 @@ For every supported record type: create, locate in source and derived views, rel
 
 ## 7. Native automated gates
 
-- [ ] Run the shared `LostToFound` Xcode test plan on an installed iPhone simulator.
+- [ ] Run the shared `CustodyFolio` Xcode test plan on an installed iPhone simulator.
 - [ ] Verify navigation allowlist, cookie filtering/removal, export size/name controls, protected export cleanup, and privacy manifest.
 - [ ] If any native metadata, Swift, assets, entitlements, or iOS settings changed, create a Release archive.
 - [ ] Inspect the archive display name, version, build, bundle ID, icon, privacy manifest, and minimum deployment target.

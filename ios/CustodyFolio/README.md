@@ -7,15 +7,15 @@ The iOS app is a native SwiftUI shell with:
 - Device authentication gate using Face ID, Touch ID, or device passcode.
 - Native tab structure for Records, Policies, and Support.
 - A controlled `WKWebView` workspace pointed at `https://custodyfolio.com/records`.
-- WebKit app-bound domains for `custodyfolio.com` and `www.custodyfolio.com`, with the former `losttofound.org` domains retained temporarily for transition compatibility.
+- WebKit app-bound domains limited to `custodyfolio.com` and `www.custodyfolio.com`.
 - External link handling that opens non-product links outside the workspace.
 - Native privacy/support summaries that mirror the public policy pages and expose account deletion support.
 - App icon assets generated from the Custody Folio book, records, graph, and gavel logo.
 
 ## Local Setup
 
-1. Open `ios/LostToFound/LostToFound.xcodeproj` in Xcode.
-2. Select the `LostToFound` target.
+1. Open `ios/CustodyFolio/CustodyFolio.xcodeproj` in Xcode.
+2. Select the `CustodyFolio` target.
 3. Set your Apple Developer Team under Signing & Capabilities.
 4. Confirm the bundle identifier. The placeholder is `io.lendori.losttofound`.
 5. Build and run on a physical iPhone before TestFlight because the app uses device authentication.

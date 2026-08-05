@@ -6,7 +6,7 @@ Production domain: `custodyfolio.com`
 
 Suggested staging subdomain: `staging-custodyfolio.com`
 
-The former `losttofound.org` hostname remains a temporary compatibility fallback. Do not remove its tunnel routes or DNS records until installed iOS builds, auth email links, monitors, and external bookmarks have migrated to `custodyfolio.com`.
+Only Custody Folio-owned production domains may route to this service.
 
 ## HTTPS
 
@@ -23,7 +23,6 @@ Review whether `includeSubDomains` and `preload` are appropriate for all `custod
 ## DNS Setup
 
 - Point `custodyfolio.com` only to the active hosting provider.
-- Keep `losttofound.org` on the same active origin during the compatibility window; redirect it only after auth and installed-client verification.
 - Verify ownership in the hosting provider dashboard.
 - Use a separate staging host for staging.
 - Avoid sharing auth cookies across sibling subdomains.
@@ -103,7 +102,7 @@ Before production deploy, use `.env.production.example` as the source checklist 
 - `VENDOR_SECURITY_REVIEW_APPROVED`
 - `SECURITY_CONTACT_EMAIL`
 
-Production for `custodyfolio.com` runs on a dedicated Ubuntu host under the non-root `losttofound` account. Its rootless Docker daemon owns only the LostToFound, ClamAV, and Caddy containers. The Listhaus repository, host, secrets, Compose project, and deployment workflow are not part of this deployment boundary.
+Production for `custodyfolio.com` runs on a dedicated Ubuntu host under the non-root `losttofound` account. Its rootless Docker daemon owns only the Custody Folio, ClamAV, and Caddy containers. The Listhaus repository, host, secrets, Compose project, and deployment workflow are not part of this deployment boundary.
 
 Use this deploy path for Custody Folio changes:
 
@@ -122,7 +121,7 @@ Routine application deployments must not force-recreate Caddy or cloudflared. Ca
 
 The dedicated host is bootstrapped once with `deploy/production/bootstrap-host.sh`. The host must use key-only SSH, disabled root login, UFW, fail2ban, unattended security updates, rootless Docker, and `/srv/losttofound/config/app.env` owned by `losttofound:losttofound` with mode `0600`. The config directory is separate from the rsynced application tree and is never stored in GitHub.
 
-The 4 GiB starter profile uses strict aggregate container limits: 2560 MiB for ClamAV, 768 MiB for LostToFound, and 128 MiB for Caddy. Set `STARTER_RESOURCE_PROFILE=true` on that host so production readiness shows a non-blocking capacity warning. This warning does not block customer use, deployment, TestFlight, or App Store submission. ClamAV uses two scan threads, a four-request queue, and `ConcurrentDatabaseReload no`, so new scans pause instead of loading two signature engines during the daily update. Evidence intake remains fail-closed when the scanner is unavailable. The rootless `losttofound-health-watchdog.timer` restarts an unhealthy or missing scanner and reruns the clean/EICAR verification without exposing the Docker socket to another container. Do not add disk-backed swap because evidence bytes or signature-processing memory could be paged to disk.
+The 4 GiB starter profile uses strict aggregate container limits: 2560 MiB for ClamAV, 768 MiB for Custody Folio, and 128 MiB for Caddy. Set `STARTER_RESOURCE_PROFILE=true` on that host so production readiness shows a non-blocking capacity warning. This warning does not block customer use, deployment, TestFlight, or App Store submission. ClamAV uses two scan threads, a four-request queue, and `ConcurrentDatabaseReload no`, so new scans pause instead of loading two signature engines during the daily update. Evidence intake remains fail-closed when the scanner is unavailable. The rootless `losttofound-health-watchdog.timer` restarts an unhealthy or missing scanner and reruns the clean/EICAR verification without exposing the Docker socket to another container. Do not add disk-backed swap because evidence bytes or signature-processing memory could be paged to disk.
 
 The owner-selected capacity policy is to upgrade no later than 100 customer accounts, or sooner if monitoring shows sustained memory or CPU pressure, slower responses, or evidence-upload retries. At upgrade, resize the host to at least 8 GiB, set `CLAMAV_MEMORY_LIMIT=4096m`, rerun a forced signature reload plus clean/EICAR verification, load-test normal and upload traffic, and set `STARTER_RESOURCE_PROFILE=false`. Security, privacy, legal, backup, and monitoring readiness checks remain separate from this capacity warning.
 

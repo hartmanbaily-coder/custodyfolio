@@ -6,12 +6,12 @@ import { hashAttorneyInvitationToken, sealAttorneyHandle } from "@/lib/records/a
 
 const getAttorneyAuthContext = vi.hoisted(() => vi.fn());
 const recordAttorneyAccessEvent = vi.hoisted(() => vi.fn());
-const ownerCaseExists = vi.hoisted(() => vi.fn());
+const ownerAttorneySharingProfile = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/records/attorneyServer", () => ({
   attorneyInvitationDeliveryMode: () => "owner_share",
   getAttorneyAuthContext,
-  ownerCaseExists,
+  ownerAttorneySharingProfile,
 }));
 
 vi.mock("@/lib/records/attorneyAccess", () => ({
@@ -43,7 +43,11 @@ describe("attorney invitation owner routes", () => {
     vi.clearAllMocks();
     resetRateLimitStore();
     process.env.ATTORNEY_PORTAL_SECRET = secret;
-    ownerCaseExists.mockResolvedValue(true);
+    ownerAttorneySharingProfile.mockResolvedValue({
+      clientName: "Jordan Client",
+      caseName: "Jordan v. Taylor",
+      confirmed: true,
+    });
   });
 
   it("creates a seven-day invitation while persisting only encrypted email and token hash", async () => {
@@ -109,6 +113,32 @@ describe("attorney invitation owner routes", () => {
       eventType: "invitation_created",
       ownerUserId: ownerId,
     }));
+  });
+
+  it("requires the client to confirm the name and case label shown to the attorney", async () => {
+    ownerAttorneySharingProfile.mockResolvedValue({
+      clientName: "owner",
+      caseName: "Parenting Records",
+      confirmed: false,
+    });
+    getAttorneyAuthContext.mockResolvedValue({
+      supabase: {},
+      userId: ownerId,
+      email: "owner@example.com",
+      emailConfirmedAt: "2026-01-01T00:00:00.000Z",
+      assuranceLevel: "aal2",
+    });
+
+    const response = await createInvitation(request("/api/records/attorney/invitations", {
+      email: "counsel@example.com",
+      caseId: "case-1",
+    }));
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Confirm the client name and case name shown to the attorney before creating an invitation.",
+    });
+    expect(recordAttorneyAccessEvent).not.toHaveBeenCalled();
   });
 
   it("revokes the invitation and active grant immediately", async () => {

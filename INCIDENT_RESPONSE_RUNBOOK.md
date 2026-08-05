@@ -184,7 +184,7 @@ Current operational contacts:
 - Supabase owner: assigned database operator
 - Hosting/CDN owner: assigned infrastructure operator (Hetzner and Cloudflare)
 - DNS/domain owner: assigned domain operator (Cloudflare)
-- Malware scanner: self-hosted ClamAV on the dedicated LostToFound host
+- Malware scanner: self-hosted ClamAV on the dedicated CustodyFolio host
 - Monitoring sources: Hetzner/Docker platform logs, Cloudflare, and the scheduled GitHub `live-monitor` workflow
 - Security contact email: `security@custodyfolio.com`, hosted through the iCloud+ Custom Email Domain configured in Cloudflare DNS
 

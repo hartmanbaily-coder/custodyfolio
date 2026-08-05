@@ -325,6 +325,36 @@ export async function ownerCaseExists(input: {
   return dataset.matters.some((matter) => matter.id === input.caseId);
 }
 
+export async function ownerAttorneySharingProfile(input: {
+  supabase: ReturnType<typeof createSupabaseAdminClient>;
+  ownerUserId: string;
+  caseKey: string;
+  caseId: string;
+}) {
+  const { data, error } = await input.supabase
+    .from("records_case_snapshots")
+    .select("dataset")
+    .eq("user_id", input.ownerUserId)
+    .eq("case_key", input.caseKey)
+    .maybeSingle();
+  if (error || !data?.dataset || !isRecordsDataset(data.dataset)) return null;
+  const dataset = sanitizeRecordsDatasetForUser(data.dataset, input.ownerUserId);
+  const owner = dataset.users.find((record) => record.userId === input.ownerUserId);
+  const matter = dataset.matters.find((record) => record.id === input.caseId);
+  if (!owner || !matter) return null;
+  const clientName = owner.displayName?.trim().slice(0, 120) || "";
+  const caseName = matter.caseName.trim().slice(0, 120);
+  return {
+    clientName,
+    caseName,
+    confirmed: Boolean(
+      owner.attorneySharingProfileConfirmedAt
+      && clientName.length >= 2
+      && caseName.length >= 2
+    ),
+  };
+}
+
 export function isAttorneyDevelopmentDeliveryEnabled(
   env: Record<string, string | undefined> = process.env
 ) {

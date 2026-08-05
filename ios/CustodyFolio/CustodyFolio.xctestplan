@@ -12,17 +12,17 @@
     "codeCoverage" : false,
     "performanceAntipatternCheckerEnabled" : true,
     "targetForVariableExpansion" : {
-      "containerPath" : "container:LostToFound.xcodeproj",
+      "containerPath" : "container:CustodyFolio.xcodeproj",
       "identifier" : "0A5000010000000000000001",
-      "name" : "LostToFound"
+      "name" : "CustodyFolio"
     }
   },
   "testTargets" : [
     {
       "target" : {
-        "containerPath" : "container:LostToFound.xcodeproj",
+        "containerPath" : "container:CustodyFolio.xcodeproj",
         "identifier" : "0B5000010000000000000001",
-        "name" : "LostToFoundTests"
+        "name" : "CustodyFolioTests"
       }
     }
   ],

@@ -42,7 +42,7 @@ Evidence from 2026-06-17 production project setup:
 - Retired `grant_*` tables, grant helper functions, and grant Storage policies were removed by migration `20260628050702_remove_retired_grant_database_artifacts`.
 - The retired empty private `grant-documents` bucket was removed through the guarded Storage API cleanup workflow.
 - Live two-user isolation passed on 2026-06-28 with synthetic users and evidence, and production readiness now reflects `TWO_USER_ISOLATION_TESTED_AT=2026-06-28`.
-- Internal ClamAV malware scanning is deployed for LostToFound evidence uploads, blocked the EICAR test payload on 2026-06-28, and production readiness now reflects `MALWARE_SCANNER_TESTED_AT=2026-06-28`.
+- Internal ClamAV malware scanning is deployed for CustodyFolio evidence uploads, blocked the EICAR test payload on 2026-06-28, and production readiness now reflects `MALWARE_SCANNER_TESTED_AT=2026-06-28`.
 
 ## Staging Supabase Posture
 
@@ -95,7 +95,7 @@ Completed in repo/app:
 - Privacy, terms, retention/deletion, incident response, monitoring, and security docs drafted.
 - Clean records-only production Supabase project created.
 - Production records schema applied and verified.
-- Current `losttofound` source deployed to `https://losttofound.org`; live security headers pass and legacy grant routes return 404.
+- Current Custody Folio source deployed to `https://custodyfolio.com`; live security headers pass and legacy grant routes return 404.
 - Live two-user isolation verified through the `Verify Live Isolation` workflow and synthetic artifacts cleaned up.
 - Live malware scanning verified through the deployment workflow using a clean payload and the EICAR test payload.
 - Guarded `Cleanup Retired Artifacts` workflow deleted the empty retired `grant-documents` Storage bucket through the Storage API.

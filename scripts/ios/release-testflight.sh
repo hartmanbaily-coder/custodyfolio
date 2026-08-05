@@ -9,8 +9,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-PROJECT_DIR="$ROOT_DIR/ios/LostToFound"
-PROJECT_PATH="$PROJECT_DIR/LostToFound.xcodeproj"
+PROJECT_DIR="$ROOT_DIR/ios/CustodyFolio"
+PROJECT_PATH="$PROJECT_DIR/CustodyFolio.xcodeproj"
 EXPORT_OPTIONS_PATH="$PROJECT_DIR/ExportOptions-TestFlight.plist"
 OUTPUT_ROOT="${TESTFLIGHT_OUTPUT_DIR:-$ROOT_DIR/tmp/testflight}"
 DRY_RUN=false
@@ -99,7 +99,7 @@ fi
 
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 release_started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-archive_path="$OUTPUT_ROOT/LostToFound-$timestamp.xcarchive"
+archive_path="$OUTPUT_ROOT/CustodyFolio-$timestamp.xcarchive"
 derived_data_path="$OUTPUT_ROOT/DerivedData-$timestamp"
 export_path="$OUTPUT_ROOT/Export-$timestamp"
 
@@ -108,7 +108,7 @@ mkdir -p "$OUTPUT_ROOT"
 echo "Creating Release archive…"
 xcodebuild \
   -project "$PROJECT_PATH" \
-  -scheme LostToFound \
+  -scheme CustodyFolio \
   -configuration Release \
   -destination 'generic/platform=iOS' \
   -archivePath "$archive_path" \

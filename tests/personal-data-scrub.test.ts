@@ -5,7 +5,7 @@ import { extname, join, relative } from "node:path";
 const sourceRoots = [
   "src",
   "public",
-  "ios/LostToFound/LostToFound",
+  "ios/CustodyFolio/CustodyFolio",
 ];
 const textExtensions = new Set([
   ".css",

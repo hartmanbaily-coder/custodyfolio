@@ -19,8 +19,6 @@ enum SessionCookiePolicy {
     static let allowedHosts = Set([
         "custodyfolio.com",
         "www.custodyfolio.com",
-        "losttofound.org",
-        "www.losttofound.org",
     ])
     static let refreshCookieName = "__Host-l2f-records-refresh"
     static let sessionCookieNames = Set([

@@ -109,6 +109,7 @@ export const reportTypeLabels: Record<ReportType, string> = {
   expense_reimbursement: "Expense/Reimbursement Report",
   combined_attorney_summary: "Attorney Issue Summary",
   combined_court_packet: "Combined Court Issue Packet",
+  full_profile_export: "Full Case Profile Export",
 };
 
 export const reportsTabReportTypes: Array<{ value: ReportType; label: string; description: string }> = [
@@ -142,7 +143,47 @@ export const reportsTabReportTypes: Array<{ value: ReportType; label: string; de
     label: reportTypeLabels.combined_court_packet,
     description: "A broader packet with metrics, charts, and key rows.",
   },
+  {
+    value: "full_profile_export",
+    label: reportTypeLabels.full_profile_export,
+    description: "Packages the complete case history into organized, print-friendly sections for offline review and highlighting.",
+  },
 ];
+
+export function fullProfileDateRange(
+  dataset: RecordsDataset,
+  userId: string,
+  caseId: string
+): DateRange {
+  const matter = dataset.matters.find((record) => record.userId === userId && record.id === caseId);
+  const today = formatLocalDate(new Date(), matter?.timezone);
+  const owned = <T extends { userId: string; caseId: string }>(records: T[]) =>
+    records.filter((record) => record.userId === userId && record.caseId === caseId);
+  const dates = [
+    matter?.orderDate || "",
+    matter?.effectiveStartDate || "",
+    ...owned(dataset.exchangeRules).map((record) => record.effectiveStartDate),
+    ...owned(dataset.scheduleExceptions).map((record) => record.exceptionDate),
+    ...owned(dataset.custodyDayAssignments).map((record) => record.date),
+    ...owned(dataset.exchangeLogs).map((record) => getIsoDateFromDateTime(record.orderedExchangeAt)),
+    ...owned(dataset.dateNotes).map((record) => record.noteDate),
+    ...owned(dataset.evidenceItems).map((record) => record.evidenceDate || record.uploadedAt.slice(0, 10)),
+    ...owned(dataset.childSupportOrders).flatMap((record) => [
+      record.effectiveStartDate,
+      record.firstPaymentDueDate || "",
+      record.secondPaymentDueDate || "",
+    ]),
+    ...owned(dataset.childSupportPayments).flatMap((record) => [record.dueDate, record.paymentDate || ""]),
+    ...owned(dataset.expenseItems).flatMap((record) => [
+      record.expenseDate,
+      record.reimbursementDueDate || "",
+      record.reimbursementDate || "",
+    ]),
+    today,
+  ].filter(Boolean).sort();
+
+  return { from: dates[0] || today, to: dates.at(-1) || today };
+}
 
 export type ReportChartKind = "bar" | "line";
 export type ReportChartOrientation = "vertical" | "horizontal";
@@ -1545,6 +1586,94 @@ export function buildReportPreview(
         },
       ],
       tables: [table],
+    };
+  }
+
+  if (reportType === "full_profile_export") {
+    const completeDataset: RecordsDataset = {
+      ...dataset,
+      dateNotes: dataset.dateNotes.map((record) =>
+        record.userId === userId && record.caseId === caseId
+          ? { ...record, includeInReports: true }
+          : record
+      ),
+      evidenceItems: dataset.evidenceItems.map((record) =>
+        record.userId === userId && record.caseId === caseId
+          ? { ...record, includeInReports: true }
+          : record
+      ),
+    };
+    const packets = {
+      calendar: buildSectionExportPacket(completeDataset, userId, caseId, range, "calendar"),
+      timeline: buildSectionExportPacket(completeDataset, userId, caseId, range, "timeline"),
+      exchanges: buildSectionExportPacket(completeDataset, userId, caseId, range, "exchanges"),
+      notes: buildSectionExportPacket(completeDataset, userId, caseId, range, "notes"),
+      evidence: buildSectionExportPacket(completeDataset, userId, caseId, range, "evidence"),
+      support: buildSectionExportPacket(completeDataset, userId, caseId, range, "child_support"),
+      expenses: buildSectionExportPacket(completeDataset, userId, caseId, range, "expenses"),
+    };
+    const caseProfileTable: SectionExportTable = {
+      title: "Case profile",
+      headers: ["Field", "Saved value"],
+      rows: [
+        ["Case name", matter?.caseName || ""],
+        ["Court or order nickname", matter?.courtOrOrderNickname || ""],
+        ["Court name", matter?.courtName || ""],
+        ["Order date", matter?.orderDate || ""],
+        ["Effective dates", [matter?.effectiveStartDate, matter?.effectiveEndDate].filter(Boolean).join(" to ")],
+        ["Children labels", matter?.childDisplayLabels.join(", ") || ""],
+        ["Client role label", matter?.userRoleLabel || ""],
+        ["Other parent label", matter?.otherParentLabel || ""],
+        ["Default exchange location", matter?.defaultExchangeLocation || ""],
+        ["Timezone", matter?.timezone || ""],
+        ["Case notes", matter?.notes || ""],
+      ],
+    };
+    const fullTables = [
+      caseProfileTable,
+      ...packets.calendar.tables.filter((table) => table.title === "Custody day assignments"),
+      ...packets.timeline.tables,
+      ...packets.exchanges.tables,
+      ...packets.notes.tables,
+      ...packets.evidence.tables,
+      ...packets.support.tables,
+      ...packets.expenses.tables,
+    ];
+    const datedRecordCount = [
+      ...packets.timeline.tables,
+    ].reduce((total, table) => total + table.rows.length, 0);
+    const fileCount = packets.evidence.tables.reduce(
+      (total, table) => table.title === "File index" ? total + table.rows.length : total,
+      0
+    );
+    const detailTableCount = fullTables.filter((table) => table.rows.length > 0).length;
+
+    return {
+      ...base,
+      title: reportTypeLabels.full_profile_export,
+      focus: "Complete, print-friendly case history",
+      summaries: [
+        `This profile packages every saved record available from ${range.from} through ${range.to}, organized by case profile, chronology, custody schedule, exchanges, notes, files, child support, and expenses.`,
+        "Notes and file index entries are included even when they were not selected for an issue-focused report. Attorney exports still respect the attorney's current record checkboxes.",
+        "Use the printed packet as a working copy for personal highlighting and annotation. Verify entries against original source documents before filing or sharing.",
+      ],
+      metrics: [
+        { label: "Dated timeline records", value: datedRecordCount, detail: "Complete chronological index" },
+        { label: "Files indexed", value: fileCount, detail: "Original files remain separate downloads" },
+        { label: "Populated sections", value: detailTableCount, detail: "Print-ready tables" },
+        { label: "Profile span", value: `${range.from} to ${range.to}`, detail: "Full saved history by default" },
+      ],
+      charts: [
+        ...packets.timeline.charts.slice(0, 2),
+        ...packets.exchanges.charts.slice(0, 1),
+      ].map((chart) => ({
+        ...chart,
+        kind: "bar" as const,
+        orientation: "horizontal" as const,
+        emptyLabel: "No records for this chart.",
+      })),
+      tables: fullTables,
+      evidenceIndex: [],
     };
   }
 

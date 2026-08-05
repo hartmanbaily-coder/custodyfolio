@@ -335,6 +335,7 @@ test("records login and report workflow", async ({ page }) => {
     ["filing_facetime_correlation", "Filing / FaceTime Timing Report"],
     ["combined_attorney_summary", "Attorney Issue Summary"],
     ["combined_court_packet", "Combined Court Issue Packet"],
+    ["full_profile_export", "Full Case Profile Export"],
   ] as const;
 
   for (const [value, title] of additionalReportTypes) {
@@ -418,6 +419,32 @@ test("mobile child support records are visible, editable, and deletable", async 
   await ordersPanel.getByRole("button", { name: "Delete support order Mobile support order" }).click();
   await expect(page.getByRole("status")).toContainText("Child support order deleted");
   await expect(ordersPanel).not.toContainText("Mobile support order");
+});
+
+test("client can download a complete print-friendly case profile", async ({ page }) => {
+  await page.goto("/records");
+  await page.getByRole("button", { name: "Enter records workspace" }).click();
+  await page.getByRole("button", { name: "Reports", exact: true }).click();
+  await page.getByLabel("Report type").selectOption("full_profile_export");
+
+  await expect(page.getByRole("article").getByRole("heading", { name: "Full Case Profile Export" })).toBeVisible();
+  await expect(page.getByText("Complete, print-friendly case history", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Case profile", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "File index", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Payment records", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Expense records", exact: true })).toBeVisible();
+
+  await page.getByLabel(/Names, file titles/).check();
+  await page.getByLabel(/Payment references/).check();
+  await page.getByLabel(/Notes are factual/).check();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Print or save PDF" }).click();
+  const download = await downloadPromise;
+  const path = await download.path();
+  if (!path) throw new Error("Full case profile PDF download did not produce a file.");
+  const pdf = await readFile(path);
+  expect(pdf.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+  expect(pdf.byteLength).toBeGreaterThan(10_000);
 });
 
 test("mobile quick issue saves directly to editable report notes", async ({ page }) => {
@@ -761,6 +788,9 @@ test("attorney portal is a separate read-only mobile experience", async ({ page 
           matters: [{
             accessHandle: "opaque-access",
             label: "Shared matter 1",
+            clientName: "Jordan Client",
+            caseName: "Parenting Plan Records",
+            profileConfirmed: true,
             grantedAt: now,
             expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           }],
@@ -801,19 +831,125 @@ test("attorney portal is a separate read-only mobile experience", async ({ page 
   }));
 
   await page.goto("/attorney");
-  await expect(page.getByText("Read-only attorney guest", { exact: true })).toBeVisible();
-  await expect(page.getByText(/You may return as often as needed before then/)).toBeVisible();
+  await expect(page.getByText("Read-only attorney portal", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Client profile and case")).toHaveValue("opaque-access");
+  await expect(page.getByLabel("Client profile and case").locator("option:checked")).toHaveText("Jordan Client — Parenting Plan Records");
+  await expect(page.getByRole("heading", { name: "Jordan Client", exact: true })).toBeVisible();
+  await expect(page.getByText("The client confirmed these profile labels.", { exact: false })).toBeVisible();
+  await expect(page.getByText(/You may return through attorney sign in/)).toBeVisible();
   await expect(page.getByText(/You cannot create, edit, delete, upload/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Choose records for attorney exports" })).toBeVisible();
+  await expect(page.getByText("2 of 2 selected", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Settings", exact: true })).toHaveCount(0);
   await expect(page.getByText("Request account deletion")).toHaveCount(0);
+  await page.getByRole("button", { name: "Files", exact: true }).click();
+  const fileSheetPromise = page.waitForEvent("popup");
+  await page.getByRole("button", { name: "Print file sheet shared-file.pdf" }).click();
+  const fileSheet = await fileSheetPromise;
+  await fileSheet.waitForLoadState();
+  expect(fileSheet.url()).toMatch(/^blob:/);
+  await expect(fileSheet.getByRole("heading", { name: "Custody Folio File Sheet" })).toBeVisible();
+  await expect(fileSheet.getByRole("cell", { name: "shared-file.pdf" })).toBeVisible();
+  await fileSheet.close();
   await page.getByRole("button", { name: "Notes", exact: true }).click();
   await expect(page.getByText("Shared issue")).toBeVisible();
   await expect(page.getByRole("button", { name: /Edit|Delete|Upload/ })).toHaveCount(0);
+  const includeNote = page.getByRole("checkbox", { name: "Include" });
+  await includeNote.uncheck();
+  await expect(page.getByText("1 of 2 selected", { exact: true })).toBeVisible();
+  await expect(page.getByText("No selected records match this date range.")).toBeVisible();
+  await includeNote.check();
+  const csvDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download CSV" }).click();
+  const csvDownload = await csvDownloadPromise;
+  expect(csvDownload.suggestedFilename()).toMatch(/^custody_folio_shared_notes_.*\.csv$/);
+  const pdfDownloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Print / save PDF" }).click();
+  const pdfDownload = await pdfDownloadPromise;
+  const pdfPath = await pdfDownload.path();
+  expect(pdfPath).not.toBeNull();
+  expect((await readFile(pdfPath!)).subarray(0, 5).toString("ascii")).toBe("%PDF-");
   await page.getByRole("button", { name: "Reports", exact: true }).click();
+  await page.getByLabel("Report type").selectOption("full_profile_export");
   await page.getByRole("button", { name: "Generate report preview" }).click();
   await expect(page.getByRole("status")).toContainText("Read-only report preview generated");
+  await expect(page.getByRole("heading", { name: "Full Case Profile Export" })).toBeVisible();
+  await expect(page.getByText(/Complete, print-friendly case history/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Print or save PDF" })).toBeDisabled();
+  for (const checkbox of await page.getByRole("checkbox").all()) await checkbox.check();
+  await expect(page.getByRole("button", { name: "Print or save PDF" })).toBeEnabled();
   const fitsViewport = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
   expect(fitsViewport).toBe(true);
+});
+
+test("attorney can switch and verify multiple client profiles", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      "l2f.records.session.v1",
+      JSON.stringify({
+        userId: "attorney-user",
+        caseId: "shared-case",
+        email: "counsel@example.test",
+        authMode: "local",
+      })
+    );
+  });
+  const now = "2026-08-05T00:00:00.000Z";
+  const sharedDataset = {
+    users: [],
+    matters: [{
+      id: "shared-case",
+      userId: "shared-owner",
+      caseName: "Shared case",
+      childDisplayLabels: [],
+      userRoleLabel: "Client",
+      otherParentLabel: "Other parent",
+      timezone: "UTC",
+      createdAt: now,
+      updatedAt: now,
+    }],
+    exchangeRules: [],
+    scheduleExceptions: [],
+    custodyDayAssignments: [],
+    exchangeLogs: [],
+    dateNotes: [],
+    evidenceItems: [],
+    childSupportOrders: [],
+    childSupportPayments: [],
+    expenseItems: [],
+    timelineDesignations: [],
+    auditLogs: [],
+  };
+  const matters = [
+    { accessHandle: "jordan-access", label: "Jordan Client — Jordan v. Taylor", clientName: "Jordan Client", caseName: "Jordan v. Taylor", profileConfirmed: true, grantedAt: now, expiresAt: null },
+    { accessHandle: "morgan-access", label: "Morgan Client — Parenting plan review", clientName: "Morgan Client", caseName: "Parenting plan review", profileConfirmed: true, grantedAt: now, expiresAt: null },
+  ];
+  await page.route("**/api/records/attorney/portal", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ matters }) });
+      return;
+    }
+    const accessHandle = String(route.request().postDataJSON().accessHandle);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        accessHandle,
+        projection: { dataset: sharedDataset, evidence: [], sharedAt: now },
+        updatedAt: now,
+        accessExpiresAt: null,
+        readOnly: true,
+      }),
+    });
+  });
+  await page.route("**/api/records/auth/csrf", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token: "csrf" }) }));
+
+  await page.goto("/attorney");
+  await page.getByRole("button", { name: /Jordan Client/ }).click();
+  await expect(page.getByRole("heading", { name: "Jordan Client", exact: true })).toBeVisible();
+  await page.getByLabel("Client profile and case").selectOption("morgan-access");
+  await expect(page.getByRole("heading", { name: "Morgan Client", exact: true })).toBeVisible();
+  await expect(page.getByText("Case: Parenting plan review", { exact: true })).toBeVisible();
 });
 
 test("an attorney invitation opens direct account access without sending another email", async ({ page }) => {
@@ -1516,26 +1652,19 @@ test("mobile workspace header stays compact and exposes its full controls", asyn
   await expect(page.getByLabel("Date range preset")).toBeVisible();
   await expect(page.getByLabel("From date")).toBeVisible();
   await expect(page.getByLabel("To date")).toBeVisible();
-  const rangeDateCenters = await page
-    .getByTestId("range-date-value")
-    .evaluateAll((values) =>
-      values.map((value) => {
-        const control = value.closest('[data-testid="range-date-control"]');
-        if (!control) return Number.POSITIVE_INFINITY;
-        const valueBox = value.getBoundingClientRect();
-        const controlBox = control.getBoundingClientRect();
-        return Math.abs(
-          (valueBox.left + valueBox.right) / 2 -
-          (controlBox.left + controlBox.right) / 2
-        );
-      })
-    );
-  expect(rangeDateCenters).toHaveLength(2);
-  expect(rangeDateCenters.every((offset) => offset <= 1)).toBe(true);
+  await page.getByLabel("Date range preset").selectOption("custom");
+  await page.getByLabel("From date").fill("2026-04-02");
+  await page.getByLabel("To date").fill("2026-04-17");
+  await expect(page.getByLabel("Date range preset")).toHaveValue("custom");
+  await expect(page.getByLabel("From date")).toHaveValue("2026-04-02");
+  await expect(page.getByLabel("To date")).toHaveValue("2026-04-17");
+  await expect(page.getByLabel("From date")).toHaveCSS("opacity", "1");
+  await expect(page.getByLabel("To date")).toHaveCSS("opacity", "1");
   await expect(page.getByRole("button", { name: "Logout", exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Done", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Workspace options", exact: true })).not.toBeVisible();
+  await expect(page.getByText("Parenting Plan Records | Apr 2-17", { exact: true })).toBeVisible();
   const restoredBox = await header.boundingBox();
   expect(restoredBox?.height).toBeLessThanOrEqual(72);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);

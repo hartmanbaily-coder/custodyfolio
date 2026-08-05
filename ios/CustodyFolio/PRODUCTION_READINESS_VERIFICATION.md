@@ -3,7 +3,7 @@
 The native code now mitigates the locally fixable findings from the production-readiness review:
 
 - Export files use complete iOS file protection.
-- The `LostToFoundExports` temporary directory is purged at app launch and when the app enters the background.
+- The `CustodyFolioExports` temporary directory is purged at app launch and when the app enters the background.
 - Export files are removed when sharing finishes or when the share sheet cannot be presented.
 - A web logout or rejected server session tells the native shell to clear its WebKit session cookies and Keychain cookie backup immediately.
 - The app synchronizes WebKit cookie state before background locking.
@@ -14,15 +14,15 @@ These safeguards reduce stale-session and temporary-file risk. They do not repla
 
 ## Automated verification status
 
-On 2026-07-22, Xcode 26.6 discovered and ran the shared `LostToFound` test plan on an iPhone 17 Pro simulator. All 6 `NativeSecurityPolicyTests` passed with 0 failures. The shared scheme references `LostToFound.xctestplan`, so Product > Test and command-line test runs use the same test target instead of relying on Xcode's automatically generated test list.
+On 2026-07-22, Xcode 26.6 discovered and ran the shared `CustodyFolio` test plan on an iPhone 17 Pro simulator. All 6 `NativeSecurityPolicyTests` passed with 0 failures. The shared scheme references `CustodyFolio.xctestplan`, so Product > Test and command-line test runs use the same test target instead of relying on Xcode's automatically generated test list.
 
 Re-run with an available iPhone simulator before each public release:
 
 ```bash
 xcodebuild test \
-  -project ios/LostToFound/LostToFound.xcodeproj \
-  -scheme LostToFound \
-  -testPlan LostToFound \
+  -project ios/CustodyFolio/CustodyFolio.xcodeproj \
+  -scheme CustodyFolio \
+  -testPlan CustodyFolio \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
   CODE_SIGNING_ALLOWED=NO
 ```

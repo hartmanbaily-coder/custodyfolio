@@ -132,6 +132,7 @@ describe("centralized attorney grant authorization", () => {
   it("allowlists audit metadata and discards record contents and storage details", () => {
     expect(sanitizeAttorneyAuditMetadata({
       reportType: "combined_attorney_summary",
+      sectionId: "evidence",
       route: "/api/records/attorney/portal",
       reason: "case_deleted",
       noteBody: "sensitive allegation",
@@ -141,6 +142,7 @@ describe("centralized attorney grant authorization", () => {
       paymentReference: "private-payment-reference",
     })).toEqual({
       reportType: "combined_attorney_summary",
+      sectionId: "evidence",
       route: "/api/records/attorney/portal",
       reason: "case_deleted",
     });

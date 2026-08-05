@@ -45,7 +45,7 @@ Custody Folio can run against either the local demo store or the Supabase-backed
 - `SUPABASE_LIVE_VERIFICATION.md` records the current live Supabase project verification state and open advisor findings.
 - `PRODUCTION_LAUNCH_REHEARSAL.md` records the latest go/no-go rehearsal, current Supabase evidence, and remaining live launch gates.
 - The production deployment now runs internal ClamAV scanning for evidence uploads and verified clean/EICAR behavior on 2026-06-28.
-- The dedicated LostToFound host reads production settings from `/srv/losttofound/config/app.env` with mode `0600`; the config directory is outside the rsynced application tree, and production SSH credentials and environment secrets are intentionally not stored in GitHub or Listhaus.
+- The dedicated Custody Folio host reads production settings from `/srv/losttofound/config/app.env` with mode `0600`; the config directory is outside the rsynced application tree, and production SSH credentials and environment secrets are intentionally not stored in GitHub or Listhaus.
 - `/privacy` and `/terms` now contain records-specific public drafts that must be reviewed before launch.
 - `src/lib/records/clientStore.ts` can run in `local` mode or `supabase` mode using `NEXT_PUBLIC_RECORDS_STORAGE_MODE`.
 - The Records Timeline view now merges custody calendar days, scheduled exchanges, logged exchanges, notes, evidence, support, and expenses into expandable court-packet-oriented rows with CSV export.
@@ -91,7 +91,7 @@ Verified:
 4. Keep malware-scanner verification current; `MALWARE_SCANNER_TESTED_AT` must stay within 30 days before accepting real evidence.
 5. Approve retention/deletion, backup aging, incident response, monitoring/alerting, legal review, and vendor review runbooks.
 6. Run `npm run check:pre-supabase` to confirm all non-Supabase launch gates are clear.
-7. Keep production secrets in `/srv/losttofound/config/app.env` on the dedicated host using project `cieuilbpnwuvnrxrlczj`, and deploy only through the rootless LostToFound stack.
+7. Keep production secrets in `/srv/losttofound/config/app.env` on the dedicated host using project `cieuilbpnwuvnrxrlczj`, and deploy only through the rootless Custody Folio stack.
 8. Set `EXPECTED_SUPABASE_PROJECT_REF=cieuilbpnwuvnrxrlczj` so production readiness fails if secrets point at the old staging project.
 9. Keep production invite-only until launch by setting `NEXT_PUBLIC_RECORDS_SIGNUPS_ENABLED=false` and `RECORDS_SIGNUPS_ENABLED=false`; also disable direct Supabase Auth signup while invite-only mode is active. Enable self-registration only after Supabase SMTP, abuse controls, direct-signup policy, and App Store review account handling are ready.
 10. Complete `SUPABASE_AUTH_LAUNCH_CHECKLIST.md`, including direct-signup policy, SMTP, redirect URLs, leaked-password protection, reset-token settings, password-change reauthentication, and session/device revocation in Supabase Auth.

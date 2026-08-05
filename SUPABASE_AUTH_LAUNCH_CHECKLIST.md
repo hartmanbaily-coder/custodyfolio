@@ -60,7 +60,7 @@ Open Supabase Dashboard for project `cieuilbpnwuvnrxrlczj`.
      - `https://custodyfolio.com/records?auth=confirmed`
      - `https://custodyfolio.com/records?auth=attorney-invite&next=%2Fattorney%2Faccept&invite=1&attorney_token=*`
      - `https://custodyfolio.com/records?auth=recovery`
-   - During the compatibility window, retain the equivalent exact `https://losttofound.org` redirects for confirmation, records, and recovery links already in circulation, plus the same narrowly scoped attorney-token wildcard.
+   - Remove redirect URLs for retired or repurposed domains before making those domains available to another product.
    - Avoid broad production wildcards.
    - Verify signup confirmation, attorney invitation email onboarding, and password reset with synthetic accounts.
    - After verification, set Listhaus repo variable `LOSTTOFOUND_SUPABASE_AUTH_REDIRECTS_VERIFIED_AT=YYYY-MM-DD`.

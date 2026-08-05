@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct LostToFoundApp: App {
+struct CustodyFolioApp: App {
     @AppStorage(AppearancePreferencePolicy.storageKey)
     private var appearancePreference = "system"
 

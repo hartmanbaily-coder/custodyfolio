@@ -44,16 +44,17 @@ export async function GET(request: NextRequest) {
   if (snapshots.error) {
     return NextResponse.json({ error: "Unable to load shared matter names." }, { status: 500 });
   }
-  const labels = new Map<string, { clientName: string; caseName: string }>();
+  const labels = new Map<string, { clientName: string; caseName: string; profileConfirmed: boolean }>();
   for (const snapshot of snapshots.data || []) {
     if (!isRecordsDataset(snapshot.dataset)) continue;
     const owner = snapshot.dataset.users.find((user) => user.userId === snapshot.user_id);
-    const clientName = owner?.displayName?.trim().slice(0, 120) || "Client";
+    const clientName = owner?.displayName?.trim().slice(0, 120) || "Client name not provided";
     for (const matter of snapshot.dataset.matters) {
       if (matter.userId !== snapshot.user_id) continue;
       labels.set(`${snapshot.user_id}:${snapshot.case_key}:${matter.id}`, {
         clientName,
         caseName: matter.caseName.trim().slice(0, 160) || "Shared matter",
+        profileConfirmed: Boolean(owner?.attorneySharingProfileConfirmedAt),
       });
     }
   }
@@ -63,6 +64,7 @@ export async function GET(request: NextRequest) {
         const names = labels.get(`${grant.owner_user_id}:${grant.case_key}:${grant.case_id}`) || {
           clientName: "Client",
           caseName: "Shared matter",
+          profileConfirmed: false,
         };
         return {
           accessHandle: sealAttorneyHandle({
@@ -74,6 +76,7 @@ export async function GET(request: NextRequest) {
           label: `${names.clientName} — ${names.caseName}`,
           clientName: names.clientName,
           caseName: names.caseName,
+          profileConfirmed: names.profileConfirmed,
           grantedAt: grant.granted_at,
           expiresAt: grant.expires_at,
         };

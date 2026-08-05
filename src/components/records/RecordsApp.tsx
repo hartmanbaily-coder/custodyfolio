@@ -68,9 +68,11 @@ import {
   type RecordsSession,
 } from "@/lib/records/clientStore";
 import { parseRecordsAuthFragment } from "@/lib/records/authClient";
+import { buildEvidencePrintHtml } from "@/lib/records/evidencePrint";
 import {
   buildReportPreview,
   buildSectionExportPacket,
+  fullProfileDateRange,
   reportPreviewToCsv,
   reportsTabReportTypes,
   rowsToCsv,
@@ -980,7 +982,12 @@ export default function RecordsApp() {
             {activeView === "Reports" && (
               <ReportsView
                 reportType={reportType}
-                setReportType={setReportType}
+                setReportType={(nextReportType) => {
+                  setReportType(nextReportType);
+                  if (nextReportType === "full_profile_export") {
+                    setRange(fullProfileDateRange(dataset, userId, effectiveCaseId));
+                  }
+                }}
                 preview={reportPreview}
                 userId={userId}
                 caseId={effectiveCaseId}
@@ -993,6 +1000,10 @@ export default function RecordsApp() {
               <AttorneyAccessPanel
                 caseId={effectiveCaseId}
                 cloudStorageEnabled={recordsStorageMode === "supabase"}
+                clientName={selectedProfile?.displayName || ""}
+                caseName={selectedCase?.caseName || ""}
+                profileConfirmed={Boolean(selectedProfile?.attorneySharingProfileConfirmedAt)}
+                onOpenProfileSetup={() => openView("Settings")}
               />
             )}
             {activeView === "Settings" && (
@@ -7119,6 +7130,10 @@ function SettingsView({
   async function updateProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    const displayName = text(formData, "displayName");
+    if (displayName.length < 2 || displayName.length > 120) {
+      return flash("Enter the client name or clear identifying label that should be shown to an invited attorney.");
+    }
     const parsedTimezone = timezoneSchema.safeParse(
       text(formData, "timezone") || profile?.timezone || defaultRecordsTimezone
     );
@@ -7131,8 +7146,9 @@ function SettingsView({
           user.userId === userId
             ? {
                 ...user,
-                displayName: text(formData, "displayName") || undefined,
+                displayName,
                 timezone: parsedTimezone.data,
+                attorneySharingProfileConfirmedAt: nowIso(),
                 updatedAt: nowIso(),
               }
             : user
@@ -7312,9 +7328,13 @@ function SettingsView({
         <Panel title="Account settings" action="Profile">
           <form onSubmit={updateProfile} className="grid gap-3">
             <ThemeSelector />
-            <Field label="Display name">
-              <input name="displayName" className="input" defaultValue={profile?.displayName || ""} />
+            <Field label="Client name shown to attorneys">
+              <input name="displayName" className="input" defaultValue={profile?.displayName || ""} required minLength={2} maxLength={120} />
             </Field>
+            <p className="text-xs leading-5 text-slate-500">
+              This name or clear identifying label appears with the selected case in the attorney portal. Verify it before sending an invitation.
+              {profile?.attorneySharingProfileConfirmedAt ? " Attorney sharing identity confirmed." : " Save this profile once before creating an attorney invitation."}
+            </p>
             <Field label="Email">
               <input className="input bg-slate-100" value={profile?.email || ""} readOnly />
             </Field>
@@ -7457,6 +7477,10 @@ function SettingsView({
         <AttorneyAccessPanel
           caseId={caseId}
           cloudStorageEnabled={recordsStorageMode === "supabase"}
+          clientName={profile?.displayName || ""}
+          caseName={selectedMatter?.caseName || ""}
+          profileConfirmed={Boolean(profile?.attorneySharingProfileConfirmedAt)}
+          onOpenProfileSetup={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         />
 
         <Panel title="Storage status" action={recordsStorageMode === "supabase" ? "Private cloud" : "This browser"}>
@@ -7839,12 +7863,6 @@ function RangeToolbar({
   );
 }
 
-function displayRangeDate(value: string) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return value;
-  return `${match[2]}/${match[3]}/${match[1]}`;
-}
-
 function CenteredRangeDateInput({
   label,
   value,
@@ -7859,18 +7877,12 @@ function CenteredRangeDateInput({
       className="relative h-10 w-full min-w-0 max-w-full rounded-md border border-slate-200 bg-white text-slate-900 focus-within:border-teal-600 focus-within:ring-2 focus-within:ring-teal-100 sm:w-36"
       data-testid="range-date-control"
     >
-      <span
-        aria-hidden="true"
-        className="pointer-events-none flex h-full w-full items-center justify-center px-10 text-center text-sm tabular-nums"
-      >
-        <span data-testid="range-date-value">{displayRangeDate(value)}</span>
-      </span>
       <input
         aria-label={label}
         type="date"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+        className="h-full w-full cursor-pointer rounded-md bg-transparent px-2 text-center text-sm tabular-nums text-slate-900 outline-none [color-scheme:light]"
       />
     </div>
   );
@@ -8771,64 +8783,6 @@ function emptyToUndefined<T extends Record<string, unknown>>(input: T) {
   return Object.fromEntries(
     Object.entries(input).map(([key, value]) => [key, value === "" ? undefined : value])
   ) as T;
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function buildEvidencePrintHtml(item: EvidenceItem) {
-  const fileName = evidenceFileName(item);
-  const rows = [
-    ["File name", fileName],
-    ...(fileName !== item.originalFileName
-      ? [["Original uploaded name", item.originalFileName]]
-      : []),
-    ["Record date", item.evidenceDate || ""],
-    ["Uploaded", item.uploadedAt],
-    ["File type", item.fileType],
-    ["File size", `${item.fileSize} bytes`],
-    ["Storage", item.storagePath ? "Private file attached" : "Metadata only"],
-    ["Scan status", item.malwareScanStatus || "pending"],
-    ["Review status", evidenceReviewStatusLabels[item.reviewStatus || "needs_review"]],
-    ["Included in reports", item.includeInReports ? "Yes" : "No"],
-    ["Tags", item.tags.join(", ")],
-    ["Description", item.description || ""],
-  ];
-
-  return `<!doctype html>
-    <html>
-      <head>
-        <title>File Sheet - ${escapeHtml(fileName)}</title>
-        <style>
-          @page { margin: 0.55in; }
-          body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #0f172a; margin: 0; }
-          h1 { font-size: 22px; margin: 0 0 8px; }
-          p { color: #475569; line-height: 1.5; }
-          table { width: 100%; border-collapse: collapse; margin-top: 24px; font-size: 13px; }
-          th, td { border: 1px solid #cbd5e1; padding: 10px; vertical-align: top; text-align: left; }
-          th { width: 180px; background: #f8fafc; }
-          .notice { border: 1px solid #fde68a; background: #fffbeb; padding: 12px; margin-top: 20px; font-size: 13px; }
-        </style>
-      </head>
-      <body>
-        <h1>${escapeHtml(siteName)} File Sheet</h1>
-        <p>Private custody records workspace. Use privacy minded labels and verify the source document before submission.</p>
-        <div class="notice">This sheet is metadata for organizing records. It is not legal advice and does not replace the original document.</div>
-        <table>
-          <tbody>
-            ${rows
-              .map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`)
-              .join("")}
-          </tbody>
-        </table>
-      </body>
-    </html>`;
 }
 
 function withAlpha(hex: string, alpha: number) {

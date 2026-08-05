@@ -15,7 +15,7 @@ const customerFacingFiles = [
   "src/components/records/AttorneyAccessPanel.tsx",
   "src/components/records/AttorneyPortal.tsx",
   "src/components/records/ExhibitBuilder.tsx",
-  "ios/LostToFound/LostToFound/NativePolicyView.swift",
+  "ios/CustodyFolio/CustodyFolio/NativePolicyView.swift",
 ];
 
 const forbiddenPublicPhrases = [

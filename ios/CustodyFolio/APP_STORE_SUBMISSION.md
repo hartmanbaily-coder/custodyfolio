@@ -12,7 +12,7 @@ This draft is a working submission packet. It should be reviewed before public s
 - Minimum iOS version: `17.0`
 - Supported devices: iPhone and iPad
 - Signing team: `HQG9VJ8JK2`
-- SKU suggestion: `losttofound-ios`
+- SKU suggestion: `custodyfolio-ios`
 - Primary category: Productivity
 - Secondary category: Utilities
 - Content rights: owned by the developer
@@ -41,7 +41,7 @@ Key features:
 - Document upload support through the protected workspace
 - Report and export workflows for review
 - Device level unlock with Face ID, Touch ID, or passcode
-- Controlled records web view limited to the Custody Folio domains, with the former `losttofound.org` domains retained temporarily for transition compatibility
+- Controlled records web view limited to Custody Folio-owned domains
 - Privacy, security, and AI data use notices available in app
 
 Important boundaries:
@@ -60,7 +60,7 @@ coparenting,parenting time,evidence,incident log,expenses,calendar,attorney,fami
 
 Custody Folio is a private records organizer for adult users documenting custody and parenting plan information. It is not a legal advice app, law firm, emergency service, child facing app, social network, payment processor, or coparent messaging platform.
 
-The app uses a native SwiftUI shell with a device-authentication gate, native tab navigation, native privacy/support surfaces, and a controlled `WKWebView` workspace. The web view uses `custodyfolio.com` and `www.custodyfolio.com` as its primary app-bound domains. The former `losttofound.org` domains remain app-bound temporarily so existing links continue working during the transition; external web links and `mailto:` links open outside the records workspace.
+The app uses a native SwiftUI shell with a device-authentication gate, native tab navigation, native privacy/support surfaces, and a controlled `WKWebView` workspace. The web view uses only `custodyfolio.com` and `www.custodyfolio.com` as app-bound domains; external web links and `mailto:` links open outside the records workspace.
 
 Review flow:
 
@@ -81,13 +81,13 @@ Account deletion path for review: Support tab -> Account and Data -> Delete acco
 
 Current native build snapshot:
 
-- Product: `LostToFound.app`
+- Product: `CustodyFolio.app`
 - Bundle ID: `io.lendori.losttofound`
 - Version/build: `0.1.0 (12)` in the project; App Store uploads use Xcode-managed next-available build numbering
 - Deployment target: iOS 17.0
 - Records URL: `https://custodyfolio.com/records`
 - Account deletion URL: `https://custodyfolio.com/account/delete`
-- Web navigation allowlist: `custodyfolio.com`, `www.custodyfolio.com`, plus the temporary `losttofound.org` fallback
+- Web navigation allowlist: `custodyfolio.com` and `www.custodyfolio.com`
 - Scene privacy behavior: app returns to locked state when it leaves the active scene
 - Automated verification: 6 native security tests passed with 0 failures on 2026-07-16, and an unsigned Release archive completed with store validation enabled
 

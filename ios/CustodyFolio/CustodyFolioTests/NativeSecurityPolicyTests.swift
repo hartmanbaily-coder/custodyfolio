@@ -1,7 +1,7 @@
 import Foundation
 import WebKit
 import XCTest
-@testable import LostToFound
+@testable import CustodyFolio
 
 final class NativeSecurityPolicyTests: XCTestCase {
     func testAppearancePreferenceAcceptsOnlySupportedMainBridgeValues() {
@@ -45,6 +45,16 @@ final class NativeSecurityPolicyTests: XCTestCase {
         }
     }
 
+    func testNativeWorkspaceAllowsOnlyCustodyFolioHosts() throws {
+        let expectedHosts = Set(["custodyfolio.com", "www.custodyfolio.com"])
+        let appBoundDomains = try XCTUnwrap(
+            Bundle.main.infoDictionary?["WKAppBoundDomains"] as? [String]
+        )
+
+        XCTAssertEqual(Set(appBoundDomains), expectedHosts)
+        XCTAssertEqual(SessionCookiePolicy.allowedHosts, expectedHosts)
+    }
+
     func testSessionCookiePolicyKeepsOnlyAllowedUnexpiredSessionCookies() throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let validRefresh = try makeCookie(
@@ -62,7 +72,7 @@ final class NativeSecurityPolicyTests: XCTestCase {
         let expired = try makeCookie(
             name: "__Host-l2f-records-refresh",
             value: "expired",
-            host: "losttofound.org",
+            host: "custodyfolio.com",
             expiresAt: now.addingTimeInterval(-1)
         )
         let foreignHost = try makeCookie(
@@ -74,7 +84,7 @@ final class NativeSecurityPolicyTests: XCTestCase {
         let unrelated = try makeCookie(
             name: "analytics",
             value: "value",
-            host: "losttofound.org",
+            host: "custodyfolio.com",
             expiresAt: now.addingTimeInterval(3_600)
         )
 
@@ -179,10 +189,6 @@ final class NativeSecurityPolicyTests: XCTestCase {
             .allowInWorkspace
         )
         XCTAssertEqual(
-            WorkspaceNavigationPolicy.decision(for: try XCTUnwrap(URL(string: "https://losttofound.org/records"))),
-            .allowInWorkspace
-        )
-        XCTAssertEqual(
             WorkspaceNavigationPolicy.decision(for: try XCTUnwrap(URL(string: "https://example.com/help"))),
             .openExternally
         )
@@ -237,7 +243,7 @@ final class NativeSecurityPolicyTests: XCTestCase {
 
     func testSensitiveExportStoreRemovesWrittenFiles() throws {
         let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("LostToFoundTests-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("CustodyFolioTests-\(UUID().uuidString)", isDirectory: true)
         let store = SensitiveExportStore(directoryURL: directory)
         defer { store.purge() }
 
@@ -259,13 +265,13 @@ final class NativeSecurityPolicyTests: XCTestCase {
         let refreshCookie = try makeCookie(
             name: "__Host-l2f-records-refresh",
             value: "refresh-token",
-            host: "losttofound.org",
+            host: "custodyfolio.com",
             expiresAt: Date().addingTimeInterval(3_600)
         )
         let unrelatedCookie = try makeCookie(
             name: "unrelated",
             value: "keep-me",
-            host: "losttofound.org",
+            host: "custodyfolio.com",
             expiresAt: Date().addingTimeInterval(3_600)
         )
         await set(refreshCookie, in: cookieStore)

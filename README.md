@@ -4,7 +4,7 @@ Custody Folio is a privacy focused product for organizing custody, parenting tim
 
 Production domain: `custodyfolio.com`
 
-The former `losttofound.org` hostname remains routed to the same production service during the transition. Keep it as a compatibility fallback until installed builds, auth links, and external bookmarks have migrated.
+Custody Folio must not depend on or accept navigation from any retired product domain.
 
 The product is for factual documentation and organization only. It does not provide legal advice, predict court outcomes, or claim that any record is legally established.
 
@@ -106,11 +106,11 @@ See `DEPLOYMENT_NOTES.md` for DNS, HTTPS, HSTS, and subdomain takeover controls.
 
 ## iOS App Store Preparation
 
-The App Store prep package lives in `ios/LostToFound`.
+The App Store prep package lives in `ios/CustodyFolio`.
 
-- `ios/LostToFound/LostToFound.xcodeproj` contains the native SwiftUI iOS shell.
-- `ios/LostToFound/README.md` covers local Xcode setup.
-- `ios/LostToFound/APP_STORE_SUBMISSION.md` contains draft App Store metadata, privacy-label notes, screenshot guidance, review notes, and pre-submission checklist.
+- `ios/CustodyFolio/CustodyFolio.xcodeproj` contains the native SwiftUI iOS shell.
+- `ios/CustodyFolio/README.md` covers local Xcode setup.
+- `ios/CustodyFolio/APP_STORE_SUBMISSION.md` contains draft App Store metadata, privacy-label notes, screenshot guidance, review notes, and pre-submission checklist.
 
 The iOS shell is intentionally more than a website shortcut: it includes a native device-authentication gate, native tabs for workspace/privacy/support, app icons, and controlled workspace navigation.
 

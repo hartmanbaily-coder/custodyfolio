@@ -20,7 +20,7 @@ describe("pwned password protection", () => {
       expect(init?.headers).toMatchObject({
         Accept: "text/plain",
         "Add-Padding": "true",
-        "User-Agent": "LostToFound-Records/1.0",
+        "User-Agent": "CustodyFolio-Records/1.0",
       });
       return new Response(`00000000000000000000000000000000000:0\r\n${suffix}:27\r\n`);
     });

@@ -96,12 +96,14 @@ describe("attorney multi-client portal list", () => {
         clientName: "Jordan Client",
         caseName: "Jordan v. Taylor",
         label: "Jordan Client — Jordan v. Taylor",
+        profileConfirmed: true,
         expiresAt: null,
         accessHandle: expect.any(String),
       }),
       expect.objectContaining({
         clientName: "Morgan Client",
         caseName: "Parenting plan review",
+        profileConfirmed: true,
         expiresAt: null,
       }),
     ]));

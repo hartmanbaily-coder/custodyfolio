@@ -22,7 +22,7 @@ import {
 import {
   attorneyInvitationDeliveryMode,
   getAttorneyAuthContext,
-  ownerCaseExists,
+  ownerAttorneySharingProfile,
 } from "@/lib/records/attorneyServer";
 import { recordsAppBaseUrl } from "@/lib/records/authServer";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
@@ -201,13 +201,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invite a different adult account." }, { status: 400 });
   }
   const caseKey = "default";
-  if (!(await ownerCaseExists({
+  const sharingProfile = await ownerAttorneySharingProfile({
     supabase: context.supabase,
     ownerUserId: context.userId,
     caseKey,
     caseId: parsed.data.caseId,
-  }))) {
+  });
+  if (!sharingProfile) {
     return NextResponse.json({ error: "The selected case is unavailable." }, { status: 404 });
+  }
+  if (!sharingProfile.confirmed) {
+    return NextResponse.json(
+      { error: "Confirm the client name and case name shown to the attorney before creating an invitation." },
+      { status: 409, headers: { "Cache-Control": "no-store" } }
+    );
   }
 
   const [activeGrant, pendingInvite] = await Promise.all([

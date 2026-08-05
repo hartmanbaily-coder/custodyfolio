@@ -110,7 +110,7 @@ async function createTestUser(email) {
     password,
     email_confirm: true,
     user_metadata: {
-      purpose: "lost-to-found-two-user-isolation-test",
+      purpose: "custody-folio-two-user-isolation-test",
       run_id: runId,
     },
   });

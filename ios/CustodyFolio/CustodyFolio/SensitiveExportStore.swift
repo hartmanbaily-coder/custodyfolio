@@ -12,7 +12,7 @@ struct SensitiveExportStore {
     ) {
         self.fileManager = fileManager
         self.directoryURL = directoryURL ?? fileManager.temporaryDirectory
-            .appendingPathComponent("LostToFoundExports", isDirectory: true)
+            .appendingPathComponent("CustodyFolioExports", isDirectory: true)
     }
 
     @discardableResult

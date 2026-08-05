@@ -63,7 +63,7 @@ export async function upsertRecordsProfile(input: { userId: string; email: strin
     if (error) {
       console.warn(
         JSON.stringify({
-          event: "lost_to_found_profile_upsert_failed",
+          event: "custody_folio_profile_upsert_failed",
           at: new Date().toISOString(),
           reason: error.message.slice(0, 180),
         })
@@ -72,7 +72,7 @@ export async function upsertRecordsProfile(input: { userId: string; email: strin
   } catch (error) {
     console.warn(
       JSON.stringify({
-        event: "lost_to_found_profile_upsert_failed",
+        event: "custody_folio_profile_upsert_failed",
         at: new Date().toISOString(),
         reason: error instanceof Error ? error.message.slice(0, 180) : "Unknown profile upsert error.",
       })

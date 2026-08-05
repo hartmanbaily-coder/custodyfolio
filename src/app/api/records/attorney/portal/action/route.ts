@@ -3,6 +3,7 @@ import { recordAttorneyAccessEvent, resolveActiveAttorneyGrant } from "@/lib/rec
 import { getAttorneyGuestAuthContext } from "@/lib/records/attorneyServer";
 import { attachRefreshedRecordsSession } from "@/lib/records/authServer";
 import type { ReportType } from "@/lib/records/types";
+import type { SectionExportId } from "@/lib/records/reports";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
 
@@ -18,6 +19,16 @@ const reportTypes = new Set<ReportType>([
   "expense_reimbursement",
   "combined_attorney_summary",
   "combined_court_packet",
+  "full_profile_export",
+]);
+const sectionIds = new Set<SectionExportId>([
+  "calendar",
+  "timeline",
+  "exchanges",
+  "notes",
+  "evidence",
+  "child_support",
+  "expenses",
 ]);
 
 export async function POST(request: NextRequest) {
@@ -34,6 +45,7 @@ export async function POST(request: NextRequest) {
     accessHandle?: unknown;
     action?: unknown;
     reportType?: unknown;
+    sectionId?: unknown;
   };
   const accessHandle = typeof body.accessHandle === "string" ? body.accessHandle : "";
   const action =
@@ -77,7 +89,12 @@ export async function POST(request: NextRequest) {
   const reportType = typeof body.reportType === "string" && reportTypes.has(body.reportType as ReportType)
     ? (body.reportType as ReportType)
     : null;
-  if (!reportType) return NextResponse.json({ error: "Report type is invalid." }, { status: 400 });
+  const sectionId = typeof body.sectionId === "string" && sectionIds.has(body.sectionId as SectionExportId)
+    ? (body.sectionId as SectionExportId)
+    : null;
+  if (!reportType && !sectionId) {
+    return NextResponse.json({ error: "Report selection is invalid." }, { status: 400 });
+  }
   const audit = await recordAttorneyAccessEvent({
     supabase: context.supabase,
     ownerUserId: access.grant.owner_user_id,
@@ -85,7 +102,7 @@ export async function POST(request: NextRequest) {
     caseId: access.grant.case_id,
     grantId: access.grant.id,
     eventType: action,
-    metadata: { reportType },
+    metadata: reportType ? { reportType } : { sectionId: sectionId! },
   });
   if (!audit.ok) {
     return NextResponse.json(

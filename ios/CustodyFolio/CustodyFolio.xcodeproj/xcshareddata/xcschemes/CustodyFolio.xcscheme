@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "0A5000010000000000000001"
-               BuildableName = "LostToFound.app"
-               BlueprintName = "LostToFound"
-               ReferencedContainer = "container:LostToFound.xcodeproj">
+               BuildableName = "CustodyFolio.app"
+               BlueprintName = "CustodyFolio"
+               ReferencedContainer = "container:CustodyFolio.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -30,7 +30,7 @@
       shouldUseLaunchSchemeArgsEnv = "YES">
       <TestPlans>
          <TestPlanReference
-            reference = "container:LostToFound.xctestplan"
+            reference = "container:CustodyFolio.xctestplan"
             default = "YES">
          </TestPlanReference>
       </TestPlans>
@@ -50,9 +50,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "0A5000010000000000000001"
-            BuildableName = "LostToFound.app"
-            BlueprintName = "LostToFound"
-            ReferencedContainer = "container:LostToFound.xcodeproj">
+            BuildableName = "CustodyFolio.app"
+            BlueprintName = "CustodyFolio"
+            ReferencedContainer = "container:CustodyFolio.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -67,9 +67,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "0A5000010000000000000001"
-            BuildableName = "LostToFound.app"
-            BlueprintName = "LostToFound"
-            ReferencedContainer = "container:LostToFound.xcodeproj">
+            BuildableName = "CustodyFolio.app"
+            BlueprintName = "CustodyFolio"
+            ReferencedContainer = "container:CustodyFolio.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildReportPreview,
   buildSectionExportPacket,
+  fullProfileDateRange,
 } from "@/lib/records/reports";
 import {
   generatePrintableReportPdf,
@@ -76,5 +77,25 @@ describe("printable report PDF", () => {
     expect(new TextDecoder("ascii").decode(bytes.slice(0, 5))).toBe("%PDF-");
     expect(generated.byteLength).toBeGreaterThan(5_000);
     expect(generated.pageCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it("creates a multi-section printable PDF for the full case profile", async () => {
+    const dataset = createRecordsSeed();
+    const profileRange = fullProfileDateRange(dataset, demoUserId, demoCaseId);
+    const preview = buildReportPreview(
+      dataset,
+      demoUserId,
+      demoCaseId,
+      profileRange,
+      "full_profile_export"
+    );
+    const generated = generatePrintableReportPdf(
+      printableReportPacket(preview, profileRange)
+    );
+    const bytes = await pdfBytes(generated.blob);
+
+    expect(new TextDecoder("ascii").decode(bytes.slice(0, 5))).toBe("%PDF-");
+    expect(generated.byteLength).toBeGreaterThan(10_000);
+    expect(generated.pageCount).toBeGreaterThanOrEqual(5);
   });
 });

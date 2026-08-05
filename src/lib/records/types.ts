@@ -92,7 +92,8 @@ export type ReportType =
   | "child_support_payment"
   | "expense_reimbursement"
   | "combined_attorney_summary"
-  | "combined_court_packet";
+  | "combined_court_packet"
+  | "full_profile_export";
 
 export type AuditAction =
   | "created"
@@ -123,6 +124,7 @@ export interface UserProfile {
   displayName?: string;
   email: string;
   timezone: string;
+  attorneySharingProfileConfirmedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

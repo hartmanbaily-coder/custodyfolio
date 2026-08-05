@@ -39,7 +39,7 @@ export async function checkPwnedPassword(
       headers: {
         Accept: "text/plain",
         "Add-Padding": "true",
-        "User-Agent": "LostToFound-Records/1.0",
+        "User-Agent": "CustodyFolio-Records/1.0",
       },
       cache: "no-store",
       signal: abortController.signal,

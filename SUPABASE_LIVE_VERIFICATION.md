@@ -95,7 +95,7 @@ Public Auth settings check on 2026-07-09 showed email auth enabled, anonymous us
 
 ## Two-User Isolation Verification
 
-Live status: passed against `https://losttofound.org` on 2026-06-28 through
+Live status: passed against the production service on 2026-06-28 through
 the GitHub Actions `Verify Live Isolation` workflow.
 The workflow created two synthetic confirmed Supabase Auth users, enrolled MFA,
 verified User B could not load, download, or delete User A evidence, verified
@@ -112,7 +112,7 @@ readiness API marks the isolation gate complete.
 Run this against staging or production after the app is deployed with Supabase mode:
 
 ```bash
-RECORDS_APP_BASE_URL=https://losttofound.org \
+RECORDS_APP_BASE_URL=https://custodyfolio.com \
 NEXT_PUBLIC_SUPABASE_URL=https://cieuilbpnwuvnrxrlczj.supabase.co \
 SUPABASE_SERVICE_ROLE_KEY=... \
 RECORDS_EVIDENCE_BUCKET=records-evidence \
@@ -122,7 +122,7 @@ npm run verify:isolation
 The verifier creates two temporary confirmed Supabase Auth users, signs both into the records app, saves a synthetic dataset for User A, creates a synthetic private evidence object for User A, confirms User B cannot load/delete/download it, confirms User A can download/delete it, and cleans up the synthetic users, snapshot, and storage object.
 
 A manual GitHub Actions workflow, `Verify Live Isolation`, can run the same check
-against `https://losttofound.org` using the repository `SUPABASE_SERVICE_ROLE_KEY`
+against `https://custodyfolio.com` using the repository `SUPABASE_SERVICE_ROLE_KEY`
 secret without exposing the key locally.
 
 ## Malware Scanner Verification
@@ -138,6 +138,6 @@ npm run verify:malware
 
 For HTTP/webhook scanners, set `MALWARE_SCAN_ENDPOINT` and `MALWARE_SCAN_API_KEY`. If it passes, record the emitted `MALWARE_SCANNER_TESTED_AT` value in the deployment environment.
 
-Live deployment status: the internal ClamAV scanner for `https://losttofound.org` passed clean/EICAR verification on 2026-06-28, and production readiness now reflects `MALWARE_SCANNER_TESTED_AT=2026-06-28`.
+Live deployment status: the internal ClamAV scanner passed clean/EICAR verification on 2026-06-28, and production readiness now reflects `MALWARE_SCANNER_TESTED_AT=2026-06-28`.
 
 Use synthetic data only. Do not use real custody, child, court, school, health, payment, or evidence material for verification.

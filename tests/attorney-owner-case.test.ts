@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ownerCaseExists } from "@/lib/records/attorneyServer";
+import { ownerAttorneySharingProfile, ownerCaseExists } from "@/lib/records/attorneyServer";
 import { createRecordsSeed, demoCaseId, demoUserId } from "@/lib/records/seed";
 
 function supabaseWithDataset(dataset: unknown) {
@@ -59,5 +59,36 @@ describe("attorney owner case lookup", () => {
       caseKey: "default",
       caseId: "case-other-user",
     })).resolves.toBe(false);
+  });
+
+  it("returns the confirmed client and case labels used by the attorney selector", async () => {
+    const dataset = createRecordsSeed();
+    dataset.users[0].displayName = "Jordan Client";
+    dataset.matters[0].caseName = "Jordan v. Taylor";
+    const { client } = supabaseWithDataset(dataset);
+
+    await expect(ownerAttorneySharingProfile({
+      supabase: client as never,
+      ownerUserId: demoUserId,
+      caseKey: "default",
+      caseId: demoCaseId,
+    })).resolves.toEqual({
+      clientName: "Jordan Client",
+      caseName: "Jordan v. Taylor",
+      confirmed: true,
+    });
+  });
+
+  it("does not treat an automatically populated name as attorney-profile confirmation", async () => {
+    const dataset = createRecordsSeed();
+    delete dataset.users[0].attorneySharingProfileConfirmedAt;
+    const { client } = supabaseWithDataset(dataset);
+
+    await expect(ownerAttorneySharingProfile({
+      supabase: client as never,
+      ownerUserId: demoUserId,
+      caseKey: "default",
+      caseId: demoCaseId,
+    })).resolves.toMatchObject({ confirmed: false });
   });
 });

@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0A1000010000000000000001 /* LostToFoundApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A2000010000000000000001 /* LostToFoundApp.swift */; };
+		0A1000010000000000000001 /* CustodyFolioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A2000010000000000000001 /* CustodyFolioApp.swift */; };
 		0A1000010000000000000002 /* AppRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A2000010000000000000002 /* AppRootView.swift */; };
 		0A1000010000000000000003 /* AuthenticationGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A2000010000000000000003 /* AuthenticationGate.swift */; };
 		0A1000010000000000000004 /* WorkspaceWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A2000010000000000000004 /* WorkspaceWebView.swift */; };
@@ -26,12 +26,12 @@
 			containerPortal = 0A6000010000000000000001 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 0A5000010000000000000001;
-			remoteInfo = LostToFound;
+			remoteInfo = CustodyFolio;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		0A2000010000000000000001 /* LostToFoundApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LostToFoundApp.swift; sourceTree = "<group>"; };
+		0A2000010000000000000001 /* CustodyFolioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustodyFolioApp.swift; sourceTree = "<group>"; };
 		0A2000010000000000000002 /* AppRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRootView.swift; sourceTree = "<group>"; };
 		0A2000010000000000000003 /* AuthenticationGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationGate.swift; sourceTree = "<group>"; };
 		0A2000010000000000000004 /* WorkspaceWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceWebView.swift; sourceTree = "<group>"; };
@@ -42,10 +42,10 @@
 		0A2000020000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0A2000020000000000000002 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		0A2000020000000000000003 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		0A2000030000000000000001 /* LostToFound.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LostToFound.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0A2000030000000000000001 /* CustodyFolio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CustodyFolio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0B2000010000000000000001 /* NativeSecurityPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSecurityPolicyTests.swift; sourceTree = "<group>"; };
-		0B2000030000000000000001 /* LostToFoundTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LostToFoundTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		B791BF4E3005748200BCB2B9 /* LostToFound.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = LostToFound.xctestplan; sourceTree = "<group>"; };
+		0B2000030000000000000001 /* CustodyFolioTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CustodyFolioTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B791BF4E3005748200BCB2B9 /* CustodyFolio.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = CustodyFolio.xctestplan; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -69,17 +69,17 @@
 		0A4000010000000000000001 = {
 			isa = PBXGroup;
 			children = (
-				B791BF4E3005748200BCB2B9 /* LostToFound.xctestplan */,
-				0A4000010000000000000002 /* LostToFound */,
-				0B4000010000000000000001 /* LostToFoundTests */,
+				B791BF4E3005748200BCB2B9 /* CustodyFolio.xctestplan */,
+				0A4000010000000000000002 /* CustodyFolio */,
+				0B4000010000000000000001 /* CustodyFolioTests */,
 				0A4000010000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		0A4000010000000000000002 /* LostToFound */ = {
+		0A4000010000000000000002 /* CustodyFolio */ = {
 			isa = PBXGroup;
 			children = (
-				0A2000010000000000000001 /* LostToFoundApp.swift */,
+				0A2000010000000000000001 /* CustodyFolioApp.swift */,
 				0A2000010000000000000002 /* AppRootView.swift */,
 				0A2000010000000000000003 /* AuthenticationGate.swift */,
 				0A2000010000000000000004 /* WorkspaceWebView.swift */,
@@ -91,32 +91,32 @@
 				0A2000020000000000000003 /* Info.plist */,
 				0A2000020000000000000002 /* PrivacyInfo.xcprivacy */,
 			);
-			path = LostToFound;
+			path = CustodyFolio;
 			sourceTree = "<group>";
 		};
 		0A4000010000000000000003 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				0A2000030000000000000001 /* LostToFound.app */,
-				0B2000030000000000000001 /* LostToFoundTests.xctest */,
+				0A2000030000000000000001 /* CustodyFolio.app */,
+				0B2000030000000000000001 /* CustodyFolioTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		0B4000010000000000000001 /* LostToFoundTests */ = {
+		0B4000010000000000000001 /* CustodyFolioTests */ = {
 			isa = PBXGroup;
 			children = (
 				0B2000010000000000000001 /* NativeSecurityPolicyTests.swift */,
 			);
-			path = LostToFoundTests;
+			path = CustodyFolioTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		0A5000010000000000000001 /* LostToFound */ = {
+		0A5000010000000000000001 /* CustodyFolio */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 0A9000020000000000000001 /* Build configuration list for PBXNativeTarget "LostToFound" */;
+			buildConfigurationList = 0A9000020000000000000001 /* Build configuration list for PBXNativeTarget "CustodyFolio" */;
 			buildPhases = (
 				0A3000020000000000000001 /* Sources */,
 				0A3000010000000000000001 /* Frameworks */,
@@ -126,14 +126,14 @@
 			);
 			dependencies = (
 			);
-			name = LostToFound;
-			productName = LostToFound;
-			productReference = 0A2000030000000000000001 /* LostToFound.app */;
+			name = CustodyFolio;
+			productName = CustodyFolio;
+			productReference = 0A2000030000000000000001 /* CustodyFolio.app */;
 			productType = "com.apple.product-type.application";
 		};
-		0B5000010000000000000001 /* LostToFoundTests */ = {
+		0B5000010000000000000001 /* CustodyFolioTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 0B9000020000000000000001 /* Build configuration list for PBXNativeTarget "LostToFoundTests" */;
+			buildConfigurationList = 0B9000020000000000000001 /* Build configuration list for PBXNativeTarget "CustodyFolioTests" */;
 			buildPhases = (
 				0B3000020000000000000001 /* Sources */,
 				0B3000010000000000000001 /* Frameworks */,
@@ -144,9 +144,9 @@
 			dependencies = (
 				0B7000020000000000000001 /* PBXTargetDependency */,
 			);
-			name = LostToFoundTests;
-			productName = LostToFoundTests;
-			productReference = 0B2000030000000000000001 /* LostToFoundTests.xctest */;
+			name = CustodyFolioTests;
+			productName = CustodyFolioTests;
+			productReference = 0B2000030000000000000001 /* CustodyFolioTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
@@ -168,7 +168,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 0A9000010000000000000001 /* Build configuration list for PBXProject "LostToFound" */;
+			buildConfigurationList = 0A9000010000000000000001 /* Build configuration list for PBXProject "CustodyFolio" */;
 			compatibilityVersion = "Xcode 15.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -181,8 +181,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				0A5000010000000000000001 /* LostToFound */,
-				0B5000010000000000000001 /* LostToFoundTests */,
+				0A5000010000000000000001 /* CustodyFolio */,
+				0B5000010000000000000001 /* CustodyFolioTests */,
 			);
 		};
 /* End PBXProject section */
@@ -211,7 +211,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0A1000010000000000000001 /* LostToFoundApp.swift in Sources */,
+				0A1000010000000000000001 /* CustodyFolioApp.swift in Sources */,
 				0A1000010000000000000002 /* AppRootView.swift in Sources */,
 				0A1000010000000000000003 /* AuthenticationGate.swift in Sources */,
 				0A1000010000000000000004 /* WorkspaceWebView.swift in Sources */,
@@ -235,7 +235,7 @@
 /* Begin PBXTargetDependency section */
 		0B7000020000000000000001 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 0A5000010000000000000001 /* LostToFound */;
+			target = 0A5000010000000000000001 /* CustodyFolio */;
 			targetProxy = 0B7000010000000000000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -368,7 +368,7 @@
 				DEVELOPMENT_TEAM = HQG9VJ8JK2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = LostToFound/Info.plist;
+				INFOPLIST_FILE = CustodyFolio/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.lendori.losttofound;
@@ -390,7 +390,7 @@
 				DEVELOPMENT_TEAM = HQG9VJ8JK2;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = LostToFound/Info.plist;
+				INFOPLIST_FILE = CustodyFolio/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.lendori.losttofound;
@@ -424,8 +424,8 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LostToFound.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LostToFound";
-				TEST_TARGET_NAME = LostToFound;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CustodyFolio.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CustodyFolio";
+				TEST_TARGET_NAME = CustodyFolio;
 			};
 			name = Debug;
 		};
@@ -451,15 +451,15 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LostToFound.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LostToFound";
-				TEST_TARGET_NAME = LostToFound;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CustodyFolio.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CustodyFolio";
+				TEST_TARGET_NAME = CustodyFolio;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		0A9000010000000000000001 /* Build configuration list for PBXProject "LostToFound" */ = {
+		0A9000010000000000000001 /* Build configuration list for PBXProject "CustodyFolio" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				0A8000010000000000000001 /* Debug */,
@@ -468,7 +468,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		0A9000020000000000000001 /* Build configuration list for PBXNativeTarget "LostToFound" */ = {
+		0A9000020000000000000001 /* Build configuration list for PBXNativeTarget "CustodyFolio" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				0A8000020000000000000001 /* Debug */,
@@ -477,7 +477,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		0B9000020000000000000001 /* Build configuration list for PBXNativeTarget "LostToFoundTests" */ = {
+		0B9000020000000000000001 /* Build configuration list for PBXNativeTarget "CustodyFolioTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				0B8000020000000000000001 /* Debug */,

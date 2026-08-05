@@ -68,7 +68,7 @@ Controls: encryption at rest, encrypted backups, least-privilege backup access, 
 
 ### DNS or Subdomain Takeover
 
-Risk: stale DNS records for `custodyfolio.com`, the transitional `losttofound.org` fallback, or future subdomains point to an unclaimed host.
+Risk: stale DNS records for `custodyfolio.com` or future subdomains point to an unclaimed host.
 
 Controls: remove stale CNAME/DNS records immediately when changing providers, verify hosting ownership, and monitor DNS.
 
