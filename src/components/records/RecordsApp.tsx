@@ -5608,14 +5608,24 @@ function EvidenceView({
   function printEvidenceSheet(item: EvidenceItem) {
     const printHtml = buildEvidencePrintHtml(item);
     if (!shareHtmlAsPdf(`custody_folio_file_sheet_${item.id}.pdf`, printHtml)) {
-      const printWindow = window.open("", "_blank", "noopener,noreferrer,width=900,height=700");
+      const printUrl = URL.createObjectURL(new Blob([printHtml], { type: "text/html" }));
+      const printWindow = window.open(printUrl, "_blank", "width=900,height=700");
       if (!printWindow) {
+        URL.revokeObjectURL(printUrl);
         flash("Popup blocked. Allow popups to print the file sheet.");
         return;
       }
 
-      printWindow.document.write(printHtml);
-      printWindow.document.close();
+      printWindow.opener = null;
+      printWindow.addEventListener(
+        "load",
+        () => {
+          printWindow.focus();
+          printWindow.print();
+        },
+        { once: true }
+      );
+      window.setTimeout(() => URL.revokeObjectURL(printUrl), 60_000);
     }
 
     updateDataset((current) =>
@@ -5882,6 +5892,7 @@ function EvidenceView({
                       <button
                         type="button"
                         className="btn-secondary px-3 py-1.5 text-xs"
+                        aria-label={`Print file sheet ${evidenceFileName(item)}`}
                         onClick={() => printEvidenceSheet(item)}
                       >
                         Print sheet
@@ -8816,7 +8827,6 @@ function buildEvidencePrintHtml(item: EvidenceItem) {
               .join("")}
           </tbody>
         </table>
-        <script>window.print();</script>
       </body>
     </html>`;
 }

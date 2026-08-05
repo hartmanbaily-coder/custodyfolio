@@ -957,6 +957,13 @@ test("mobile create flows stay visible across every record tab and reload with a
   await page.getByRole("button", { name: "Save file record" }).click();
   await expect(page.getByRole("status")).toContainText("File metadata saved with allow list validation");
   await expect(page.getByText(fileName, { exact: true })).toBeVisible();
+  const printPopupPromise = page.waitForEvent("popup");
+  await page.getByRole("button", { name: `Print file sheet ${fileName}` }).click();
+  const printPopup = await printPopupPromise;
+  await expect(printPopup).toHaveURL(/^blob:/);
+  await expect(printPopup.getByRole("heading", { name: "Custody Folio File Sheet" })).toBeVisible();
+  await expect(printPopup.getByRole("cell", { name: fileName })).toBeVisible();
+  await printPopup.close();
 
   const supportOrderName = "Persistence audit support order";
   await page.getByRole("button", { name: "Child Support", exact: true }).click();
