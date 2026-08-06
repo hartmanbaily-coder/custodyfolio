@@ -21,6 +21,7 @@ export function buildContentSecurityPolicy({
     "frame-ancestors 'none'",
     "object-src 'none'",
     "img-src 'self' data: blob:",
+    "worker-src 'self' blob:",
     "font-src 'self' data:",
     "style-src 'self' 'unsafe-inline'",
     scriptSrc.join(" "),

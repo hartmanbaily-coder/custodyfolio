@@ -47,6 +47,7 @@ The MVP does not provide legal advice, does not decide court strategy, does not 
 10. Required disclaimers for timelines, reports, court packets, and issue summaries.
 11. Whether report wording needs stronger limits around evidentiary use.
 12. Vendor and subprocessors disclosure language.
+13. Open-source notice and distribution obligations for the bundled `heic-to`/libheif HEIC decoder (LGPL-3.0).
 
 ## Product Wording To Approve
 

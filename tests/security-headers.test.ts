@@ -35,6 +35,7 @@ describe("content security policy", () => {
     expect(policy).toContain("form-action 'self'");
     expect(policy).toContain("frame-ancestors 'none'");
     expect(policy).toContain("object-src 'none'");
+    expect(policy).toContain("worker-src 'self' blob:");
     expect(policy).toContain("connect-src 'self'");
   });
 });

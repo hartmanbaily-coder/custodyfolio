@@ -836,7 +836,7 @@ export default function RecordsApp() {
             <nav className="mt-5 flex max-w-full gap-2 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50/80 p-2 lg:block lg:space-y-4 lg:overflow-visible" aria-label="Records workspace">
               {navGroups.map((group) => (
                 <div key={group.label} className="shrink-0">
-                  <p className="mb-1 hidden px-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 lg:block">
+                  <p className="mb-1 hidden border-b border-teal-200 px-2 pb-1 text-xs font-bold uppercase tracking-[0.14em] text-teal-700 lg:block">
                     {group.label}
                   </p>
                   <div className="flex gap-1 lg:grid">
@@ -845,7 +845,7 @@ export default function RecordsApp() {
                         key={item}
                         type="button"
                         onClick={() => openView(item)}
-                        className={`flex shrink-0 items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition lg:w-full ${
+                        className={`flex shrink-0 items-center justify-between gap-3 rounded-lg py-2.5 pl-5 pr-3 text-left text-sm font-medium transition lg:w-full ${
                           activeView === item
                             ? "bg-white text-teal-900 shadow-sm ring-1 ring-slate-200"
                             : "text-slate-600 hover:bg-white hover:text-slate-950"
@@ -1935,7 +1935,7 @@ function DashboardView({
         >
           <span className="text-sm font-semibold text-slate-950">Build a PDF</span>
           <span className="mt-1 block text-xs leading-5 text-slate-600">
-            Arrange screenshots into a clean, printable file.
+            Arrange screenshots into a clean, printable PDF. PDFs are often used when preparing court exhibits.
           </span>
         </button>
         <button

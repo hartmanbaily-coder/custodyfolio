@@ -7,6 +7,7 @@ import type {
   ExhibitSaveRequest,
   SavedScreenshotExhibit,
 } from "@/lib/records/exhibitEvidence";
+import { convertHeicUploadToJpeg, isHeicUpload } from "@/lib/records/heicConversion";
 import {
   exhibitLimits,
   generateScreenshotExhibit,
@@ -19,6 +20,7 @@ import {
 
 interface SelectedExhibitSource extends ExhibitSource {
   file: File;
+  originalFileName: string;
   previewUrl: string;
 }
 
@@ -92,22 +94,45 @@ export default function ExhibitBuilder({
         throw new Error(`Choose no more than ${exhibitLimits.maximumScreenshots} screenshots.`);
       }
 
-      for (const file of Array.from(files)) {
-        const bytes = new Uint8Array(await file.arrayBuffer());
+      const incomingFiles = Array.from(files);
+      const incomingHeicCount = incomingFiles.filter(isHeicUpload).length;
+      const totalOriginalBytes =
+        sources.reduce((sum, source) => sum + source.file.size, 0) +
+        incomingFiles.reduce((sum, file) => sum + file.size, 0);
+      if (totalOriginalBytes > exhibitLimits.maximumTotalInputBytes) {
+        throw new Error("The selected screenshots exceed the 24 MB total limit.");
+      }
+
+      if (incomingHeicCount) {
+        setMessage(
+          `Preparing ${incomingHeicCount} iPhone photo${incomingHeicCount === 1 ? "" : "s"} on this device...`
+        );
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      }
+
+      let convertedCount = 0;
+      for (const file of incomingFiles) {
+        const preparedFile = isHeicUpload(file)
+          ? await convertHeicUploadToJpeg(file, exhibitLimits.maximumImagePixels)
+          : file;
+        if (preparedFile !== file) convertedCount += 1;
+
+        const bytes = new Uint8Array(await preparedFile.arrayBuffer());
         const inspection = inspectExhibitImage(bytes, {
-          fileName: file.name,
-          fileType: file.type,
+          fileName: preparedFile.name,
+          fileType: preparedFile.type,
         });
         if (!inspection.ok) throw new Error(`${file.name}: ${inspection.error}`);
 
         nextSources.push({
           id: crypto.randomUUID(),
-          fileName: file.name,
-          fileType: file.type,
+          fileName: preparedFile.name,
+          fileType: preparedFile.type,
           file,
+          originalFileName: file.name,
           bytes,
           info: inspection.info,
-          previewUrl: URL.createObjectURL(file),
+          previewUrl: URL.createObjectURL(preparedFile),
         });
         const incrementalValidation = validateExhibitSources([...sources, ...nextSources]);
         if (!incrementalValidation.ok) throw new Error(incrementalValidation.error);
@@ -119,7 +144,13 @@ export default function ExhibitBuilder({
       setSources((current) => [...current, ...nextSources]);
       setGenerated(null);
       setSavedExhibit(null);
-      setMessage(`${nextSources.length} screenshot${nextSources.length === 1 ? "" : "s"} added.`);
+      setMessage(
+        `${nextSources.length} screenshot${nextSources.length === 1 ? "" : "s"} added.${
+          convertedCount
+            ? ` ${convertedCount} HEIC/HEIF photo${convertedCount === 1 ? " was" : "s were"} converted locally for the PDF.`
+            : ""
+        }`
+      );
     } catch (error) {
       for (const source of nextSources) URL.revokeObjectURL(source.previewUrl);
       setMessage(error instanceof Error ? error.message : "Screenshots could not be read.");
@@ -243,8 +274,9 @@ export default function ExhibitBuilder({
             Screenshot exhibit builder
           </h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-            Compile user-selected PNG or JPEG screenshots into a US Letter PDF. The result is a
-            derived exhibit, not an authenticated, verified, admissible, or tamper-proof original.
+            Compile user-selected PNG, JPEG, HEIC, or HEIF screenshots into a US Letter PDF. The
+            result is a derived exhibit, not an authenticated, verified, admissible, or tamper-proof
+            original.
           </p>
         </div>
         <span className="rounded-full bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-900">
@@ -259,7 +291,7 @@ export default function ExhibitBuilder({
             <input
               type="file"
               multiple
-              accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+              accept=".png,.jpg,.jpeg,.heic,.heif,image/png,image/jpeg,image/heic,image/heif"
               className="input"
               disabled={Boolean(busy)}
               onChange={(event) => {
@@ -270,7 +302,7 @@ export default function ExhibitBuilder({
           </label>
           <p className="text-xs leading-5 text-slate-500">
             Up to 12 screenshots, 24 MB total, 25 megapixels each, and 60 megapixels combined.
-            HEIC/HEIF is not supported in this builder.
+            HEIC/HEIF photos are converted to JPEG on this device before PDF generation.
           </p>
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
@@ -389,19 +421,19 @@ export default function ExhibitBuilder({
                     className="h-48 w-full rounded border border-slate-200 bg-white object-contain"
                   />
                   <p className="mt-2 break-words text-xs font-semibold text-slate-800">
-                    {index + 1}. {source.fileName}
+                    {index + 1}. {source.originalFileName}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
                     {source.info.width} × {source.info.height} · {Math.round(source.file.size / 1024)} KB
                   </p>
                   <div className="mt-3 grid grid-cols-3 gap-1.5">
-                    <button type="button" className="btn-secondary px-2 py-1.5 text-xs" disabled={index === 0} onClick={() => moveSource(index, -1)} aria-label={`Move ${source.fileName} up`}>
+                    <button type="button" className="btn-secondary px-2 py-1.5 text-xs" disabled={index === 0} onClick={() => moveSource(index, -1)} aria-label={`Move ${source.originalFileName} up`}>
                       Move up
                     </button>
-                    <button type="button" className="btn-secondary px-2 py-1.5 text-xs" disabled={index === sources.length - 1} onClick={() => moveSource(index, 1)} aria-label={`Move ${source.fileName} down`}>
+                    <button type="button" className="btn-secondary px-2 py-1.5 text-xs" disabled={index === sources.length - 1} onClick={() => moveSource(index, 1)} aria-label={`Move ${source.originalFileName} down`}>
                       Move down
                     </button>
-                    <button type="button" className="btn-secondary px-2 py-1.5 text-xs text-red-700" onClick={() => removeSource(source.id)} aria-label={`Remove ${source.fileName}`}>
+                    <button type="button" className="btn-secondary px-2 py-1.5 text-xs text-red-700" onClick={() => removeSource(source.id)} aria-label={`Remove ${source.originalFileName}`}>
                       Remove
                     </button>
                   </div>
