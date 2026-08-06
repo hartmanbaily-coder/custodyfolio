@@ -25,10 +25,6 @@ import {
   getExchangeArrivingParty,
   getExchangeLateParty,
   getIsoDateFromDateTime,
-  isLateExchangeTimelineEvent,
-  isMissedExchangeTimelineEvent,
-  isNoFaceTimeTimelineEvent,
-  isPostCallFaceTimeNotice,
   isTimelineVisibleEvent,
   labelEventType,
   labelExchangeParty,
@@ -112,6 +108,7 @@ import type {
   RecordsDataset,
   ReportType,
   TimelineSeverity,
+  CaseTerminology,
 } from "@/lib/records/types";
 import {
   buildStoredEvidenceName,
@@ -151,6 +148,11 @@ import {
 } from "@/lib/records/exhibitEvidence";
 import { uploadEvidenceFileToPrivateStorage } from "@/lib/records/evidenceClient";
 import { getRecordsCsrfToken } from "@/lib/records/attorneyClient";
+import {
+  caseTerminologyFields,
+  defaultCaseTerminology,
+  resolveCaseTerminology,
+} from "@/lib/records/terminology";
 
 const recordsPrivacyNote =
   "Records are private by default. Use labels such as Child 1 and Parent B instead of real names.";
@@ -172,6 +174,34 @@ const navItems = [
 ] as const;
 
 type ActiveView = (typeof navItems)[number];
+
+const navGroups: Array<{ label: string; items: ActiveView[] }> = [
+  { label: "Home", items: ["Dashboard"] },
+  { label: "Add", items: ["Import"] },
+  { label: "Review", items: ["Timeline", "Calendar", "Exchanges", "Notes", "Files"] },
+  { label: "Financial", items: ["Expenses", "Child Support"] },
+  { label: "Prepare & Share", items: ["Reports", "Screenshot PDFs", "Attorney Access"] },
+  { label: "Settings", items: ["Settings"] },
+];
+
+function activeViewLabel(view: ActiveView, terminology: CaseTerminology) {
+  const labels: Record<ActiveView, string> = {
+    Dashboard: "Home",
+    Calendar: "Calendar",
+    Import: "Add records",
+    Timeline: "Timeline",
+    Exchanges: terminology.parentingTime,
+    Notes: terminology.notesEvents,
+    Files: terminology.filesEvidence,
+    "Screenshot PDFs": "Build a PDF",
+    "Child Support": "Child support",
+    Expenses: "Expenses",
+    Reports: "Reports",
+    "Attorney Access": "Attorney access",
+    Settings: "Settings",
+  };
+  return labels[view];
+}
 
 function activeViewFromHistoryState(state: unknown): ActiveView | null {
   if (!state || typeof state !== "object" || !("recordsView" in state)) return null;
@@ -409,7 +439,7 @@ export default function RecordsApp() {
   );
   const [calendarMode, setCalendarMode] = useState<"month" | "list" | "timeline">("month");
   const [selectedDay, setSelectedDay] = useState(() => formatLocalDate(new Date(), defaultRecordsTimezone));
-  const [reportType, setReportType] = useState<ReportType>("exchange_compliance");
+  const [reportType, setReportType] = useState<ReportType>("full_profile");
   const [toast, setToast] = useState("");
   const toastTimeoutRef = useRef<number | null>(null);
 
@@ -421,6 +451,7 @@ export default function RecordsApp() {
   const selected = useSelectedRecords(dataset, userId, effectiveCaseId);
   const selectedProfile = dataset.users.find((user) => user.userId === userId);
   const caseTimezone = selectedCase?.timezone || selectedProfile?.timezone || defaultRecordsTimezone;
+  const terminology = resolveCaseTerminology(selectedCase?.terminology);
 
   const getCaseTimezone = useCallback((caseId: string, ownerId = userId) => {
     const matter = dataset.matters.find((item) => item.userId === ownerId && item.id === caseId);
@@ -802,30 +833,39 @@ export default function RecordsApp() {
               </div>
             </div>
 
-            <nav className="mt-5 flex max-w-full gap-1 overflow-x-auto rounded-lg border border-[#CBD5E1] bg-[#F8FAFC] p-1 lg:block lg:space-y-1 lg:overflow-visible">
-              {navItems.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => openView(item)}
-                  className={`flex shrink-0 items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#7C9AB0] lg:w-full ${
-                    activeView === item
-                      ? "bg-[#1E3A5F] text-white shadow-sm"
-                      : "text-slate-700 hover:bg-[#E2E8F0] hover:text-slate-950"
-                  }`}
-                >
-                  <span>{item}</span>
-                  {item === "Files" && (
-                    <span className={`rounded px-1.5 text-[11px] ${activeView === item ? "bg-white/20 text-white" : "bg-white/80 text-slate-600"}`}>
-                      {selected.evidenceItems.length}
-                    </span>
-                  )}
-                  {item === "Timeline" && (
-                    <span className={`rounded px-1.5 text-[11px] ${activeView === item ? "bg-white/20 text-white" : "bg-white/80 text-slate-600"}`}>
-                      {timelineEvents.length}
-                    </span>
-                  )}
-                </button>
+            <nav className="mt-5 flex max-w-full gap-2 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50/80 p-2 lg:block lg:space-y-4 lg:overflow-visible" aria-label="Records workspace">
+              {navGroups.map((group) => (
+                <div key={group.label} className="shrink-0">
+                  <p className="mb-1 hidden px-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 lg:block">
+                    {group.label}
+                  </p>
+                  <div className="flex gap-1 lg:grid">
+                    {group.items.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => openView(item)}
+                        className={`flex shrink-0 items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition lg:w-full ${
+                          activeView === item
+                            ? "bg-white text-teal-900 shadow-sm ring-1 ring-slate-200"
+                            : "text-slate-600 hover:bg-white hover:text-slate-950"
+                        }`}
+                      >
+                        <span>{activeViewLabel(item, terminology)}</span>
+                        {item === "Files" && (
+                          <span className={`rounded px-1.5 text-[11px] ${activeView === item ? "bg-teal-50 text-teal-900" : "bg-white text-slate-500"}`}>
+                            {selected.evidenceItems.length}
+                          </span>
+                        )}
+                        {item === "Timeline" && (
+                          <span className={`rounded px-1.5 text-[11px] ${activeView === item ? "bg-teal-50 text-teal-900" : "bg-white text-slate-500"}`}>
+                            {timelineEvents.length}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </nav>
           </div>
@@ -833,7 +873,7 @@ export default function RecordsApp() {
 
         <main className="records-workspace min-w-0">
           <WorkspaceHeader
-            activeView={activeView}
+            activeViewTitle={activeViewLabel(activeView, terminology)}
             matters={selected.matters}
             selectedCaseId={effectiveCaseId}
             onSelectCase={selectCase}
@@ -861,7 +901,9 @@ export default function RecordsApp() {
                 calendarEvents={timelineEvents}
                 exchangeLogs={selected.exchangeLogs}
                 evidenceCount={selected.evidenceItems.length}
+                financialCount={selected.expenseItems.length + selected.childSupportPayments.length}
                 onOpen={openView}
+                terminology={terminology}
               />
             )}
             {activeView === "Calendar" && (
@@ -881,8 +923,6 @@ export default function RecordsApp() {
                 timezone={caseTimezone}
                 userRoleLabel={selected.matter?.userRoleLabel || "Parent A"}
                 otherParentLabel={selected.matter?.otherParentLabel || "Parent B"}
-                sectionExport={sectionExportPackets.calendar}
-                onExportSection={exportSectionPacket}
                 flash={flash}
               />
             )}
@@ -894,6 +934,7 @@ export default function RecordsApp() {
                 timezone={caseTimezone}
                 recordsStorageMode={recordsStorageMode}
                 flash={flash}
+                onOpen={openView}
               />
             )}
             {activeView === "Timeline" && (
@@ -903,8 +944,6 @@ export default function RecordsApp() {
                 updateDataset={updateDataset}
                 userId={userId}
                 caseId={effectiveCaseId}
-                sectionExport={sectionExportPackets.timeline}
-                onExportSection={exportSectionPacket}
                 flash={flash}
               />
             )}
@@ -930,8 +969,6 @@ export default function RecordsApp() {
                 caseId={effectiveCaseId}
                 timezone={caseTimezone}
                 notes={selected.dateNotes}
-                sectionExport={sectionExportPackets.notes}
-                onExportSection={exportSectionPacket}
                 flash={flash}
               />
             )}
@@ -962,8 +999,6 @@ export default function RecordsApp() {
                 obligations={supportObligations}
                 supportRows={supportRows}
                 supportStats={supportStats}
-                sectionExport={sectionExportPackets.childSupport}
-                onExportSection={exportSectionPacket}
                 flash={flash}
               />
             )}
@@ -974,8 +1009,6 @@ export default function RecordsApp() {
                 caseId={effectiveCaseId}
                 expenses={selected.expenseItems}
                 expenseStats={expenseStats}
-                sectionExport={sectionExportPackets.expenses}
-                onExportSection={exportSectionPacket}
                 flash={flash}
               />
             )}
@@ -1019,6 +1052,7 @@ export default function RecordsApp() {
                 flash={flash}
                 storageStatus={storageStatus}
                 recordsStorageMode={recordsStorageMode}
+                onOpenAttorneyAccess={() => openView("Attorney Access")}
               />
             )}
           </div>
@@ -1857,13 +1891,17 @@ function DashboardView({
   calendarEvents,
   exchangeLogs,
   evidenceCount,
+  financialCount,
   onOpen,
+  terminology,
 }: {
   range: DateRange;
   calendarEvents: CalendarEvent[];
   exchangeLogs: RecordsDataset["exchangeLogs"];
   evidenceCount: number;
+  financialCount: number;
   onOpen: (view: ActiveView) => void;
+  terminology: CaseTerminology;
 }) {
   const visibleEvents = calendarEvents.filter(isTimelineVisibleEvent);
   const dashboardEvents = visibleEvents.filter(
@@ -1873,164 +1911,62 @@ function DashboardView({
       event.type !== "expense_item"
   );
   const stats = buildDashboardTimelineStats(dashboardEvents);
-  const exchangeStats = calculateExchangeStats(exchangeLogs, [], range);
-  const focusEvents = dashboardEvents.filter(
-    (event) =>
-      isLateExchangeTimelineEvent(event) ||
-      isMissedExchangeTimelineEvent(event) ||
-      isNoFaceTimeTimelineEvent(event) ||
-      isPostCallFaceTimeNotice(event) ||
-      event.severity === "critical" ||
-      event.severity === "attention"
-  );
-  const sourceCounts = [
-    {
-      label: "Late exchanges",
-      value: exchangeStats.lateCount,
-      view: "Exchanges" as const,
-      action: "Open exchange records",
-    },
-    {
-      label: "Missed/refused",
-      value: exchangeStats.missedCount + exchangeStats.refusedCount,
-      view: "Exchanges" as const,
-      action: "Open exchange records",
-    },
-    {
-      label: "No FaceTime",
-      value: stats.noFaceTimeCount,
-      view: "Notes" as const,
-      action: "Log a FaceTime outcome",
-    },
-    {
-      label: "Post call notices",
-      value: stats.postCallNoFaceTimeCount,
-      view: "Notes" as const,
-      action: "Log a FaceTime outcome",
-    },
-    {
-      label: "Attached files",
-      value: stats.evidenceCount,
-      view: "Files" as const,
-      action: "Open files",
-    },
-  ];
-
+  const parentingTimeCount = dashboardEvents.filter(
+    (event) => event.type === "scheduled_exchange" || event.type === "logged_exchange"
+  ).length;
+  const communicationCount = stats.noFaceTimeCount + stats.postCallNoFaceTimeCount;
   return (
     <div className="space-y-5">
-      <section className="grid gap-3 sm:grid-cols-2" aria-label="Quick tools">
+      <section className="grid gap-3 lg:grid-cols-[1.2fr_1fr_1fr]" aria-label="Quick tools">
+        <button
+          type="button"
+          onClick={() => onOpen("Import")}
+          className="rounded-xl bg-teal-700 p-5 text-left text-white shadow-sm transition hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-200"
+        >
+          <span className="text-base font-semibold">Add a record</span>
+          <span className="mt-1 block text-sm leading-5 text-teal-50">
+            Start with the basics. You can add more detail later.
+          </span>
+        </button>
         <button
           type="button"
           onClick={() => onOpen("Screenshot PDFs")}
-          className="rounded-lg border border-teal-200 bg-teal-50 p-4 text-left transition hover:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-200"
+          className="rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-100"
         >
-          <span className="text-sm font-semibold text-teal-950">Create a screenshot PDF</span>
-          <span className="mt-1 block text-xs leading-5 text-teal-800">
-            Select, arrange, and compile screenshots into a letter size exhibit.
+          <span className="text-sm font-semibold text-slate-950">Build a PDF</span>
+          <span className="mt-1 block text-xs leading-5 text-slate-600">
+            Arrange screenshots into a clean, printable file.
           </span>
         </button>
         <button
           type="button"
           onClick={() => onOpen("Attorney Access")}
-          className="rounded-lg border border-[#C4B5FD] bg-[#F5F3FF] p-4 text-left transition hover:border-[#8B5CF6] focus:outline-none focus:ring-2 focus:ring-[#C4B5FD]"
+          className="rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-100"
         >
-          <span className="text-sm font-semibold text-[#4C1D95]">Share with an attorney</span>
-          <span className="mt-1 block text-xs leading-5 text-[#5B21B6]">
-            Create or revoke read-only attorney access and review access history.
+          <span className="text-sm font-semibold text-slate-950">Share with an attorney</span>
+          <span className="mt-1 block text-xs leading-5 text-slate-600">
+            Create or revoke read-only access whenever you choose.
           </span>
         </button>
       </section>
-      <p className="text-sm leading-6 text-slate-600">
-        These counters use the selected date range. Choose a counter to review or add the
-        records that feed it.
-      </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-950">Your overview</h2>
+          <p className="mt-1 text-sm text-slate-600">A quick view of what you recorded in this date range.</p>
+        </div>
+        <button type="button" className="btn-secondary" onClick={() => onOpen("Settings")}>Customize labels</button>
+      </div>
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <StatCard
-          label="Timeline records"
-          value={stats.timelineCount}
-          detail={`${range.from} to ${range.to}`}
-          actionLabel="Review timeline"
-          onClick={() => onOpen("Timeline")}
-        />
-        <StatCard
-          label="Late exchanges"
-          value={exchangeStats.lateCount}
-          detail="From saved exchange outcomes"
-          actionLabel="Log or review exchanges"
-          onClick={() => onOpen("Exchanges")}
-          tone="amber"
-        />
-        <StatCard
-          label="Missed/refused"
-          value={exchangeStats.missedCount + exchangeStats.refusedCount}
-          detail="From saved exchange statuses"
-          actionLabel="Log or review exchanges"
-          onClick={() => onOpen("Exchanges")}
-          tone="slate"
-        />
-        <StatCard
-          label="No FaceTime conducted"
-          value={stats.noFaceTimeCount}
-          detail="From saved FaceTime outcomes"
-          actionLabel="Log FaceTime outcome"
-          onClick={() => onOpen("Notes")}
-          tone="amber"
-        />
-        <StatCard
-          label="Post call notices"
-          value={stats.postCallNoFaceTimeCount}
-          detail="Notice received after a call attempt"
-          actionLabel="Log FaceTime outcome"
-          onClick={() => onOpen("Notes")}
-          tone="slate"
-        />
+        <StatCard label="Recent records" value={stats.timelineCount} detail={`${range.from} to ${range.to}`} />
+        <StatCard label={terminology.parentingTime} value={parentingTimeCount} detail="Schedule and exchange records" tone="amber" />
+        <StatCard label={terminology.communication} value={communicationCount} detail="Calls, messages, and follow-ups" tone="slate" />
+        <StatCard label={terminology.filesEvidence} value={evidenceCount} detail="Files saved to this case" />
+        <StatCard label={terminology.financialRecords} value={financialCount} detail="Expenses and support payments" tone="slate" />
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[340px_1fr]">
-        <div className="space-y-4">
-          <Panel title="Dashboard focus" action="Court packet view">
-            <div className="grid gap-4">
-              <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-                {sourceCounts.map((item) => (
-                  <button
-                    key={item.label}
-                    type="button"
-                    onClick={() => onOpen(item.view)}
-                    aria-label={`${item.action}: ${item.label}`}
-                    className="flex w-full items-center justify-between gap-3 border-b border-slate-100 px-3 py-2.5 text-left text-sm transition last:border-b-0 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-200"
-                  >
-                    <span className="font-medium text-slate-700">{item.label}</span>
-                    <span className="rounded bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-950 ring-1 ring-slate-200">
-                      {item.value}
-                    </span>
-                  </button>
-                ))}
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                <StatMini label="Recorded issues" value={String(stats.attentionCount)} />
-                <StatMini label="Files in profile" value={String(evidenceCount)} />
-              </div>
-              <div className="rounded-md border border-slate-200 bg-slate-50/70 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Visible sources</p>
-                <div className="mt-2 flex flex-wrap gap-1.5 text-xs font-medium text-slate-600">
-                  {["Exchanges", "FaceTime", "Notes", "Files"].map((source) => (
-                    <span key={source} className="rounded bg-white px-2 py-1 ring-1 ring-slate-200">
-                      {source}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Panel>
-        </div>
-
-        <Panel title="Case timeline" action={`${dashboardEvents.length} records`}>
+      <section>
+        <Panel title="Recent activity" action={`${dashboardEvents.length} records`}>
           <Timeline events={dashboardEvents} emptyLabel="No timeline records in this date range." />
-          {focusEvents.length > 0 && (
-            <p className="mt-3 text-xs leading-5 text-slate-500">
-              {focusEvents.length} record{focusEvents.length === 1 ? "" : "s"} match the dashboard focus categories.
-            </p>
-          )}
         </Panel>
       </section>
     </div>
@@ -2053,8 +1989,6 @@ function CalendarView({
   timezone,
   userRoleLabel,
   otherParentLabel,
-  sectionExport,
-  onExportSection,
   flash,
 }: {
   events: CalendarEvent[];
@@ -2072,10 +2006,9 @@ function CalendarView({
   timezone: string;
   userRoleLabel: string;
   otherParentLabel: string;
-  sectionExport: SectionExportPacket;
-  onExportSection: (packet: SectionExportPacket, format: SectionExportFormat) => void;
   flash: (message: string) => void;
 }) {
+  const [calendarTask, setCalendarTask] = useState<"view" | "edit">("view");
   const monthKey = monthKeyFromDate(`${calendarMonthKey}-01`, timezone);
   const monthRange = getMonthBounds(monthKey, timezone);
   const monthDays = buildMonthDays(monthKey);
@@ -2642,13 +2575,10 @@ function CalendarView({
           ]}
           onChange={(value) => setMode(value as "month" | "list" | "timeline")}
         />
-        <button
-          type="button"
-          className="btn-secondary h-10 px-3"
-          onClick={() => onExportSection(sectionExport, "pdf")}
-        >
-          Export calendar PDF
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={calendarTask === "view" ? "btn-primary" : "btn-secondary"} onClick={() => setCalendarTask("view")}>View schedule</button>
+          <button type="button" className={calendarTask === "edit" ? "btn-primary" : "btn-secondary"} onClick={() => setCalendarTask("edit")}>Add or edit dates</button>
+        </div>
       </div>
 
       {mode === "month" && (
@@ -2692,6 +2622,7 @@ function CalendarView({
                 />
               </div>
             </div>
+            {calendarTask === "edit" ? (
             <details
               data-testid="calendar-color-tools"
               className="group mb-4 overflow-hidden rounded-md border border-slate-200 bg-slate-50"
@@ -2773,6 +2704,7 @@ function CalendarView({
                 </p>
               </div>
             </details>
+            ) : null}
             <div className="mb-4 flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
               {Array.from(
                 new Map(custodyDayAssignments.map((item) => [item.caregiverLabel, item]))
@@ -2993,7 +2925,8 @@ function CalendarView({
               />
             </Panel>
 
-            <Panel title="Add or edit date range" action="Custody schedule">
+            {calendarTask === "edit" ? (
+            <Panel title="Add or edit dates" action="Step 1 of 1">
               <form onSubmit={saveCustodyDay} className="grid gap-3">
                 <div className="grid min-w-0 gap-3 sm:grid-cols-2">
                   <Field label="Start date">
@@ -3140,6 +3073,7 @@ function CalendarView({
                 </div>
               </form>
             </Panel>
+            ) : null}
           </div>
         </section>
       )}
@@ -3164,6 +3098,7 @@ function CalendarView({
         </Panel>
       )}
 
+      {calendarTask === "edit" ? (
       <details
         id="recurring-exchange-schedule"
         className="group overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_5px_18px_rgba(15,23,42,0.07)]"
@@ -3193,8 +3128,7 @@ function CalendarView({
           />
         </div>
       </details>
-
-      <SectionExportPanel packet={sectionExport} onExport={onExportSection} />
+      ) : null}
     </div>
   );
 }
@@ -3474,8 +3408,6 @@ function TimelineView({
   updateDataset,
   userId,
   caseId,
-  sectionExport,
-  onExportSection,
   flash,
 }: {
   events: CalendarEvent[];
@@ -3483,20 +3415,12 @@ function TimelineView({
   updateDataset: ReturnType<typeof useRecordsStore>["updateDataset"];
   userId: string;
   caseId: string;
-  sectionExport: SectionExportPacket;
-  onExportSection: (packet: SectionExportPacket, format: SectionExportFormat) => void;
   flash: (message: string) => void;
 }) {
   const [filter, setFilter] = useState<TimelineFilter>("all");
   const [designationSavingId, setDesignationSavingId] = useState("");
   const visibleEvents = events.filter(isTimelineVisibleEvent);
   const filteredEvents = visibleEvents.filter((event) => matchesTimelineFilter(event, filter));
-  const attentionCount = visibleEvents.filter(isAttentionTimelineEvent).length;
-  const exchangeCount = visibleEvents.filter(
-    (event) => event.type === "scheduled_exchange" || event.type === "logged_exchange"
-  ).length;
-  const noteCount = visibleEvents.filter((event) => event.type === "custody_note").length;
-  const evidenceCount = visibleEvents.filter((event) => event.type === "evidence_item").length;
 
   function deleteTimelineEvent(event: CalendarEvent) {
     if (!canDeleteTimelineEvent(event)) {
@@ -3567,77 +3491,17 @@ function TimelineView({
 
   return (
     <div className="space-y-4">
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Timeline records" value={visibleEvents.length} detail={`${range.from} to ${range.to}`} />
-        <StatCard label="Recorded issues" value={attentionCount} detail="Attention or critical markers" tone="amber" />
-        <StatCard label="Exchange entries" value={exchangeCount} detail="Scheduled and logged" />
-        <StatCard label="Notes" value={noteCount} detail="Date based records" tone="slate" />
-        <StatCard label="Files" value={evidenceCount} detail="Dated file attachments" />
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-[340px_1fr]">
-        <div className="space-y-4">
-          <Panel title="Timeline controls" action="Court packet view">
-            <div className="grid gap-4">
-              <Field label="Show">
-                <select
-                  value={filter}
-                  onChange={(event) => setFilter(event.target.value as TimelineFilter)}
-                  className="input"
-                >
-                  {timelineFilterOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <button
-                type="button"
-                onClick={downloadTimelineCsv}
-                disabled={filteredEvents.length === 0}
-                className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Export timeline CSV
-              </button>
-              <p className="text-xs leading-5 text-slate-500">
-                Delete removes user entered records from this workspace. Scheduled exchanges and
-                uploaded files are managed from the Files tab.
-              </p>
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sources</p>
-                <div className="mt-2 flex flex-wrap gap-1.5 text-xs font-medium text-slate-600">
-                  {["Exchanges", "Notes", "Files", "Support", "Expenses"].map((source) => (
-                    <span key={source} className="rounded bg-white px-2 py-1">
-                      {source}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Timeline designations
-                </p>
-                <p className="text-xs leading-5 text-slate-500">
-                  The app suggests these from each record. Expand any timeline item to change its
-                  designation or return it to Automatic.
-                </p>
-                {(["critical", "attention", "positive", "neutral"] as const).map((severity) => (
-                  <div key={severity} className="flex items-center justify-between gap-3 text-xs">
-                    <span className="font-medium capitalize text-slate-700">{severity}</span>
-                    <span className={`rounded px-2 py-1 font-semibold ${timelineSeverityPillClass(severity)}`}>
-                      {timelineSeverityLabel(severity)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Panel>
-
-          <SectionExportPanel packet={sectionExport} onExport={onExportSection} />
+      <Panel title="Case timeline" action={`${filteredEvents.length} shown`}>
+        <div className="mb-4 flex flex-wrap items-end gap-2">
+          <Field label="Type or status">
+            <select value={filter} onChange={(event) => setFilter(event.target.value as TimelineFilter)} className="input min-w-52">
+              {timelineFilterOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </Field>
+          <button type="button" onClick={downloadTimelineCsv} disabled={filteredEvents.length === 0} className="btn-secondary disabled:cursor-not-allowed disabled:opacity-50">
+            Export timeline
+          </button>
         </div>
-
-        <Panel title="Case timeline" action={`${filteredEvents.length} shown`}>
           <Timeline
             events={filteredEvents}
             emptyLabel="No timeline records match this filter."
@@ -3645,8 +3509,11 @@ function TimelineView({
             onChangeDesignation={changeTimelineDesignation}
             designationSavingId={designationSavingId}
           />
-        </Panel>
-      </section>
+      </Panel>
+      <details className="rounded-lg border border-slate-200 bg-white">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-slate-700">How timeline status works</summary>
+        <p className="border-t border-slate-100 px-4 py-3 text-sm leading-6 text-slate-600">Custody Folio suggests a neutral status from each record. Open an item to change its status or return it to Automatic.</p>
+      </details>
     </div>
   );
 }
@@ -3958,7 +3825,7 @@ function ExchangesView({
               </Field>
             </div>
             <Field label="Status">
-              <select name="status" className="input" defaultValue="completed_late">
+              <select name="status" className="input" defaultValue="completed_on_time">
                 {exchangeStatuses.map((status) => (
                   <option key={status} value={status}>
                     {labelExchangeStatus(status)}
@@ -3966,6 +3833,11 @@ function ExchangesView({
                 ))}
               </select>
             </Field>
+            <details className="rounded-lg border border-slate-200 bg-slate-50/60">
+              <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-semibold text-slate-700">
+                More details
+              </summary>
+              <div className="grid gap-3 border-t border-slate-200 p-3">
             <Field label="Direction">
               <select
                 name="direction"
@@ -4001,7 +3873,7 @@ function ExchangesView({
               </select>
             </Field>
             <Field label="Who was late?">
-              <select name="lateParty" className="input" defaultValue="other_parent">
+              <select name="lateParty" className="input" defaultValue="not_applicable">
                 <option value="other_parent">{otherParentLabel}</option>
                 <option value="me">{userRoleLabel}</option>
                 <option value="third_party">Third party</option>
@@ -4038,6 +3910,8 @@ function ExchangesView({
             <Field label="Witnesses">
               <input name="witnesses" className="input" />
             </Field>
+              </div>
+            </details>
             <button className="btn-primary" type="submit">
               Save exchange outcome
             </button>
@@ -4282,8 +4156,6 @@ function NotesView({
   caseId,
   timezone,
   notes,
-  sectionExport,
-  onExportSection,
   flash,
 }: {
   updateDataset: ReturnType<typeof useRecordsStore>["updateDataset"];
@@ -4291,8 +4163,6 @@ function NotesView({
   caseId: string;
   timezone: string;
   notes: ReturnType<typeof useSelectedRecords>["dateNotes"];
-  sectionExport: SectionExportPacket;
-  onExportSection: (packet: SectionExportPacket, format: SectionExportFormat) => void;
   flash: (message: string) => void;
 }) {
   const [filter, setFilter] = useState("all");
@@ -4529,7 +4399,7 @@ function NotesView({
           </form>
         </Panel>
 
-        <Panel title={editingNote ? "Edit date based note" : "Add date based note"} action="Factual wording">
+        <Panel title={editingNote ? "Edit note" : "Add a note"} action="Keep it clear and factual">
           <form
             id="date-note-form"
             key={editingNote?.id || "new-date-note"}
@@ -4552,7 +4422,7 @@ function NotesView({
               </Field>
             </div>
             <Field label="Category">
-              <select name="category" className="input" defaultValue={editingNote?.category || "exchange"}>
+              <select name="category" className="input" defaultValue={editingNote?.category || "other"}>
                 {[
                   "exchange",
                   "communication",
@@ -4599,11 +4469,10 @@ function NotesView({
           </form>
         </Panel>
 
-        <SectionExportPanel packet={sectionExport} onExport={onExportSection} />
       </div>
 
       <Panel
-        title="Notes"
+        title="Notes & events"
         action={
           filter === "all"
             ? `${notes.length} total records`
@@ -4829,6 +4698,7 @@ function ImportView({
   timezone,
   recordsStorageMode,
   flash,
+  onOpen,
 }: {
   updateDataset: ReturnType<typeof useRecordsStore>["updateDataset"];
   userId: string;
@@ -4836,7 +4706,9 @@ function ImportView({
   timezone: string;
   recordsStorageMode: "local" | "supabase";
   flash: (message: string) => void;
+  onOpen: (view: ActiveView) => void;
 }) {
+  const [addMode, setAddMode] = useState<"event" | "file">("event");
   const [quickIssueSaving, setQuickIssueSaving] = useState(false);
   const [fileSaving, setFileSaving] = useState(false);
   const [fileCategory, setFileCategory] = useState<"document" | "message_archive">("document");
@@ -4859,13 +4731,13 @@ function ImportView({
       noteDate: text(formData, "noteDate"),
       noteTime: text(formData, "noteTime"),
       category: text(formData, "category"),
-      title: requestedTitle || (derivedTitle.length >= 2 ? derivedTitle : "Issue noted"),
+      title: requestedTitle || (derivedTitle.length >= 2 ? derivedTitle : "Event noted"),
       body,
-      tags: Array.from(new Set(["quick issue", ...parseTags(text(formData, "tags"))])).slice(0, 12),
+      tags: Array.from(new Set(["quick event", ...parseTags(text(formData, "tags"))])).slice(0, 12),
       includeInReports: formData.get("includeInReports") === "on",
     });
     if (!parsed.success) {
-      flash(parsed.error.issues[0]?.message || "Add at least a short description of the issue.");
+      flash(parsed.error.issues[0]?.message || "Add at least a short description of the event.");
       return;
     }
 
@@ -4895,18 +4767,18 @@ function ImportView({
             action: "created",
             entityType: "dateNote",
             entityId: noteId,
-            metadataSummary: "Quick issue saved without issue details in audit metadata.",
+            metadataSummary: "Quick event saved without event details in audit metadata.",
           }
         )
       );
       form.reset();
       flash(
         parsed.data.includeInReports
-          ? "Issue saved to Notes and included in reports for attorney review."
-          : "Issue saved to Notes."
+          ? "Saved. This event is included in reports."
+          : "Saved to Notes & events."
       );
     } catch (error) {
-      flash(error instanceof Error ? error.message : "Issue save failed.");
+      flash(error instanceof Error ? error.message : "Event save failed.");
     } finally {
       setQuickIssueSaving(false);
     }
@@ -5198,21 +5070,51 @@ function ImportView({
 
   return (
     <div className="space-y-4">
-      <div className="grid items-start gap-4 xl:grid-cols-2">
-        <Panel title="Quick issue" action="Save now, add detail later">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <h2 className="text-base font-semibold text-slate-950">What would you like to add?</h2>
+        <p className="mt-1 text-sm text-slate-600">Start with the basics. You can add more detail later.</p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: "Event", action: () => setAddMode("event"), active: addMode === "event" },
+            { label: "Parenting time", action: () => onOpen("Exchanges"), active: false },
+            { label: "Communication", action: () => onOpen("Notes"), active: false },
+            { label: "Note", action: () => onOpen("Notes"), active: false },
+            { label: "Expense", action: () => onOpen("Expenses"), active: false },
+            { label: "Support payment", action: () => onOpen("Child Support"), active: false },
+            { label: "File", action: () => setAddMode("file"), active: addMode === "file" },
+          ].map((choice) => (
+            <button
+              key={choice.label}
+              type="button"
+              onClick={choice.action}
+              className={`min-h-11 rounded-lg border px-3 py-2 text-left text-sm font-semibold transition ${
+                choice.active
+                  ? "border-teal-700 bg-teal-50 text-teal-950"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-teal-400 hover:bg-teal-50/40"
+              }`}
+            >
+              {choice.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <div className="max-w-2xl">
+        {addMode === "event" ? (
+        <Panel title="Add an event" action="A few details are enough">
           <div className="mb-3 rounded-md border border-teal-200 bg-teal-50 p-3 text-xs leading-5 text-teal-950">
-            Record an issue before you forget it. Only the issue description is required. It saves directly to Notes, where you can edit or delete it later.
+            Add what happened while it is fresh. You can edit or add supporting details later.
           </div>
           <form data-testid="quick-issue-form" onSubmit={saveQuickIssue} className="grid gap-3">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Issue date">
+            <Field label="Date">
                 <input name="noteDate" type="date" className="input" defaultValue={setupToday} />
               </Field>
               <Field label="Time (optional)">
                 <input name="noteTime" type="time" className="input" />
               </Field>
             </div>
-            <Field label="Issue type">
+            <Field label="Event type">
               <select name="category" className="input" defaultValue="other">
                 {[
                   "exchange",
@@ -5237,7 +5139,7 @@ function ImportView({
             <Field label="Short title (optional)">
               <input name="title" className="input" />
             </Field>
-            <Field label="What happened or needs attention?">
+            <Field label="What happened?">
               <textarea
                 name="body"
                 className="input min-h-28"
@@ -5248,17 +5150,19 @@ function ImportView({
             </Field>
             <label className="flex items-start gap-2 rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-700">
               <input name="includeInReports" type="checkbox" defaultChecked />
-              <span>Include this issue in reports prepared for attorney review.</span>
+              <span>Include this event in reports.</span>
             </label>
             <button className="btn-primary" type="submit" disabled={quickIssueSaving}>
-              {quickIssueSaving ? "Saving issue..." : "Save issue"}
+              {quickIssueSaving ? "Saving..." : "Save event"}
             </button>
           </form>
         </Panel>
+        ) : null}
 
-        <Panel title="Upload files" action={recordsStorageMode === "supabase" ? "Private storage" : "Metadata only"}>
+        {addMode === "file" ? (
+        <Panel title="Add a file" action={recordsStorageMode === "supabase" ? "Private storage" : "Metadata only"}>
           <p className="mb-3 text-xs leading-5 text-slate-500">
-            Add documents, photos, or message archives here. Choose the category first so the file is labeled correctly in Files.
+            Before uploading, remove sensitive numbers or details you do not need.
           </p>
           <form data-testid="file-upload-form" onSubmit={saveFiles} className="grid gap-3">
             <Field label="File category">
@@ -5314,6 +5218,7 @@ function ImportView({
             </button>
           </form>
         </Panel>
+        ) : null}
 
         <details className="group overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_5px_18px_rgba(15,23,42,0.07)] xl:col-span-2">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-sm font-semibold text-slate-900 marker:content-none sm:px-5">
@@ -5997,8 +5902,6 @@ function ChildSupportView({
   obligations,
   supportRows,
   supportStats,
-  sectionExport,
-  onExportSection,
   flash,
 }: {
   updateDataset: ReturnType<typeof useRecordsStore>["updateDataset"];
@@ -6010,10 +5913,11 @@ function ChildSupportView({
   obligations: ChildSupportObligation[];
   supportRows: Array<{ month: string; amountDue: number; amountPaid: number; unpaidBalance: number }>;
   supportStats: ReturnType<typeof calculateChildSupportObligationStats>;
-  sectionExport: SectionExportPacket;
-  onExportSection: (packet: SectionExportPacket, format: SectionExportFormat) => void;
   flash: (message: string) => void;
 }) {
+  const [supportTab, setSupportTab] = useState<"overview" | "order" | "payment" | "history">(
+    orders.length > 0 ? "overview" : "order"
+  );
   const [editingOrderId, setEditingOrderId] = useState("");
   const [editingPaymentId, setEditingPaymentId] = useState("");
   const [paymentOrderId, setPaymentOrderId] = useState("");
@@ -6213,19 +6117,32 @@ function ChildSupportView({
 
   return (
     <div className="space-y-4">
-      <section className="grid gap-3 md:grid-cols-4">
-        <StatCard label="Scheduled due to date" value={formatMoney(supportStats.totalDue)} detail="Calculated from saved order terms" />
-        <StatCard label="Recorded paid" value={formatMoney(supportStats.totalPaid)} detail="Matched by obligation due date" />
-        <StatCard label="Calculated outstanding" value={formatMoney(supportStats.unpaidBalance)} detail="Due through today" tone="amber" />
-        <StatCard label="Past-due periods" value={supportStats.pastDueCount} detail={formatMoney(supportStats.pastDueBalance)} tone="amber" />
+      <section className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm" aria-label="Child support sections">
+        <div className="grid gap-2 sm:grid-cols-4">
+          {([
+            ["overview", "Overview"],
+            ["order", orders.length ? "Order details" : "Set up an order"],
+            ["payment", "Record a payment"],
+            ["history", "History"],
+          ] as const).map(([value, label]) => (
+            <button key={value} type="button" onClick={() => setSupportTab(value)} className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${supportTab === value ? "bg-teal-700 text-white" : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"}`}>{label}</button>
+          ))}
+        </div>
       </section>
 
-      <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-950">
-        Custody Folio calculates scheduled obligations from the order amount, frequency, first due
-        date, and effective dates entered below. Payments are matched to the obligation due date.
-        These are app-calculated records based on user-entered terms and should be checked against
-        the signed order and official agency history before being shared.
-      </div>
+      {supportTab === "overview" ? (
+      <>
+      <section className="grid gap-3 md:grid-cols-4">
+        <StatCard label="Due" value={formatMoney(supportStats.totalDue)} detail="From saved order terms" />
+        <StatCard label="Paid" value={formatMoney(supportStats.totalPaid)} detail="Recorded payments" />
+        <StatCard label="Remaining" value={formatMoney(supportStats.unpaidBalance)} detail="Due through today" tone="amber" />
+        <StatCard label="Past due" value={formatMoney(supportStats.pastDueBalance)} detail={`${supportStats.pastDueCount} periods`} tone="amber" />
+      </section>
+
+      <details className="rounded-lg border border-blue-200 bg-blue-50">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-blue-950">How calculations work</summary>
+        <p className="border-t border-blue-200 px-4 py-3 text-sm leading-6 text-blue-950">Custody Folio calculates scheduled obligations from the terms you enter and matches payments to the obligation due date. Check the results against the signed order or agency history before sharing.</p>
+      </details>
       {orders.some(
         (order) => order.paymentFrequency !== "custom" && !order.firstPaymentDueDate
       ) ? (
@@ -6234,9 +6151,12 @@ function ChildSupportView({
           its first payment due date before relying on the calculated obligation ledger.
         </div>
       ) : null}
+      </>
+      ) : null}
 
       <section className="grid min-w-0 gap-4 xl:grid-cols-[420px_1fr]">
         <div className="min-w-0 space-y-4">
+          {supportTab === "order" ? (
           <Panel
             title={editingOrder ? "Edit child support order" : "Child support order"}
             action={editingOrder ? "Editing saved record" : "Documentation only"}
@@ -6328,15 +6248,17 @@ function ChildSupportView({
               </div>
             </form>
           </Panel>
+          ) : null}
 
-          <SupportOrdersPanel
+          {supportTab === "history" ? <SupportOrdersPanel
             className="xl:hidden"
             testId="mobile-support-orders"
             orders={orders}
-            onEdit={(orderId) => setEditingOrderId(orderId)}
+            onEdit={(orderId) => { setEditingOrderId(orderId); setSupportTab("order"); }}
             onDelete={deleteSupportOrder}
-          />
+          /> : null}
 
+          {supportTab === "payment" ? (
           <Panel
             title={editingPayment ? "Edit payment record" : "Log payment record"}
             action={editingPayment ? "Editing saved record" : "No payment processing"}
@@ -6442,40 +6364,41 @@ function ChildSupportView({
               </div>
             </form>
           </Panel>
+          ) : null}
 
-          <SupportPaymentsPanel
+          {supportTab === "history" ? <SupportPaymentsPanel
             className="xl:hidden"
             testId="mobile-support-payments"
             payments={payments}
-            onEdit={(paymentId) => setEditingPaymentId(paymentId)}
+            onEdit={(paymentId) => { setEditingPaymentId(paymentId); setSupportTab("payment"); }}
             onDelete={deleteSupportPayment}
-          />
+          /> : null}
         </div>
 
         <div className="min-w-0 space-y-4">
-          <SectionExportPanel packet={sectionExport} onExport={onExportSection} />
-
-          <SupportOrdersPanel
+          {supportTab === "history" ? <SupportOrdersPanel
             className="hidden xl:block"
             orders={orders}
-            onEdit={(orderId) => setEditingOrderId(orderId)}
+            onEdit={(orderId) => { setEditingOrderId(orderId); setSupportTab("order"); }}
             onDelete={deleteSupportOrder}
-          />
+          /> : null}
 
-          <Panel title="Payment history by month" action="Due vs paid">
-            <p className="mb-3 text-xs leading-5 text-slate-500">
-              Full order history through today or the latest saved payment month. Scheduled months
-              without a recorded payment remain visible.
-            </p>
-            <SupportTrendLine rows={supportRows} />
-          </Panel>
-          <SupportObligationsPanel obligations={obligations} />
-          <SupportPaymentsPanel
+          {supportTab === "overview" && supportRows.length > 0 ? (
+            <Panel title="Payment history by month" action="Due vs paid">
+              <p className="mb-3 text-xs leading-5 text-slate-500">
+                Full order history through today or the latest saved payment month. Scheduled months
+                without a recorded payment remain visible.
+              </p>
+              <SupportTrendLine rows={supportRows} />
+            </Panel>
+          ) : null}
+          {supportTab === "overview" || supportTab === "history" ? <SupportObligationsPanel obligations={obligations} /> : null}
+          {supportTab === "history" ? <SupportPaymentsPanel
             className="hidden xl:block"
             payments={payments}
-            onEdit={(paymentId) => setEditingPaymentId(paymentId)}
+            onEdit={(paymentId) => { setEditingPaymentId(paymentId); setSupportTab("payment"); }}
             onDelete={deleteSupportPayment}
-          />
+          /> : null}
         </div>
       </section>
     </div>
@@ -6625,8 +6548,6 @@ function ExpensesView({
   caseId,
   expenses,
   expenseStats,
-  sectionExport,
-  onExportSection,
   flash,
 }: {
   updateDataset: ReturnType<typeof useRecordsStore>["updateDataset"];
@@ -6634,10 +6555,10 @@ function ExpensesView({
   caseId: string;
   expenses: ReturnType<typeof useSelectedRecords>["expenseItems"];
   expenseStats: ReturnType<typeof calculateExpenseStats>;
-  sectionExport: SectionExportPacket;
-  onExportSection: (packet: SectionExportPacket, format: SectionExportFormat) => void;
   flash: (message: string) => void;
 }) {
+  const [expenseTab, setExpenseTab] = useState<"overview" | "add" | "history">("overview");
+  const [reimbursementRequested, setReimbursementRequested] = useState(true);
   const [editingExpenseId, setEditingExpenseId] = useState("");
   const editingExpense = expenses.find((expense) => expense.id === editingExpenseId) || null;
 
@@ -6700,6 +6621,7 @@ function ExpensesView({
       );
       setEditingExpenseId("");
       form.reset();
+      setReimbursementRequested(true);
       flash(editingExpense ? "Expense record updated and saved." : "Expense record saved. It appears below.");
     } catch (error) {
       flash(error instanceof Error ? error.message : "Expense record save failed.");
@@ -6735,14 +6657,26 @@ function ExpensesView({
         Totals, category chart, and the lawyer/court export include all saved expense records.
         Use Reports when you need a custom date range.
       </p>
-      <section className="grid gap-3 md:grid-cols-4">
-        <StatCard label="Total expenses" value={formatMoney(expenseStats.totalExpenses)} detail="All saved records" />
-        <StatCard label="Reimbursement requested" value={formatMoney(expenseStats.reimbursementRequested)} detail="User entered records" />
-        <StatCard label="Reimbursement received" value={formatMoney(expenseStats.reimbursementReceived)} detail="User entered records" />
-        <StatCard label="Unpaid reimbursement" value={formatMoney(expenseStats.unpaidReimbursement)} detail="Based on records" tone="amber" />
+      <section className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm" aria-label="Expense sections">
+        <div className="grid gap-2 sm:grid-cols-3">
+          {(["overview", "add", "history"] as const).map((value) => (
+            <button key={value} type="button" onClick={() => setExpenseTab(value)} className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${expenseTab === value ? "bg-teal-700 text-white" : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"}`}>
+              {value === "overview" ? "Overview" : value === "add" ? "Add expense" : "History"}
+            </button>
+          ))}
+        </div>
       </section>
+      {expenseTab === "overview" ? (
+      <section className="grid gap-3 md:grid-cols-4">
+        <StatCard label="Total recorded" value={formatMoney(expenseStats.totalExpenses)} detail="Selected range" />
+        <StatCard label="Requested" value={formatMoney(expenseStats.reimbursementRequested)} detail="Reimbursement records" />
+        <StatCard label="Received" value={formatMoney(expenseStats.reimbursementReceived)} detail="Recorded reimbursements" />
+        <StatCard label="Remaining" value={formatMoney(expenseStats.unpaidReimbursement)} detail="Based on your records" tone="amber" />
+      </section>
+      ) : null}
 
       <section className="grid gap-4 xl:grid-cols-[420px_1fr]">
+        {expenseTab === "add" ? (
         <Panel title={editingExpense ? "Edit expense record" : "Add expense record"} action="Custody related expense">
           <form
             id="expense-record-form"
@@ -6777,9 +6711,11 @@ function ExpensesView({
               <input name="paidByLabel" className="input" defaultValue={editingExpense?.paidByLabel || "Me"} />
             </Field>
             <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input name="reimbursementRequested" type="checkbox" defaultChecked={editingExpense?.reimbursementRequested ?? true} />
+              <input name="reimbursementRequested" type="checkbox" checked={reimbursementRequested} onChange={(event) => setReimbursementRequested(event.target.checked)} />
               Reimbursement requested
             </label>
+            {reimbursementRequested ? (
+            <>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Due date">
                 <input name="reimbursementDueDate" type="date" className="input" defaultValue={editingExpense?.reimbursementDueDate || ""} />
@@ -6808,6 +6744,8 @@ function ExpensesView({
                 ))}
               </select>
             </Field>
+            </>
+            ) : null}
             <Field label="Notes">
               <textarea name="notes" className="input min-h-20" defaultValue={editingExpense?.notes || ""} />
             </Field>
@@ -6823,14 +6761,13 @@ function ExpensesView({
             </div>
           </form>
         </Panel>
+        ) : null}
 
         <div className="min-w-0 space-y-4">
-          <SectionExportPanel packet={sectionExport} onExport={onExportSection} />
-
-          <Panel title="Expenses by category" action={`${expenses.length} records`}>
+          {expenseTab === "overview" && expenseStats.byCategory.length > 0 ? <Panel title="Expenses by category" action={`${expenses.length} records`}>
             <ExpenseCategoryChart rows={expenseStats.byCategory} />
-          </Panel>
-          <Panel title="Expense records" action="Files can be attached separately">
+          </Panel> : null}
+          {expenseTab === "history" ? <Panel title="Expense records" action={`${expenses.length} saved`}>
             <Table
               headers={["Date", "Category", "Description", "Amount", "Reimbursement", "Action"]}
               rows={expenses.map((expense) => [
@@ -6844,6 +6781,8 @@ function ExpensesView({
                     ariaLabel={`Edit expense ${expense.description}`}
                     onClick={() => {
                       setEditingExpenseId(expense.id);
+                      setReimbursementRequested(expense.reimbursementRequested);
+                      setExpenseTab("add");
                       window.requestAnimationFrame(() =>
                         document.getElementById("expense-record-form")?.scrollIntoView({ behavior: "smooth", block: "start" })
                       );
@@ -6857,7 +6796,7 @@ function ExpensesView({
                 </div>,
               ])}
             />
-          </Panel>
+          </Panel> : null}
         </div>
       </section>
     </div>
@@ -6883,6 +6822,7 @@ function ReportsView({
   updateDataset: ReturnType<typeof useRecordsStore>["updateDataset"];
   flash: (message: string) => void;
 }) {
+  const [reportStep, setReportStep] = useState<"choose" | "preview" | "export">("choose");
   const [exportReview, setExportReview] = useState<Record<ExportReviewKey, boolean>>({
     neutralLabels: false,
     paymentRefs: false,
@@ -6947,8 +6887,19 @@ function ReportsView({
   }
 
   return (
-    <div className="report-print-layout grid min-w-0 gap-4 xl:grid-cols-[360px_1fr]">
-      <Panel title="Report builder" action="Issue-focused" className="report-builder-panel no-print">
+    <div className="report-print-layout min-w-0 space-y-4">
+      <section className="no-print rounded-xl border border-slate-200 bg-white p-2 shadow-sm" aria-label="Report steps">
+        <div className="grid gap-2 sm:grid-cols-3">
+          {([[
+            "choose", "1. Choose report"
+          ], ["preview", "2. Preview"], ["export", "3. Review & export"]] as const).map(([value, label]) => (
+            <button key={value} type="button" onClick={() => setReportStep(value)} disabled={value !== "choose" && !preview} className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${reportStep === value ? "bg-teal-700 text-white" : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"}`}>{label}</button>
+          ))}
+        </div>
+      </section>
+
+      {reportStep === "choose" ? (
+      <Panel title="Choose a report" action="Step 1" className="report-builder-panel no-print">
         <div className="grid gap-3">
           <Field label="Report type">
             <select
@@ -6969,8 +6920,16 @@ function ReportsView({
               <p>{selectedReportOption.description}</p>
             </div>
           )}
+          <button type="button" className="btn-primary" onClick={() => setReportStep("preview")}>Preview report</button>
+        </div>
+      </Panel>
+      ) : null}
+
+      {reportStep === "export" ? (
+      <Panel title="Review privacy and export" action="Step 3" className="report-builder-panel no-print">
+        <div className="grid gap-3">
           <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
-            <p className="text-sm font-semibold text-amber-950">Pre-export privacy review</p>
+            <p className="text-sm font-semibold text-amber-950">Before downloading</p>
             <div className="mt-3 space-y-2">
               {exportReviewItems.map((item) => (
                 <label key={item.key} className="flex items-start gap-2 text-xs leading-5 text-amber-950">
@@ -6994,11 +6953,13 @@ function ReportsView({
           <p className="text-xs leading-5 text-slate-500">
             CSV contains the report&apos;s dated record rows in a clean table. PDF output is a
             complete letter size file that can be printed or saved. Downloaded reports leave
-            protected storage.
+            protected storage. Review where you save or share them.
           </p>
         </div>
       </Panel>
+      ) : null}
 
+      {reportStep !== "choose" ? (
       <Panel title={preview.title} action={preview.caseName} className="report-preview-panel">
         <article className="report-surface space-y-5">
           <div className="border-b border-slate-200 pb-4">
@@ -7025,12 +6986,12 @@ function ReportsView({
             ))}
           </div>
           <div className="report-chart-list grid gap-3">
-            {preview.charts.map((chart) => (
+            {preview.charts.filter((chart) => chart.rows.some((row) => row.value || row.secondaryValue || row.tertiaryValue)).map((chart) => (
               <ReportPreviewChartCard key={chart.title} chart={chart} />
             ))}
           </div>
           <div className="space-y-4">
-            {preview.tables.map((table) => (
+            {preview.tables.filter((table) => table.rows.length > 0).map((table) => (
               <div key={table.title} className="report-table-section">
                 <h3 className="mb-2 text-sm font-semibold text-slate-950">{table.title}</h3>
                 <div className="screen-only">
@@ -7044,6 +7005,9 @@ function ReportsView({
                 )}
               </div>
             ))}
+            {preview.tables.every((table) => table.rows.length === 0) ? (
+              <Empty label="No records match this report and date range. Try another range or report type." />
+            ) : null}
           </div>
           {preview.evidenceIndex.length > 0 && (
             <div className="report-table-section">
@@ -7072,6 +7036,7 @@ function ReportsView({
           )}
         </article>
       </Panel>
+      ) : null}
     </div>
   );
 }
@@ -7111,6 +7076,7 @@ function SettingsView({
   flash,
   storageStatus,
   recordsStorageMode,
+  onOpenAttorneyAccess,
 }: {
   dataset: RecordsDataset;
   updateDataset: ReturnType<typeof useRecordsStore>["updateDataset"];
@@ -7123,9 +7089,13 @@ function SettingsView({
   flash: (message: string) => void;
   storageStatus: string;
   recordsStorageMode: "local" | "supabase";
+  onOpenAttorneyAccess: () => void;
 }) {
   const profile = dataset.users.find((user) => user.userId === userId);
   const selectedMatter = selected.matter;
+  const [settingsSection, setSettingsSection] = useState<
+    "profile" | "case" | "personalize" | "security"
+  >("profile");
 
   async function updateProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -7266,6 +7236,49 @@ function SettingsView({
     }
   }
 
+  async function updateTerminology(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedMatter) return flash("Select a case before customizing its labels.");
+    const formData = new FormData(event.currentTarget);
+    const terminology = resolveCaseTerminology(
+      Object.fromEntries(
+        caseTerminologyFields.map((field) => [field.key, text(formData, field.key)])
+      ) as Partial<CaseTerminology>
+    );
+
+    try {
+      await updateDataset((current) => ({
+        ...current,
+        matters: current.matters.map((matter) =>
+          matter.id === selectedMatter.id && matter.userId === userId
+            ? { ...matter, terminology, updatedAt: nowIso() }
+            : matter
+        ),
+      }));
+      flash("Your labels were saved and applied across this case.");
+    } catch (error) {
+      flash(error instanceof Error ? error.message : "Label customization failed.");
+    }
+  }
+
+  async function resetTerminology() {
+    if (!selectedMatter) return flash("Select a case before resetting its labels.");
+
+    try {
+      await updateDataset((current) => ({
+        ...current,
+        matters: current.matters.map((matter) =>
+          matter.id === selectedMatter.id && matter.userId === userId
+            ? { ...matter, terminology: defaultCaseTerminology, updatedAt: nowIso() }
+            : matter
+        ),
+      }));
+      flash("Default labels were restored for this case.");
+    } catch (error) {
+      flash(error instanceof Error ? error.message : "Label reset failed.");
+    }
+  }
+
   function deleteCase() {
     updateDataset((current) => ({
       ...current,
@@ -7322,291 +7335,288 @@ function SettingsView({
     flash("Advanced JSON data backup downloaded.");
   }
 
+  const matterTerminology = resolveCaseTerminology(selectedMatter?.terminology);
+
   return (
-    <div className="grid min-w-0 gap-4 xl:grid-cols-[420px_1fr]">
-      <div className="min-w-0 space-y-4">
-        <Panel title="Account settings" action="Profile">
-          <form onSubmit={updateProfile} className="grid gap-3">
-            <ThemeSelector />
-            <Field label="Client name shown to attorneys">
-              <input name="displayName" className="input" defaultValue={profile?.displayName || ""} required minLength={2} maxLength={120} />
-            </Field>
-            <p className="text-xs leading-5 text-slate-500">
-              This name or clear identifying label appears with the selected case in the attorney portal. Verify it before sending an invitation.
-              {profile?.attorneySharingProfileConfirmedAt ? " Attorney sharing identity confirmed." : " Save this profile once before creating an attorney invitation."}
-            </p>
-            <Field label="Email">
-              <input className="input bg-slate-100" value={profile?.email || ""} readOnly />
-            </Field>
-            <Field label="Time zone">
-              <RecordsTimezoneSelect
-                defaultValue={profile?.timezone || defaultRecordsTimezone}
-              />
-            </Field>
-            <button className="btn-primary" type="submit">
-              Update profile
+    <div className="space-y-4">
+      <section className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm" aria-label="Settings sections">
+        <div className="grid gap-2 sm:grid-cols-4">
+          {([
+            ["profile", "Profile"],
+            ["case", "Case"],
+            ["personalize", "Personalize"],
+            ["security", "Security & data"],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setSettingsSection(value)}
+              className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
+                settingsSection === value
+                  ? "bg-teal-700 text-white"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+              }`}
+            >
+              {label}
             </button>
-          </form>
-        </Panel>
+          ))}
+        </div>
+      </section>
 
-        <Panel title="Selected case settings" action="Calendar timezone">
-          {selectedMatter ? (
-            <form onSubmit={updateMatter} className="grid gap-3">
-              <Field label="Case name">
-                <input name="caseName" className="input" defaultValue={selectedMatter.caseName} />
-              </Field>
-              <Field label="Order nickname">
-                <input name="courtOrOrderNickname" className="input" defaultValue={selectedMatter.courtOrOrderNickname || ""} />
-              </Field>
-              <Field label="Court name">
-                <input name="courtName" className="input" defaultValue={selectedMatter.courtName || ""} />
-              </Field>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="Order date">
-                  <input name="orderDate" type="date" className="input" defaultValue={selectedMatter.orderDate || ""} />
-                </Field>
-                <Field label="Effective start">
-                  <input
-                    name="effectiveStartDate"
-                    type="date"
-                    className="input"
-                    defaultValue={selectedMatter.effectiveStartDate || ""}
-                  />
-                </Field>
-                <Field label="Effective end">
-                  <input
-                    name="effectiveEndDate"
-                    type="date"
-                    className="input"
-                    defaultValue={selectedMatter.effectiveEndDate || ""}
-                  />
-                </Field>
-              </div>
-              <Field label="Child labels">
+      {settingsSection === "profile" ? (
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[420px_1fr]">
+          <Panel title="Your profile" action="Account">
+            <form onSubmit={updateProfile} className="grid gap-3">
+              <ThemeSelector />
+              <Field label="Client name shown to attorneys">
                 <input
-                  name="childDisplayLabels"
+                  name="displayName"
                   className="input"
-                  defaultValue={selectedMatter.childDisplayLabels.join(", ")}
+                  defaultValue={profile?.displayName || ""}
+                  required
+                  minLength={2}
+                  maxLength={120}
                 />
               </Field>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Your label">
-                  <input name="userRoleLabel" className="input" defaultValue={selectedMatter.userRoleLabel} />
-                </Field>
-                <Field label="Other parent label">
-                  <input name="otherParentLabel" className="input" defaultValue={selectedMatter.otherParentLabel} />
-                </Field>
-              </div>
-              <Field label="Default exchange location">
-                <input
-                  name="defaultExchangeLocation"
-                  className="input"
-                  defaultValue={selectedMatter.defaultExchangeLocation || ""}
-                />
-              </Field>
-              <Field label="Case time zone">
-                <RecordsTimezoneSelect
-                  defaultValue={
-                    selectedMatter.timezone ||
-                    profile?.timezone ||
-                    defaultRecordsTimezone
-                  }
-                />
-              </Field>
-              <Field label="Notes">
-                <textarea name="notes" className="input min-h-20" defaultValue={selectedMatter.notes || ""} />
-              </Field>
-              <button className="btn-primary" type="submit">
-                Save selected case
-              </button>
-            </form>
-          ) : (
-            <p className="text-sm leading-6 text-slate-600">Create or select a custody matter before setting a case timezone.</p>
-          )}
-        </Panel>
-
-        <Panel title="Create custody matter" action="Privacy minded labels">
-          <form onSubmit={createMatter} className="grid gap-3">
-            <Field label="Case name">
-              <input name="caseName" className="input" />
-            </Field>
-            <Field label="Order nickname">
-              <input name="courtOrOrderNickname" className="input" />
-            </Field>
-            <Field label="Court name">
-              <input name="courtName" className="input" />
-            </Field>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Order date">
-                <input name="orderDate" type="date" className="input" />
-              </Field>
-              <Field label="Effective start">
-                <input name="effectiveStartDate" type="date" className="input" />
-              </Field>
-            </div>
-            <Field label="Child labels">
-              <input name="childDisplayLabels" className="input" defaultValue="Child 1, Child 2" />
-            </Field>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Your label">
-                <input name="userRoleLabel" className="input" defaultValue="Me" />
-              </Field>
-              <Field label="Other parent label">
-                <input name="otherParentLabel" className="input" defaultValue="Other Parent" />
-              </Field>
-            </div>
-            <Field label="Default exchange location">
-              <input name="defaultExchangeLocation" className="input" />
-            </Field>
-            <Field label="Time zone">
-              <RecordsTimezoneSelect
-                defaultValue={profile?.timezone || defaultRecordsTimezone}
-              />
-            </Field>
-            <Field label="Notes">
-              <textarea name="notes" className="input min-h-20" />
-            </Field>
-            <button className="btn-primary" type="submit">
-              Create matter
-            </button>
-          </form>
-        </Panel>
-      </div>
-
-      <div className="min-w-0 space-y-4">
-        <AttorneyAccessPanel
-          caseId={caseId}
-          cloudStorageEnabled={recordsStorageMode === "supabase"}
-          clientName={profile?.displayName || ""}
-          caseName={selectedMatter?.caseName || ""}
-          profileConfirmed={Boolean(profile?.attorneySharingProfileConfirmedAt)}
-          onOpenProfileSetup={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-        />
-
-        <Panel title="Storage status" action={recordsStorageMode === "supabase" ? "Private cloud" : "This browser"}>
-          <div className="space-y-3 text-sm leading-6 text-slate-600">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Storage mode</p>
-                <p className="mt-1 font-medium text-slate-900">
-                  {recordsStorageMode === "supabase" ? "Private cloud storage" : "This browser"}
-                </p>
-              </div>
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Last status</p>
-                <p className="mt-1 font-medium text-slate-900">{storageStatus}</p>
-              </div>
-            </div>
-            <p>
-              {recordsStorageMode === "supabase"
-                ? "Your records are saved to your account and available when you sign in."
-                : "Records in browser mode stay on this device."}
-            </p>
-          </div>
-        </Panel>
-
-        <Panel title="Session management" action="Account access">
-          <div className="grid gap-3 text-sm leading-6 text-slate-600">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Signed in as</p>
-                <p className="mt-1 font-medium text-slate-900">{profile?.email || "Demo user"}</p>
-              </div>
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Session storage</p>
-                <p className="mt-1 font-medium text-slate-900">
-                  {recordsStorageMode === "supabase" ? "Secure account session" : "This browser only"}
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <button type="button" onClick={logout} className="btn-secondary">
-                Sign out
-              </button>
-              {recordsStorageMode === "local" ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    clearFailedLoginAttempts();
-                    flash("Demo login lockout counter reset.");
-                  }}
-                  className="btn-secondary"
-                >
-                  Reset demo lockout
-                </button>
-              ) : null}
-            </div>
-            <p>Use the session controls when switching accounts or stepping away from this device.</p>
-          </div>
-        </Panel>
-
-        <Panel title="User data controls" action="Private by default">
-          <details
-            data-testid="advanced-data-backup"
-            className="group overflow-hidden rounded-md border border-slate-200 bg-slate-50"
-          >
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-semibold text-slate-900 marker:content-none">
-              <span>Advanced data backup</span>
-              <span
-                className="shrink-0 text-slate-500 transition-transform group-open:rotate-180"
-                aria-hidden="true"
-              >
-                <ChevronDownIcon />
-              </span>
-            </summary>
-            <div className="space-y-3 border-t border-slate-200 p-3">
-              <p className="text-xs leading-5 text-slate-600">
-                Download a machine-readable JSON backup of the selected case. Keep it for archival
-                or future migration; it is not formatted for court or attorney reading, and Custody
-                Folio cannot restore it automatically yet.
+              <p className="text-xs leading-5 text-slate-500">
+                This name or clear identifying label appears with the selected case in the attorney portal. Verify it before sending an invitation.
+                {profile?.attorneySharingProfileConfirmedAt
+                  ? " Attorney sharing identity confirmed."
+                  : " Save this profile once before creating an attorney invitation."}
               </p>
-              <button type="button" onClick={exportData} className="btn-secondary">
-                Download JSON backup
+              <Field label="Email">
+                <input className="input bg-slate-100" value={profile?.email || ""} readOnly />
+              </Field>
+              <Field label="Time zone">
+                <RecordsTimezoneSelect defaultValue={profile?.timezone || defaultRecordsTimezone} />
+              </Field>
+              <button className="btn-primary" type="submit">Save profile</button>
+            </form>
+          </Panel>
+          <Panel title="Attorney access" action="Read only">
+            <div className="space-y-4 text-sm leading-6 text-slate-600">
+              <p>Invite an attorney, review who can see this case, or revoke access at any time.</p>
+              <button type="button" className="btn-primary" onClick={onOpenAttorneyAccess}>
+                Manage attorney access
               </button>
             </div>
+          </Panel>
+        </div>
+      ) : null}
+
+      {settingsSection === "case" ? (
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[1fr_380px]">
+          <Panel title="Selected case" action="Case details">
+            {selectedMatter ? (
+              <form onSubmit={updateMatter} className="grid gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Case name">
+                    <input name="caseName" className="input" defaultValue={selectedMatter.caseName} />
+                  </Field>
+                  <Field label="Order nickname">
+                    <input name="courtOrOrderNickname" className="input" defaultValue={selectedMatter.courtOrOrderNickname || ""} />
+                  </Field>
+                </div>
+                <Field label="Court name">
+                  <input name="courtName" className="input" defaultValue={selectedMatter.courtName || ""} />
+                </Field>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Field label="Order date">
+                    <input name="orderDate" type="date" className="input" defaultValue={selectedMatter.orderDate || ""} />
+                  </Field>
+                  <Field label="Effective start">
+                    <input name="effectiveStartDate" type="date" className="input" defaultValue={selectedMatter.effectiveStartDate || ""} />
+                  </Field>
+                  <Field label="Effective end">
+                    <input name="effectiveEndDate" type="date" className="input" defaultValue={selectedMatter.effectiveEndDate || ""} />
+                  </Field>
+                </div>
+                <Field label="Child labels">
+                  <input name="childDisplayLabels" className="input" defaultValue={selectedMatter.childDisplayLabels.join(", ")} />
+                </Field>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Your label">
+                    <input name="userRoleLabel" className="input" defaultValue={selectedMatter.userRoleLabel} />
+                  </Field>
+                  <Field label="Other parent label">
+                    <input name="otherParentLabel" className="input" defaultValue={selectedMatter.otherParentLabel} />
+                  </Field>
+                </div>
+                <Field label="Default exchange location">
+                  <input name="defaultExchangeLocation" className="input" defaultValue={selectedMatter.defaultExchangeLocation || ""} />
+                </Field>
+                <Field label="Case time zone">
+                  <RecordsTimezoneSelect defaultValue={selectedMatter.timezone || profile?.timezone || defaultRecordsTimezone} />
+                </Field>
+                <Field label="Private notes">
+                  <textarea name="notes" className="input min-h-20" defaultValue={selectedMatter.notes || ""} />
+                </Field>
+                <button className="btn-primary" type="submit">Save case</button>
+              </form>
+            ) : (
+              <p className="text-sm leading-6 text-slate-600">Create or select a case to edit its details.</p>
+            )}
+          </Panel>
+
+          <details className="self-start rounded-xl border border-slate-200 bg-white shadow-sm">
+            <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold text-slate-950">
+              Create another case
+            </summary>
+            <form onSubmit={createMatter} className="grid gap-3 border-t border-slate-100 p-5">
+              <Field label="Case name"><input name="caseName" className="input" /></Field>
+              <Field label="Order nickname"><input name="courtOrOrderNickname" className="input" /></Field>
+              <Field label="Court name"><input name="courtName" className="input" /></Field>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Order date"><input name="orderDate" type="date" className="input" /></Field>
+                <Field label="Effective start"><input name="effectiveStartDate" type="date" className="input" /></Field>
+              </div>
+              <Field label="Child labels"><input name="childDisplayLabels" className="input" defaultValue="Child 1, Child 2" /></Field>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Your label"><input name="userRoleLabel" className="input" defaultValue="Me" /></Field>
+                <Field label="Other parent label"><input name="otherParentLabel" className="input" defaultValue="Other Parent" /></Field>
+              </div>
+              <Field label="Default exchange location"><input name="defaultExchangeLocation" className="input" /></Field>
+              <Field label="Time zone"><RecordsTimezoneSelect defaultValue={profile?.timezone || defaultRecordsTimezone} /></Field>
+              <Field label="Private notes"><textarea name="notes" className="input min-h-20" /></Field>
+              <button className="btn-primary" type="submit">Create case</button>
+            </form>
           </details>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <button type="button" onClick={deleteCase} className="btn-secondary">
-              Delete selected case
-            </button>
-            <button type="button" onClick={resetDemoData} className="btn-secondary">
-              {recordsStorageMode === "supabase" ? "Clear workspace data" : "Reset synthetic demo data"}
-            </button>
-            <Link href={accountDeletionPath} className="btn-secondary text-center">
-              Delete my account
-            </Link>
-            <Link href="/privacy" className="btn-secondary text-center">
-              Privacy and deletion policy
-            </Link>
+        </div>
+      ) : null}
+
+      {settingsSection === "personalize" ? (
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[1fr_360px]">
+          <Panel title="Choose the words that fit" action="Applies to this case">
+            {selectedMatter ? (
+              <form
+                key={`${selectedMatter.id}-${Object.values(matterTerminology).join("|")}`}
+                onSubmit={updateTerminology}
+                className="grid gap-4"
+              >
+                <p className="text-sm leading-6 text-slate-600">
+                  Change the broad section labels without changing the records underneath them.
+                </p>
+                {caseTerminologyFields.map((field) => (
+                  <Field key={field.key} label={field.label} hint={`Examples: ${field.example}`}>
+                    <input name={field.key} className="input" defaultValue={matterTerminology[field.key]} maxLength={36} />
+                  </Field>
+                ))}
+                <div className="flex flex-wrap gap-2">
+                  <button className="btn-primary" type="submit">Save labels</button>
+                  <button className="btn-secondary" type="button" onClick={resetTerminology}>Restore defaults</button>
+                </div>
+              </form>
+            ) : (
+              <p className="text-sm leading-6 text-slate-600">Create or select a case before customizing labels.</p>
+            )}
+          </Panel>
+          <Panel title="Where these labels appear" action="Consistent wording">
+            <ul className="list-disc space-y-2 pl-5 text-sm leading-6 text-slate-600">
+              <li>Home overview tiles</li>
+              <li>Navigation and page headings</li>
+              <li>Attorney read-only view</li>
+              <li>Report and export choices</li>
+            </ul>
+          </Panel>
+        </div>
+      ) : null}
+
+      {settingsSection === "security" ? (
+        <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+          <Panel title="Storage" action={recordsStorageMode === "supabase" ? "Private cloud" : "This browser"}>
+            <div className="space-y-3 text-sm leading-6 text-slate-600">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Storage mode</p>
+                  <p className="mt-1 font-medium text-slate-900">{recordsStorageMode === "supabase" ? "Private cloud storage" : "This browser"}</p>
+                </div>
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Last status</p>
+                  <p className="mt-1 font-medium text-slate-900">{storageStatus}</p>
+                </div>
+              </div>
+              <p>{recordsStorageMode === "supabase" ? "Your records follow your account when you sign in." : "Records stay on this device in browser mode."}</p>
+            </div>
+          </Panel>
+
+          <Panel title="Session" action="Account access">
+            <div className="grid gap-3 text-sm leading-6 text-slate-600">
+              <p>Signed in as <span className="font-medium text-slate-900">{profile?.email || "Demo user"}</span></p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={logout} className="btn-secondary">Sign out</button>
+                {recordsStorageMode === "local" ? (
+                  <button type="button" onClick={() => { clearFailedLoginAttempts(); flash("Demo login lockout counter reset."); }} className="btn-secondary">
+                    Reset demo lockout
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </Panel>
+
+          <Panel title="Your data" action="Private by default">
+            <details
+              data-testid="advanced-data-backup"
+              className="group overflow-hidden rounded-md border border-slate-200 bg-slate-50"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-semibold text-slate-900 marker:content-none">
+                <span>Advanced data backup</span>
+                <span
+                  className="shrink-0 text-slate-500 transition-transform group-open:rotate-180"
+                  aria-hidden="true"
+                >
+                  <ChevronDownIcon />
+                </span>
+              </summary>
+              <div className="space-y-3 border-t border-slate-200 p-3">
+                <p className="text-xs leading-5 text-slate-600">
+                  Download a machine-readable JSON backup of the selected case. Keep it for archival
+                  or future migration; it is not formatted for court or attorney reading, and Custody
+                  Folio cannot restore it automatically yet.
+                </p>
+                <button type="button" onClick={exportData} className="btn-secondary">
+                  Download JSON backup
+                </button>
+              </div>
+            </details>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <button type="button" onClick={deleteCase} className="btn-secondary">Delete selected case</button>
+              <button type="button" onClick={resetDemoData} className="btn-secondary">
+                {recordsStorageMode === "supabase" ? "Clear workspace data" : "Reset demo data"}
+              </button>
+              <Link href={accountDeletionPath} className="btn-secondary text-center">Delete my account</Link>
+              <Link href="/privacy" className="btn-secondary text-center">Privacy and deletion policy</Link>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-slate-600">Export anything you need before deleting it. Deleted information cannot be restored from the app.</p>
+          </Panel>
+
+          <div className="space-y-3">
+            <details className="rounded-xl border border-slate-200 bg-white shadow-sm">
+              <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold text-slate-950">Workspace setup guide</summary>
+              <ol className="list-decimal space-y-2 border-t border-slate-100 px-5 py-4 pl-10 text-sm leading-6 text-slate-600">
+                <li>Create a case with neutral labels.</li>
+                <li>Add a recurring schedule only if you need one.</li>
+                <li>Record events as they happen.</li>
+                <li>Attach files to the record they support.</li>
+                <li>Review reports before sharing.</li>
+              </ol>
+            </details>
+            <details className="rounded-xl border border-slate-200 bg-white shadow-sm">
+              <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold text-slate-950">Audit trail · {selected.auditLogs.length} entries</summary>
+              <div className="border-t border-slate-100 p-4">
+                <Table
+                  headers={["Time", "Action", "Entity", "Summary"]}
+                  rows={selected.auditLogs.slice(0, 10).map((audit) => [
+                    audit.timestamp,
+                    audit.action.replaceAll("_", " "),
+                    audit.entityType,
+                    audit.metadataSummary,
+                  ])}
+                />
+              </div>
+            </details>
           </div>
-          <p className="mt-4 text-sm leading-6 text-slate-600">
-            Export anything you need before deleting a case or your account. Deleted information
-            cannot be restored from the app.
-          </p>
-        </Panel>
-
-        <Panel title="Workspace setup" action="Recommended order">
-          <ol className="list-decimal space-y-3 pl-5 text-sm leading-6 text-slate-600">
-            <li>Create a custody matter with neutral labels for the children and parents.</li>
-            <li>Add any recurring exchange schedule from the Calendar setup when needed.</li>
-            <li>Use the calendar to color custody days and log exchanges as they happen.</li>
-            <li>Attach files only when they support a specific date, note, expense, or exchange.</li>
-            <li>Review the Reports tab before exporting anything for another person or agency.</li>
-          </ol>
-        </Panel>
-
-        <Panel title="Audit trail" action={`${selected.auditLogs.length} entries`}>
-          <Table
-            headers={["Time", "Action", "Entity", "Summary"]}
-            rows={selected.auditLogs.slice(0, 10).map((audit) => [
-              audit.timestamp,
-              audit.action.replaceAll("_", " "),
-              audit.entityType,
-              audit.metadataSummary,
-            ])}
-          />
-        </Panel>
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -7646,7 +7656,7 @@ function compactDateRangeLabel(range: DateRange) {
 }
 
 function WorkspaceHeader({
-  activeView,
+  activeViewTitle,
   matters,
   selectedCaseId,
   onSelectCase,
@@ -7657,7 +7667,7 @@ function WorkspaceHeader({
   onOpenSettings,
   onLogout,
 }: {
-  activeView: ActiveView;
+  activeViewTitle: string;
   matters: Array<{ id: string; caseName: string }>;
   selectedCaseId: string;
   onSelectCase: (caseId: string) => void;
@@ -7692,7 +7702,7 @@ function WorkspaceHeader({
           <div className="flex min-h-12 items-center gap-2 lg:hidden">
             <div className="min-w-0 flex-1">
               <h1 className="truncate text-lg font-semibold tracking-tight text-slate-950">
-                {activeView}
+                {activeViewTitle}
               </h1>
               <p className="truncate text-[11px] leading-4 text-slate-500">
                 {selectedCaseName} | {compactDateRangeLabel(range)}
@@ -7706,7 +7716,7 @@ function WorkspaceHeader({
               }}
               className="h-10 shrink-0 rounded-md bg-slate-950 px-3 text-xs font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300"
             >
-              Export
+              Reports
             </button>
             <button
               type="button"
@@ -7721,7 +7731,7 @@ function WorkspaceHeader({
 
           <div className="hidden lg:block">
             <h1 className="text-2xl font-semibold tracking-tight text-slate-950">
-              {activeView}
+              {activeViewTitle}
             </h1>
           </div>
         </div>
@@ -7779,13 +7789,6 @@ function WorkspaceHeader({
           </div>
 
           <div className="grid grid-cols-2 gap-2 lg:contents">
-            <button
-              type="button"
-              onClick={onExport}
-              className="hidden h-10 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300 lg:block"
-            >
-              Export
-            </button>
             <button
               type="button"
               onClick={onLogout}
@@ -7910,11 +7913,20 @@ function Panel({
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: ReactNode;
+}) {
   return (
     <label className="grid min-w-0 max-w-full gap-1.5 text-sm font-medium text-slate-700 [&>*]:min-w-0 [&>*]:max-w-full">
       <span className="[overflow-wrap:anywhere]">{label}</span>
       {children}
+      {hint ? <span className="text-xs font-normal leading-5 text-slate-500">{hint}</span> : null}
     </label>
   );
 }

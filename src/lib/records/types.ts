@@ -85,6 +85,8 @@ export type ReimbursementStatus =
   | "unknown";
 
 export type ReportType =
+  | "full_profile"
+  | "financial_records"
   | "exchange_compliance"
   | "facetime_cancellations"
   | "incident_timeline"
@@ -129,6 +131,14 @@ export interface UserProfile {
   updatedAt: string;
 }
 
+export interface CaseTerminology {
+  parentingTime: string;
+  communication: string;
+  notesEvents: string;
+  filesEvidence: string;
+  financialRecords: string;
+}
+
 export interface CustodyMatter {
   id: Id;
   userId: Id;
@@ -143,6 +153,7 @@ export interface CustodyMatter {
   otherParentLabel: string;
   defaultExchangeLocation?: string;
   timezone: string;
+  terminology?: Partial<CaseTerminology>;
   notes?: string;
   createdAt: string;
   updatedAt: string;
