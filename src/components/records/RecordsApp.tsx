@@ -12,7 +12,6 @@ import {
   buildCalendarEvents,
   buildCustodyDayMap,
   calculateChildSupportObligationStats,
-  calculateExchangeStats,
   calculateExpenseStats,
   childSupportHistoryRange,
   childSupportObligationChartRows,
@@ -899,7 +898,6 @@ export default function RecordsApp() {
               <DashboardView
                 range={range}
                 calendarEvents={timelineEvents}
-                exchangeLogs={selected.exchangeLogs}
                 evidenceCount={selected.evidenceItems.length}
                 financialCount={selected.expenseItems.length + selected.childSupportPayments.length}
                 onOpen={openView}
@@ -1889,7 +1887,6 @@ function LoginScreen({
 function DashboardView({
   range,
   calendarEvents,
-  exchangeLogs,
   evidenceCount,
   financialCount,
   onOpen,
@@ -1897,7 +1894,6 @@ function DashboardView({
 }: {
   range: DateRange;
   calendarEvents: CalendarEvent[];
-  exchangeLogs: RecordsDataset["exchangeLogs"];
   evidenceCount: number;
   financialCount: number;
   onOpen: (view: ActiveView) => void;
