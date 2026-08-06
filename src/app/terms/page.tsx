@@ -36,7 +36,7 @@ const sections: PolicySection[] = [
   {
     title: "Attorney Access",
     body: [
-      "You may invite one adult attorney account to read the selected case for 30 days after acceptance.",
+      "You may invite one adult attorney account to read the selected case until you revoke access or the attorney leaves.",
       "You can revoke future access, but copies already downloaded cannot be recalled.",
       "An invitation does not establish legal representation or attorney client privilege.",
     ],

@@ -1,5 +1,5 @@
 export const siteName = "Custody Folio";
-export const recordsTagline = "Remove the emotion. Track the data.";
+export const recordsTagline = "A calmer way to keep custody records organized.";
 export const siteDescription =
   "Privately organize custody events, parenting time, expenses, notes, and evidence, then create clear reports for personal review or your attorney.";
 export const legalDisclaimer =

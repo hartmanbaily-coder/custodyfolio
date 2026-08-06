@@ -5,16 +5,15 @@ import PolicyFooter from "@/components/PolicyFooter";
 import { recordsTagline, siteName } from "@/lib/site";
 
 const quickActions = [
-  "Late exchange",
-  "No FaceTime",
-  "Upload file",
-  "Attorney report",
+  "Add a record",
+  "Review your timeline",
+  "Prepare or share",
 ];
 
 const workflowSteps = [
   {
     title: "Track",
-    detail: "Log exchanges, FaceTime, notes, and parenting plan events in one dated record.",
+    detail: "Add parenting time, communication, notes, expenses, and other dated events.",
   },
   {
     title: "Attach",
@@ -27,9 +26,9 @@ const workflowSteps = [
 ];
 
 const previewRows = [
-  { date: "Jul 03", title: "Scheduled exchange", status: "Recorded" },
-  { date: "Jul 05", title: "FaceTime not conducted", status: "Recorded issue" },
-  { date: "Jul 08", title: "Uploaded message archive", status: "Attached" },
+  { date: "Jul 03", title: "Parenting time update", status: "Saved" },
+  { date: "Jul 05", title: "Communication note", status: "Saved" },
+  { date: "Jul 08", title: "Supporting file", status: "Attached" },
 ];
 
 export default function HomePage() {
@@ -69,17 +68,17 @@ export default function HomePage() {
       <section className="mx-auto grid min-h-[calc(100vh-88px)] max-w-7xl content-center gap-10 px-4 pb-10 pt-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_500px] lg:px-8">
         <div className="flex max-w-3xl flex-col justify-center">
           <h1 className="text-5xl font-semibold tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
-            Your custody case, organized.
+            A calmer way to keep custody records organized.
           </h1>
           <p className="mt-5 max-w-2xl text-xl leading-8 text-slate-600">
-            Privately organize custody events, parenting time, expenses, notes, and evidence in one place, then create clear reports for personal review or your attorney.
+            Add events, parenting time, expenses, notes, and files in one private place—then prepare clear information when you need it.
           </p>
 
           <div className="mt-8 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="flex min-h-12 flex-1 items-center gap-3 rounded-lg bg-slate-50 px-4 text-left text-sm text-slate-500">
                 <SearchIcon />
-                <span>What do you need to document today?</span>
+                <span>What would you like to add?</span>
               </div>
               <Link
                 href="/records"
@@ -115,15 +114,15 @@ export default function HomePage() {
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-2">
-              <MetricPreview label="Late" value="3" tone="teal" />
-              <MetricPreview label="No FaceTime" value="4" tone="amber" />
+              <MetricPreview label="Recent" value="9" tone="teal" />
+              <MetricPreview label="Parenting" value="4" tone="amber" />
               <MetricPreview label="Files" value="12" tone="slate" />
             </div>
 
             <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-slate-950">Case timeline</p>
-                <p className="text-xs font-medium text-slate-500">Court packet view</p>
+                <p className="text-xs font-medium text-slate-500">Case overview</p>
               </div>
               <div className="mt-3 space-y-2">
                 {previewRows.map((row) => (

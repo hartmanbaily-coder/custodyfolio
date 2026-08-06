@@ -490,21 +490,20 @@ export async function acceptAttorneyInviteSession(input: {
     ok?: boolean;
     accepted?: boolean;
     accessHandle?: string;
-    accessExpiresAt?: string;
+    accessExpiresAt?: string | null;
     error?: string;
   };
   if (
     !response.ok ||
     body.ok !== true ||
     body.accepted !== true ||
-    !body.accessHandle ||
-    !body.accessExpiresAt
+    !body.accessHandle
   ) {
     throw new Error(body.error || `Attorney account link failed with ${response.status}.`);
   }
   return {
     accessHandle: body.accessHandle,
-    accessExpiresAt: body.accessExpiresAt,
+    accessExpiresAt: body.accessExpiresAt || null,
   };
 }
 

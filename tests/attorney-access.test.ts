@@ -88,12 +88,13 @@ describe("centralized attorney grant authorization", () => {
     expect(malformed).toEqual({ error: genericAttorneyAccessError() });
   });
 
-  it("requires the grant expiration to be later than the current request time", async () => {
+  it("keeps active access until the grant is revoked or the attorney leaves", async () => {
     const gt = vi.fn();
+    const is = vi.fn();
     const query = {
       select: () => query,
       eq: () => query,
-      is: () => query,
+      is: (column: string, value: null) => { is(column, value); return query; },
       gt: (column: string, value: string) => { gt(column, value); return query; },
       maybeSingle: async () => ({ data: null, error: null }),
     };
@@ -110,7 +111,9 @@ describe("centralized attorney grant authorization", () => {
       accessHandle: handle,
     });
 
-    expect(gt).toHaveBeenCalledWith("expires_at", expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/));
+    expect(is).toHaveBeenCalledWith("revoked_at", null);
+    expect(is).toHaveBeenCalledWith("left_at", null);
+    expect(gt).not.toHaveBeenCalled();
   });
 
   it("reports audit storage failures so protected routes can fail closed", async () => {

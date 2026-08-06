@@ -50,9 +50,9 @@ export default function AttorneyAccept() {
         </p>
         <h1 className="mt-2 text-2xl font-semibold">Open a read only shared case</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Custody Folio verifies the invited email before opening the case. No parent account setup is
-          required. Access is limited to the selected case, remains read only, expires after 30 days,
-          and can be revoked by the record owner.
+          Custody Folio verifies the invited email before opening the case. No paid parent account is
+          required. Access is limited to the selected case, always remains read only, and continues
+          until the record owner revokes it or you choose to leave.
         </p>
         <p
           role="status"

@@ -101,9 +101,11 @@ export interface SectionExportPacket {
 }
 
 export const reportTypeLabels: Record<ReportType, string> = {
-  exchange_compliance: "Exchange Lateness & Responsibility Report",
-  facetime_cancellations: "FaceTime Cancellation Report",
-  incident_timeline: "Issue Timeline Report",
+  full_profile: "Full Profile Export",
+  financial_records: "Financial Records",
+  exchange_compliance: "Parenting Time Report",
+  facetime_cancellations: "Communication Report",
+  incident_timeline: "Timeline Report",
   filing_facetime_correlation: "Filing / FaceTime Timing Report",
   child_support_payment: "Child Support Payment Report",
   expense_reimbursement: "Expense/Reimbursement Report",
@@ -112,6 +114,16 @@ export const reportTypeLabels: Record<ReportType, string> = {
 };
 
 export const reportsTabReportTypes: Array<{ value: ReportType; label: string; description: string }> = [
+  {
+    value: "full_profile",
+    label: reportTypeLabels.full_profile,
+    description: "Packages the complete selected profile into one organized, printable export.",
+  },
+  {
+    value: "financial_records",
+    label: reportTypeLabels.financial_records,
+    description: "Combines child support and expense records into one financial review.",
+  },
   {
     value: "exchange_compliance",
     label: reportTypeLabels.exchange_compliance,
@@ -1074,6 +1086,21 @@ export function buildReportRows(
       amount_reimbursed: expense.amountReimbursed || 0,
     }));
 
+  const evidenceRows = buildEvidenceIndex(
+    dataset.evidenceItems.filter(
+      (item) => item.userId === userId && item.caseId === caseId
+    ),
+    range
+  ).map((item) => ({
+    index: item.index,
+    file_name: item.fileName,
+    evidence_date: item.evidenceDate,
+    description: item.description,
+    tags: item.tags,
+    scan_status: item.scanStatus,
+    storage_status: item.storageStatus,
+  }));
+
   if (reportType === "exchange_compliance") return exchangeRows;
   if (reportType === "facetime_cancellations") return facetimeRows;
   if (reportType === "incident_timeline") return timelineRows;
@@ -1081,6 +1108,24 @@ export function buildReportRows(
   if (reportType === "child_support_payment") return childSupportRows;
   if (reportType === "expense_reimbursement") return expenseRows;
   if (reportType === "combined_attorney_summary") return timelineRows;
+
+  if (reportType === "financial_records") {
+    return [
+      ...childSupportRows.map((row) => ({ section: "child_support", ...row })),
+      ...expenseRows.map((row) => ({ section: "expenses", ...row })),
+    ];
+  }
+
+  if (reportType === "full_profile") {
+    return [
+      ...custodyScheduleRows.map((row) => ({ section: "calendar", ...row })),
+      ...exchangeRows.map((row) => ({ section: "parenting_time", ...row })),
+      ...timelineRows.map((row) => ({ section: "timeline", ...row })),
+      ...childSupportRows.map((row) => ({ section: "child_support", ...row })),
+      ...expenseRows.map((row) => ({ section: "expenses", ...row })),
+      ...evidenceRows.map((row) => ({ section: "files", ...row })),
+    ];
+  }
 
   return [
     ...custodyScheduleRows.map((row) => ({ section: "custody_schedule", ...row })),
@@ -1179,6 +1224,67 @@ export function buildReportPreview(
     rows,
     evidenceIndex: buildEvidenceIndex(evidence, range),
   };
+
+  if (reportType === "full_profile") {
+    const sections = (
+      ["calendar", "timeline", "exchanges", "notes", "evidence", "child_support", "expenses"] as SectionExportId[]
+    ).map((sectionId) => buildSectionExportPacket(dataset, userId, caseId, range, sectionId));
+
+    return {
+      ...base,
+      title: reportTypeLabels.full_profile,
+      focus: "Complete selected profile",
+      summaries: [
+        `This export packages the complete selected profile from ${range.from} to ${range.to}.`,
+        "Sections are grouped for easy printing, review, and highlighting. Original uploaded files remain separate downloads and are listed in the file index.",
+        "Review the final packet before sharing it with an attorney, court, agency, or other person.",
+      ],
+      metrics: sections.map((section) => ({
+        label: sectionExportLabels[section.id].replace(" Packet", ""),
+        value: section.tables.reduce((total, table) => total + table.rows.length, 0),
+        detail: "Included rows",
+      })),
+      charts: sections.flatMap((section) =>
+        section.charts.map((chart) => ({
+          ...chart,
+          kind: "bar" as const,
+          orientation: "horizontal" as const,
+          emptyLabel: `No ${sectionExportLabels[section.id].toLowerCase()} data in this range.`,
+        }))
+      ),
+      tables: sections.flatMap((section) =>
+        section.tables.map((table) => ({
+          ...table,
+          title: `${sectionExportLabels[section.id]} · ${table.title}`,
+        }))
+      ),
+    };
+  }
+
+  if (reportType === "financial_records") {
+    const sections = (["child_support", "expenses"] as SectionExportId[]).map((sectionId) =>
+      buildSectionExportPacket(dataset, userId, caseId, range, sectionId)
+    );
+    return {
+      ...base,
+      title: reportTypeLabels.financial_records,
+      focus: "Child support, expenses, and reimbursements",
+      summaries: [
+        `This report combines financial records from ${range.from} to ${range.to}.`,
+        "Amounts and calculated balances come from user-entered records. Check them against signed orders, receipts, and agency histories before sharing.",
+      ],
+      metrics: sections.flatMap((section) => section.metrics),
+      charts: sections.flatMap((section) => section.charts.map((chart) => ({
+        ...chart,
+        kind: "bar" as const,
+        orientation: "horizontal" as const,
+      }))),
+      tables: sections.flatMap((section) => section.tables.map((table) => ({
+        ...table,
+        title: `${sectionExportLabels[section.id]} · ${table.title}`,
+      }))),
+    };
+  }
 
   if (reportType === "exchange_compliance") {
     const exchangeTable = buildExchangeLogTable(exchangeLogs, userRoleLabel, otherParentLabel);

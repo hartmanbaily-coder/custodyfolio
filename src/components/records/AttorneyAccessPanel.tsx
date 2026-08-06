@@ -4,9 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import { attorneyMutation } from "@/lib/records/attorneyClient";
 import {
-  attorneyAccessDurationDays,
   attorneyInvitationDurationDays,
-  maxBrowserTimeoutMs,
 } from "@/lib/records/attorneyPolicy";
 
 type Invitation = {
@@ -18,14 +16,12 @@ type Invitation = {
   acceptedAt: string | null;
   revokedAt: string | null;
   caseId: string;
-  accessExpiresAt: string | null;
   accessActive: boolean;
 };
 
 type Grant = {
   handle: string;
   grantedAt: string;
-  expiresAt: string;
   revokedAt: string | null;
   leftAt: string | null;
   active: boolean;
@@ -80,20 +76,6 @@ export default function AttorneyAccessPanel({
     void load();
   }, [load]);
 
-  useEffect(() => {
-    const nextExpiry = state?.grants
-      .filter((grant) => grant.active)
-      .map((grant) => new Date(grant.expiresAt).getTime())
-      .filter((value) => value > Date.now())
-      .sort((left, right) => left - right)[0];
-    if (!nextExpiry) return;
-    const timer = window.setTimeout(
-      () => void load(),
-      Math.min(Math.max(0, nextExpiry - Date.now()) + 250, maxBrowserTimeoutMs)
-    );
-    return () => window.clearTimeout(timer);
-  }, [load, state?.grants]);
-
   async function invite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -104,7 +86,7 @@ export default function AttorneyAccessPanel({
     try {
       const result = await attorneyMutation("/api/records/attorney/invitations", { email, caseId });
       setInvitationUrl(String(result.invitationUrl || ""));
-      setMessage(`Invitation created. Share the private link with the intended attorney. Acceptance starts ${attorneyAccessDurationDays} days of read-only access.`);
+      setMessage("Invitation created. Share the private link only with the intended attorney. Access stays read only until you revoke it or the attorney leaves.");
       form.reset();
       await load();
     } catch (error) {
@@ -124,7 +106,7 @@ export default function AttorneyAccessPanel({
         caseId: invitation.caseId,
       });
       setInvitationUrl(String(result.invitationUrl || ""));
-      setMessage(`A new invitation was created. Acceptance starts a new ${attorneyAccessDurationDays}-day access period. The prior access remains expired.`);
+      setMessage("A new invitation was created. Share the new private link with the intended attorney.");
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to create a new invitation.");
@@ -171,7 +153,7 @@ export default function AttorneyAccessPanel({
     try {
       await navigator.share({
         title: "Custody Folio attorney access",
-        text: `Private ${attorneyAccessDurationDays}-day read-only access invitation. Open this link using the attorney account that was invited.`,
+        text: "Private read-only access invitation. Open this link using the attorney account that was invited.",
         url: invitationUrl,
       });
       setMessage("Invitation share sheet opened.");
@@ -202,8 +184,8 @@ export default function AttorneyAccessPanel({
         <div>
           <h2 id="attorney-access-heading" className="font-semibold text-slate-950">Attorney read-only access</h2>
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            One invited adult attorney account can view this case and download reports and evidence for {attorneyAccessDurationDays} days after accepting.
-            This does not establish representation or attorney-client privilege.
+            One invited adult attorney account can view this case and download reports and evidence until you revoke access or the attorney leaves.
+            Access is always read only and does not establish representation or attorney-client privilege.
           </p>
         </div>
       </div>
@@ -243,7 +225,7 @@ export default function AttorneyAccessPanel({
         <div className="mt-3 rounded-md border border-teal-200 bg-teal-50 p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-teal-900">Private invitation link</p>
           <p className="mt-1 text-xs leading-5 text-teal-950">
-            This link is shown only for sharing now. It expires in {attorneyInvitationDurationDays} days and becomes unusable after acceptance. Accepted access lasts {attorneyAccessDurationDays} days.
+            This link is shown only for sharing now. It expires in {attorneyInvitationDurationDays} days and becomes unusable after acceptance. Accepted access remains active until revoked or left.
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-[132px_1fr] sm:items-center">
             <div className="w-fit rounded-md border border-teal-200 bg-white p-2" aria-label="Attorney invitation QR code">
@@ -278,15 +260,15 @@ export default function AttorneyAccessPanel({
                 <p className="mt-1 text-xs text-slate-500">
                   {eventLabel(invitation.status)} · created {new Date(invitation.createdAt).toLocaleString()}
                   {invitation.acceptedAt ? ` · granted ${new Date(invitation.acceptedAt).toLocaleString()}` : ""}
-                  {invitation.accessExpiresAt ? ` · access ends ${new Date(invitation.accessExpiresAt).toLocaleString()}` : ""}
+                  {invitation.accessActive ? " · active until revoked" : ""}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {(invitation.status === "pending" || invitation.status === "expired") ? (
                   <button type="button" className="btn-secondary" disabled={busy === invitation.handle} onClick={() => void invitationAction(invitation, "resend")}>Replace with new link</button>
                 ) : null}
-                {invitation.status === "accepted" && invitation.accessExpiresAt && !invitation.accessActive ? (
-                  <button type="button" className="btn-secondary" disabled={busy === invitation.handle || !newInvitationsEnabled || Boolean(pending)} onClick={() => void reinvite(invitation)}>Invite again for {attorneyAccessDurationDays} days</button>
+                {invitation.status === "accepted" && !invitation.accessActive ? (
+                  <button type="button" className="btn-secondary" disabled={busy === invitation.handle || !newInvitationsEnabled || Boolean(pending)} onClick={() => void reinvite(invitation)}>Create a new invitation</button>
                 ) : null}
                 {(invitation.status === "pending" || (invitation.status === "accepted" && invitation.accessActive)) ? (
                   <button type="button" className="btn-secondary text-red-700" disabled={busy === invitation.handle} onClick={() => void invitationAction(invitation, "revoke")}>Revoke access</button>

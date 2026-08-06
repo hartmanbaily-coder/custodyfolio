@@ -583,7 +583,7 @@ create table if not exists public.records_attorney_grants (
   case_id text not null check (char_length(case_id) between 1 and 180),
   permission_scope text not null default 'read_only' check (permission_scope = 'read_only'),
   granted_at timestamptz not null default now(),
-  expires_at timestamptz not null,
+  expires_at timestamptz,
   revoked_at timestamptz,
   left_at timestamptz,
   revocation_reason text,
@@ -806,28 +806,10 @@ begin
     return;
   end if;
 
-  with expired_grants as (
-    update public.records_attorney_grants as g
-    set revoked_at = expires_at, revocation_reason = 'access_expired'
-    where g.owner_user_id = invitation.owner_user_id
-      and g.revoked_at is null
-      and g.left_at is null
-      and g.expires_at <= now()
-    returning g.id, g.owner_user_id, g.case_id, g.invitation_id
-  )
-  insert into public.records_attorney_access_events (
-    owner_user_id, case_id, invitation_id, grant_id, event_type, metadata
-  )
-  select expired_grants.owner_user_id, expired_grants.case_id,
-    expired_grants.invitation_id, expired_grants.id, 'access_expired',
-    jsonb_build_object('reason', 'access_period_ended')
-  from expired_grants;
-
   if exists (
     select 1 from public.records_attorney_grants g
     where g.owner_user_id = invitation.owner_user_id
       and g.revoked_at is null and g.left_at is null
-      and g.expires_at > now()
   ) then
     return;
   end if;
@@ -838,7 +820,7 @@ begin
   ) values (
     invitation.owner_user_id, p_attorney_user_id, invitation.id,
     invitation.case_key, invitation.case_id, 'read_only',
-    now(), now() + interval '30 days'
+    now(), null
   ) returning * into created_grant;
 
   update public.records_attorney_invitations

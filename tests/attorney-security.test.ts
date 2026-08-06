@@ -196,7 +196,22 @@ describe("attorney migration controls", () => {
       new URL("../database/supabase/production_schema.sql", import.meta.url),
       "utf8"
     );
-    expect(productionSchema).toContain("now(), now() + interval '30 days'");
+    expect(productionSchema).toContain("expires_at timestamptz,");
+    expect(productionSchema).toContain("now(), null");
+
+    const revocationMigration = await readFile(
+      new URL(
+        "../supabase/migrations/20260806053635_remove_attorney_grant_expiration.sql",
+        import.meta.url
+      ),
+      "utf8"
+    );
+    expect(revocationMigration).toContain("alter column expires_at drop not null");
+    expect(revocationMigration).toContain("set expires_at = null");
+    expect(revocationMigration).toContain("and g.revoked_at is null");
+    expect(revocationMigration).toContain("and g.left_at is null");
+    expect(revocationMigration).toContain("now(),\n    null");
+    expect(revocationMigration).not.toContain("interval '30 days'");
   });
 
   it("keeps the attorney portal and all protected APIs out of service-worker caches", async () => {

@@ -27,17 +27,17 @@ import {
 } from "@/lib/records/reports";
 import type { DateRange, ReportType } from "@/lib/records/types";
 import { formatLocalDate } from "@/lib/records/dateRanges";
-import { maxBrowserTimeoutMs } from "@/lib/records/attorneyPolicy";
+import { resolveCaseTerminology } from "@/lib/records/terminology";
 
 type PortalView = "Overview" | "Timeline" | "Calendar" | "Exchanges" | "Notes" | "Files" | "Child Support" | "Expenses" | "Reports";
 const portalViews: PortalView[] = ["Overview", "Timeline", "Calendar", "Exchanges", "Notes", "Files", "Child Support", "Expenses", "Reports"];
 
-type MatterChoice = { accessHandle: string; label: string; grantedAt: string; expiresAt: string };
+type MatterChoice = { accessHandle: string; label: string; grantedAt: string };
 type PortalResponse = {
   accessHandle: string;
   projection: SharedCaseProjection;
   updatedAt: string | null;
-  accessExpiresAt: string;
+  accessExpiresAt: string | null;
   readOnly: true;
 };
 
@@ -81,13 +81,24 @@ function reportHtml(preview: ReportPreview) {
     <p class="notice">${escapeHtml(preview.disclaimer)}</p>${tables}</body></html>`;
 }
 
+function evidenceSheetHtml(item: SharedEvidenceItem) {
+  const rows = [
+    ["File", item.originalFileName],
+    ["Date", item.evidenceDate || item.uploadedAt.slice(0, 10)],
+    ["Description", item.description || ""],
+    ["Tags", item.tags.join(", ")],
+    ["Review status", item.reviewStatus || "needs review"],
+  ];
+  return `<!doctype html><html><head><meta charset="utf-8"><style>@page{size:letter;margin:.65in}body{font:13px system-ui;color:#0f172a}h1{font-size:22px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left;vertical-align:top}th{width:150px;background:#f8fafc}</style></head><body><h1>Custody Folio file sheet</h1><table>${rows.map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`).join("")}</table></body></html>`;
+}
+
 export default function AttorneyPortal() {
   const [sessionState, setSessionState] = useState<"loading" | "signed_out" | "ready">("loading");
   const [matters, setMatters] = useState<MatterChoice[]>([]);
   const [portal, setPortal] = useState<PortalResponse | null>(null);
   const [view, setView] = useState<PortalView>("Overview");
   const [range, setRange] = useState<DateRange>({ from: "", to: "" });
-  const [reportType, setReportType] = useState<ReportType>("exchange_compliance");
+  const [reportType, setReportType] = useState<ReportType>("full_profile");
   const [generatedReport, setGeneratedReport] = useState<{ type: ReportType; range: DateRange } | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState("");
@@ -136,33 +147,6 @@ export default function AttorneyPortal() {
     return () => { active = false; };
   }, []);
 
-  useEffect(() => {
-    if (!portal) return;
-    const expiresAt = new Date(portal.accessExpiresAt).getTime();
-    const endAccess = () => {
-      window.sessionStorage.removeItem("l2f.attorney.access");
-      setPortal(null);
-      setMatters([]);
-      setMessage("This 30-day access period has ended. Ask the record owner to send a new invitation.");
-    };
-    let timer: number | undefined;
-    const checkExpiry = () => {
-      const remaining = expiresAt - Date.now();
-      if (!Number.isFinite(expiresAt) || remaining <= 0) {
-        endAccess();
-        return;
-      }
-      timer = window.setTimeout(
-        checkExpiry,
-        Math.min(remaining + 250, maxBrowserTimeoutMs)
-      );
-    };
-    checkExpiry();
-    return () => {
-      if (timer !== undefined) window.clearTimeout(timer);
-    };
-  }, [portal]);
-
   const dataset = portal?.projection.dataset;
   const evidence = portal?.projection.evidence || [];
   const timeline = useMemo(
@@ -202,6 +186,21 @@ export default function AttorneyPortal() {
     } finally {
       setBusy("");
     }
+  }
+
+  function printEvidenceSheet(item: SharedEvidenceItem) {
+    const html = evidenceSheetHtml(item);
+    if (!shareHtmlAsPdf(`custody_folio_file_sheet_${item.id}.pdf`, html)) {
+      const printWindow = window.open("", "_blank", "width=900,height=700");
+      if (!printWindow) {
+        setMessage("Popup blocked. Allow popups to print this file sheet.");
+        return;
+      }
+      printWindow.opener = null;
+      printWindow.document.write(html);
+      printWindow.document.close();
+    }
+    setMessage("File sheet prepared.");
   }
 
   async function auditReport(action: "report_generated" | "report_downloaded", type: ReportType) {
@@ -262,7 +261,7 @@ export default function AttorneyPortal() {
       });
       window.sessionStorage.removeItem("l2f.attorney.access");
       setPortal(null);
-      setMatters([]);
+      setMatters((current) => current.filter((matter) => matter.accessHandle !== portal.accessHandle));
       setMessage("You left the shared matter. Future access is blocked.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to leave the matter.");
@@ -279,17 +278,17 @@ export default function AttorneyPortal() {
 
   if (sessionState === "loading") return <main className="grid min-h-screen place-items-center bg-[#f4f7f6]"><p>Opening shared matters…</p></main>;
   if (sessionState === "signed_out") {
-    return <main className="grid min-h-screen place-items-center bg-[#f4f7f6] px-4"><section className="max-w-lg rounded-lg border bg-white p-6 shadow-sm"><h1 className="text-2xl font-semibold">Shared With Me</h1><p className="mt-3 text-sm text-slate-600">Open the secure Custody Folio access link sent to the invited email address. If that link has expired, ask the record owner to send a new invitation.</p><Link href="/" className="btn-primary mt-5 inline-block">Custody Folio home</Link></section></main>;
+    return <main className="grid min-h-screen place-items-center bg-[#f4f7f6] px-4"><section className="max-w-lg rounded-lg border bg-white p-6 shadow-sm"><h1 className="text-2xl font-semibold">Attorney portal</h1><p className="mt-3 text-sm text-slate-600">Open the secure Custody Folio access link sent to the invited email address. If the invitation link has expired, ask the record owner for a new one.</p><Link href="/" className="btn-primary mt-5 inline-block">Custody Folio home</Link></section></main>;
   }
 
   if (!portal) {
     return (
       <main className="min-h-screen bg-[#f4f7f6] px-4 py-8 text-slate-950">
         <section className="mx-auto max-w-2xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-wrap justify-between gap-3"><div><h1 className="text-2xl font-semibold">Shared With Me</h1><p className="mt-2 text-sm text-slate-600">Read-only matters shared with this account.</p></div><Link href="/records" className="btn-secondary">My Records</Link></div>
+          <div className="flex flex-wrap justify-between gap-3"><div><h1 className="text-2xl font-semibold">Your shared matters</h1><p className="mt-2 text-sm text-slate-600">Choose a client and case to open the read-only workspace.</p></div><Link href="/records" className="btn-secondary">My Records</Link></div>
           {message ? <p role="status" className="mt-4 rounded-md border bg-slate-50 p-3 text-sm">{message}</p> : null}
           <div className="mt-5 space-y-3">
-            {matters.map((matter) => <button key={matter.accessHandle} type="button" className="btn-secondary w-full text-left" onClick={() => void loadPortal(matter.accessHandle)}>{matter.label} · granted {new Date(matter.grantedAt).toLocaleDateString()} · access ends {new Date(matter.expiresAt).toLocaleString()}</button>)}
+            {matters.map((matter) => <button key={matter.accessHandle} type="button" className="btn-secondary w-full text-left" onClick={() => void loadPortal(matter.accessHandle)}><span className="block font-semibold">{matter.label}</span><span className="mt-1 block text-xs font-normal text-slate-500">Shared {new Date(matter.grantedAt).toLocaleDateString()} · active until revoked</span></button>)}
             {!matters.length ? <p className="text-sm text-slate-500">No active shared matters are available. An invitation may still need to be accepted.</p> : null}
           </div>
         </section>
@@ -311,26 +310,52 @@ export default function AttorneyPortal() {
     formatLocalDate(new Date(), matter?.timezone)
   );
   const expenseStats = dataset ? calculateExpenseStats(dataset.expenseItems, range) : null;
+  const terminology = resolveCaseTerminology(matter?.terminology);
+  const portalViewLabels: Record<PortalView, string> = {
+    Overview: "Overview",
+    Timeline: "Timeline",
+    Calendar: "Calendar",
+    Exchanges: terminology.parentingTime,
+    Notes: terminology.notesEvents,
+    Files: terminology.filesEvidence,
+    "Child Support": "Child support",
+    Expenses: "Expenses",
+    Reports: "Reports & exports",
+  };
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#f4f7f6] text-slate-950">
       <header className="border-b border-slate-200 bg-white px-4 py-4">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
-          <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Read-only attorney guest</p><h1 className="mt-1 text-xl font-semibold">{matter?.caseName || "Shared matter"}</h1></div>
+        <div className="mx-auto flex max-w-7xl flex-wrap items-end justify-between gap-3">
+          <div className="min-w-[260px]">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Attorney portal · read only</p>
+            <label className="mt-2 grid gap-1 text-xs font-medium text-slate-600">
+              Client and case
+              <select
+                className="input min-w-[260px]"
+                value={portal.accessHandle}
+                onChange={(event) => void loadPortal(event.target.value)}
+              >
+                {matters.map((choice) => (
+                  <option key={choice.accessHandle} value={choice.accessHandle}>{choice.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
           <div className="flex flex-wrap gap-2"><Link href="/records" className="btn-secondary">My Records</Link><button type="button" className="btn-secondary" onClick={() => void logout()}>Logout</button><button type="button" className="btn-secondary text-red-700" disabled={busy === "leave"} onClick={() => void leaveMatter()}>{busy === "leave" ? "Leaving…" : "Leave matter"}</button></div>
         </div>
       </header>
       <div className="mx-auto max-w-7xl px-4 py-5">
-        <div className="rounded-md border border-teal-200 bg-teal-50 p-3 text-sm leading-6 text-teal-950">Read only access through {new Date(portal.accessExpiresAt).toLocaleString()}. You may return as often as needed before then. You cannot create, edit, delete, upload, change report inclusion, invite others, or access the owner’s account settings. Custody Folio organizes user provided information and does not verify allegations or provide legal advice.</div>
-        <nav className="mt-4 flex max-w-full gap-2 overflow-x-auto pb-2" aria-label="Shared matter sections">{portalViews.map((item) => <button key={item} type="button" onClick={() => setView(item)} className={`shrink-0 rounded-md px-3 py-2 text-sm font-semibold ${view === item ? "bg-teal-700 text-white" : "border border-slate-200 bg-white text-slate-700"}`}>{item}</button>)}</nav>
+        <div className="rounded-md border border-teal-200 bg-teal-50 p-3 text-sm leading-6 text-teal-950">You can return whenever you need to while the client keeps access active. You may review and download the shared records, but you cannot change the client&apos;s information, invite anyone else, or open account settings. Downloaded copies cannot be recalled after access is revoked.</div>
+        <nav className="mt-4 flex max-w-full gap-2 overflow-x-auto pb-2" aria-label="Shared matter sections">{portalViews.map((item) => <button key={item} type="button" onClick={() => setView(item)} className={`shrink-0 rounded-md px-3 py-2 text-sm font-semibold ${view === item ? "bg-teal-700 text-white" : "border border-slate-200 bg-white text-slate-700"}`}>{portalViewLabels[item]}</button>)}</nav>
         {message ? <p role="status" aria-live="polite" className="mt-3 rounded-md border border-slate-200 bg-white p-3 text-sm">{message}</p> : null}
         <main className="mt-4 min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-          {view === "Overview" ? <div><h2 className="text-lg font-semibold">Shared case overview</h2><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["Timeline records", timeline.length],["Notes", dataset?.dateNotes.length || 0],["Files", evidence.length],["Expenses", dataset?.expenseItems.length || 0]].map(([label,value]) => <div key={String(label)} className="rounded-md border bg-slate-50 p-4"><p className="text-xs uppercase text-slate-500">{label}</p><p className="mt-1 text-2xl font-semibold">{value}</p></div>)}</div><p className="mt-4 text-sm leading-6 text-slate-600">Granted case information is refreshed from the owner’s current persisted snapshot. Access is checked again on every protected request.</p></div> : null}
+          {view === "Overview" ? <div><h2 className="text-lg font-semibold">Shared case overview</h2><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["Timeline records", timeline.length],[terminology.notesEvents, dataset?.dateNotes.length || 0],[terminology.filesEvidence, evidence.length],[terminology.financialRecords, (dataset?.expenseItems.length || 0) + (dataset?.childSupportPayments.length || 0)]].map(([label,value]) => <div key={String(label)} className="rounded-md border bg-slate-50 p-4"><p className="text-xs uppercase text-slate-500">{label}</p><p className="mt-1 text-2xl font-semibold">{value}</p></div>)}</div><p className="mt-4 text-sm leading-6 text-slate-600">The case refreshes from the client&apos;s current records. Access is checked again on every protected request.</p></div> : null}
           {view === "Timeline" ? <div><h2 className="text-lg font-semibold">Timeline</h2><div className="mt-3 space-y-3">{timeline.map((event) => <article key={event.id} className="rounded-md border p-3"><p className="text-sm font-semibold">{event.title}</p><p className="mt-1 text-xs text-slate-500">{event.date} {event.time || ""}</p>{event.body ? <p className="mt-2 text-sm leading-6 text-slate-600">{event.body}</p> : null}</article>)}{!timeline.length ? <p className="text-sm text-slate-500">No timeline records in this range.</p> : null}</div></div> : null}
           {view === "Calendar" ? <div><h2 className="text-lg font-semibold">Calendar records</h2><div className="mt-3 grid gap-2 sm:grid-cols-2">{dataset?.custodyDayAssignments.map((record) => <div key={record.id} className="rounded-md border p-3"><p className="font-semibold">{record.date}</p><p className="text-sm text-slate-600">{record.caregiverLabel}{record.exchangeTime ? ` · exchange ${record.exchangeTime}` : ""}</p></div>)}</div></div> : null}
-          {view === "Exchanges" ? <div><h2 className="text-lg font-semibold">Exchange records</h2><div className="mt-3 space-y-3">{dataset?.exchangeLogs.map((record) => <article key={record.id} className="rounded-md border p-3"><p className="font-semibold">{record.orderedExchangeAt}</p><p className="mt-1 text-sm text-slate-600">{record.status.replaceAll("_", " ")}{record.location ? ` · ${record.location}` : ""}</p>{record.notes ? <p className="mt-2 text-sm">{record.notes}</p> : null}</article>)}</div></div> : null}
-          {view === "Notes" ? <div><h2 className="text-lg font-semibold">Notes</h2><div className="mt-3 space-y-3">{dataset?.dateNotes.map((record) => <article key={record.id} className="rounded-md border p-3"><p className="font-semibold">{record.title}</p><p className="mt-1 text-xs text-slate-500">{record.noteDate} · {record.category.replaceAll("_", " ")}</p><p className="mt-2 text-sm leading-6 text-slate-600">{record.body}</p></article>)}</div></div> : null}
-          {view === "Files" ? <div><h2 className="text-lg font-semibold">Evidence files</h2><div className="mt-3 space-y-3">{evidence.map((item) => <article key={item.id} className="flex flex-wrap items-start justify-between gap-3 rounded-md border p-3"><div className="min-w-0"><p className="break-words font-semibold">{item.originalFileName}</p><p className="mt-1 text-xs text-slate-500">{item.evidenceDate || item.uploadedAt.slice(0,10)} · {Math.round(item.fileSize/1024)} KB</p>{item.description ? <p className="mt-2 text-sm text-slate-600">{item.description}</p> : null}</div><button type="button" className="btn-secondary" disabled={busy === item.downloadHandle || item.malwareScanStatus !== "clean"} onClick={() => void downloadEvidence(item)}>{busy === item.downloadHandle ? "Preparing…" : "Download"}</button></article>)}</div></div> : null}
+          {view === "Exchanges" ? <div><h2 className="text-lg font-semibold">{terminology.parentingTime}</h2><div className="mt-3 space-y-3">{dataset?.exchangeLogs.map((record) => <article key={record.id} className="rounded-md border p-3"><p className="font-semibold">{record.orderedExchangeAt}</p><p className="mt-1 text-sm text-slate-600">{record.status.replaceAll("_", " ")}{record.location ? ` · ${record.location}` : ""}</p>{record.notes ? <p className="mt-2 text-sm">{record.notes}</p> : null}</article>)}</div></div> : null}
+          {view === "Notes" ? <div><h2 className="text-lg font-semibold">{terminology.notesEvents}</h2><div className="mt-3 space-y-3">{dataset?.dateNotes.map((record) => <article key={record.id} className="rounded-md border p-3"><p className="font-semibold">{record.title}</p><p className="mt-1 text-xs text-slate-500">{record.noteDate} · {record.category.replaceAll("_", " ")}</p><p className="mt-2 text-sm leading-6 text-slate-600">{record.body}</p></article>)}</div></div> : null}
+          {view === "Files" ? <div><h2 className="text-lg font-semibold">{terminology.filesEvidence}</h2><div className="mt-3 space-y-3">{evidence.map((item) => <article key={item.id} className="flex flex-wrap items-start justify-between gap-3 rounded-md border p-3"><div className="min-w-0"><p className="break-words font-semibold">{item.originalFileName}</p><p className="mt-1 text-xs text-slate-500">{item.evidenceDate || item.uploadedAt.slice(0,10)} · {Math.round(item.fileSize/1024)} KB</p>{item.description ? <p className="mt-2 text-sm text-slate-600">{item.description}</p> : null}</div><div className="flex flex-wrap gap-2"><button type="button" className="btn-secondary" onClick={() => printEvidenceSheet(item)}>Print sheet</button><button type="button" className="btn-secondary" disabled={busy === item.downloadHandle || item.malwareScanStatus !== "clean"} onClick={() => void downloadEvidence(item)}>{busy === item.downloadHandle ? "Preparing…" : "Download"}</button></div></article>)}</div></div> : null}
           {view === "Child Support" ? <div><h2 className="text-lg font-semibold">Child support</h2><p className="mt-2 text-sm text-slate-600">Scheduled due to date: {formatMoney(supportStats.totalDue)} · recorded paid: {formatMoney(supportStats.totalPaid)} · calculated past-due balance: {formatMoney(supportStats.pastDueBalance)}</p><p className="mt-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-xs leading-5 text-blue-950">Scheduled obligations are calculated from the owner&apos;s entered order terms and matched to user-entered payment records by due date. Check against the signed order and official agency history.</p><div className="mt-3 space-y-3">{supportObligations.map((record) => <article key={record.id} className="rounded-md border p-3"><p className="font-semibold">{record.orderNickname} · due {record.dueDate}</p><p className="text-sm text-slate-600">Scheduled {formatMoney(record.amountDue, record.currency)} · paid {formatMoney(record.amountPaid, record.currency)} · balance {formatMoney(record.balance, record.currency)} · {record.status.replaceAll("_", " ")}</p></article>)}</div></div> : null}
           {view === "Expenses" ? <div><h2 className="text-lg font-semibold">Expenses</h2><p className="mt-2 text-sm text-slate-600">Recorded total: {formatMoney(expenseStats?.totalExpenses || 0)}</p><div className="mt-3 space-y-3">{dataset?.expenseItems.map((record) => <article key={record.id} className="rounded-md border p-3"><p className="font-semibold">{record.expenseDate} · {formatMoney(record.amount)}</p><p className="text-sm text-slate-600">{record.description} · {record.reimbursementStatus.replaceAll("_", " ")}</p></article>)}</div></div> : null}
           {view === "Reports" ? <div><h2 className="text-lg font-semibold">Reports</h2><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label className="grid gap-1 text-sm font-medium">From<input type="date" className="input" value={range.from} onChange={(event) => updateReportRange("from", event.target.value)} /></label><label className="grid gap-1 text-sm font-medium">To<input type="date" className="input" value={range.to} onChange={(event) => updateReportRange("to", event.target.value)} /></label><label className="grid gap-1 text-sm font-medium sm:col-span-2">Report type<select className="input" value={reportType} onChange={(event) => updateReportType(event.target.value as ReportType)}>{reportsTabReportTypes.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label></div><div className="mt-3 flex flex-wrap gap-2"><button type="button" className="btn-primary" onClick={() => void generateReport()}>Generate report preview</button><button type="button" className="btn-secondary" disabled={!reportPreview} onClick={() => void downloadReport("csv")}>Download CSV</button><button type="button" className="btn-secondary" disabled={!reportPreview} onClick={() => void downloadReport("pdf")}>Share or print PDF</button></div>{reportPreview ? <article className="mt-5"><h3 className="text-xl font-semibold">{reportPreview.title}</h3><p className="mt-2 rounded-md border bg-slate-50 p-3 text-sm">{reportPreview.disclaimer}</p>{reportPreview.tables.map((table) => <section key={table.title} className="mt-4"><h4 className="font-semibold">{table.title}</h4><div className="mt-2 space-y-2">{table.rows.slice(0,20).map((row,index) => <div key={index} className="grid gap-1 rounded border p-2 text-xs sm:grid-cols-2">{row.map((cell,cellIndex) => <p key={cellIndex} className="break-words"><span className="font-semibold">{table.headers[cellIndex]}:</span> {cell}</p>)}</div>)}</div></section>)}</article> : null}</div> : null}
