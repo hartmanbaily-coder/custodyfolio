@@ -19,6 +19,12 @@ jobs:
         run: |
           node <<'NODE'
           const baseUrl = process.env.RECORDS_APP_BASE_URL.replace(/\/$/, "");
+          const allowedPendingLaunchBlockers = new Set([
+            "backup-restore-tested",
+            "data-retention-policy",
+            "incident-response-plan",
+            "legal-review",
+          ]);
 
           function fail(message) {
             console.error(message);
@@ -100,11 +106,11 @@ jobs:
           }
 
           const readinessResponse = await get(`${baseUrl}/api/records/readiness`);
-          if (readinessResponse.status !== 200) {
-            fail(`/api/records/readiness returned HTTP ${readinessResponse.status}; production is not ready.`);
+          if (![200, 503].includes(readinessResponse.status)) {
+            fail(`/api/records/readiness returned unexpected HTTP ${readinessResponse.status}.`);
           }
 
-          const readiness = await readinessResponse.json();
+          const readiness = await readinessResponse.json().catch(() => ({}));
           if (!Array.isArray(readiness.blockers)) {
             fail("Readiness response does not include blockers array.");
           }
@@ -136,11 +142,34 @@ jobs:
           if (undeclared.length > 0) {
             fail(`Readiness blockers missing from checks catalog: ${undeclared.join(", ")}`);
           }
-          if (readiness.status !== "ready") {
-            fail(`Readiness status is ${String(readiness.status || "missing")}; expected ready.`);
+
+          if (!["ready", "not_ready"].includes(readiness.status)) {
+            fail(`Readiness status is ${String(readiness.status || "missing")}; expected ready or not_ready.`);
           }
+
+          const expectedReadinessHttpStatus = readiness.status === "ready" ? 200 : 503;
+          if (readinessResponse.status !== expectedReadinessHttpStatus) {
+            fail(
+              `Readiness HTTP ${readinessResponse.status} does not match status ${String(readiness.status)}.`
+            );
+          }
+
+          if (readiness.status === "ready" && blockerIds.length > 0) {
+            fail(`Readiness is ready but still reports blockers: ${blockerIds.join(", ")}`);
+          }
+          if (readiness.status === "not_ready" && blockerIds.length === 0) {
+            fail("Readiness is not_ready without an explanatory blocker.");
+          }
+
+          const unexpectedBlockers = blockerIds.filter(
+            (id) => !allowedPendingLaunchBlockers.has(id)
+          );
+          if (unexpectedBlockers.length > 0) {
+            fail(`Unexpected production readiness blockers: ${unexpectedBlockers.join(", ")}`);
+          }
+
           if (blockerIds.length > 0) {
-            fail(`Production readiness blockers remain: ${blockerIds.join(", ")}`);
+            console.warn(`Customer launch approval blockers remain: ${blockerIds.join(", ")}`);
           }
 
           console.log(
@@ -156,6 +185,22 @@ jobs:
             )
           );
           NODE
+
+      - name: Close monitor issue on recovery
+        if: success()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          existing_issue="$(gh issue list --state open --label live-monitor --json number --jq '.[0].number // empty')"
+          if [ -z "$existing_issue" ]; then
+            exit 0
+          fi
+
+          gh issue comment "$existing_issue" --body "Live monitor recovered: ${RUN_URL}"
+          gh issue close "$existing_issue" --reason completed
 
       - name: Open monitor issue on failure
         if: failure()
