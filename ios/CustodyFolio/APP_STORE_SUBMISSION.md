@@ -7,8 +7,8 @@ This draft is a working submission packet. It should be reviewed before public s
 - App name: Custody Folio
 - Display name: Custody Folio
 - Bundle ID: `io.lendori.losttofound`
-- Version: `0.1.0`
-- Build: `12`
+- Version: `1.0.0`
+- Build: Xcode-managed next available number
 - Minimum iOS version: `17.0`
 - Supported devices: iPhone and iPad
 - Signing team: `HQG9VJ8JK2`
@@ -32,7 +32,7 @@ Remove the emotion. Track the data. Organize custody events, parenting time, exp
 
 Custody Folio helps adult users privately organize custody records and supporting evidence.
 
-Track dated notes, exchanges, FaceTime issues, expenses, files, calendar items, and clear reports from one place. The app is built for factual organization and personal recordkeeping. It helps users maintain cleaner records for personal review or attorney conversations.
+Track dated notes, parenting-time exchanges, virtual contact, expenses, files, calendar items, and clear reports from one place. The app is built for factual organization and personal recordkeeping. It helps users maintain cleaner records for personal review or attorney conversations.
 
 Key features:
 
@@ -83,13 +83,13 @@ Current native build snapshot:
 
 - Product: `CustodyFolio.app`
 - Bundle ID: `io.lendori.losttofound`
-- Version/build: `0.1.0 (12)` in the project; App Store uploads use Xcode-managed next-available build numbering
+- Version/build: `1.0.0` with Xcode-managed next-available build numbering
 - Deployment target: iOS 17.0
 - Records URL: `https://custodyfolio.com/records`
 - Account deletion URL: `https://custodyfolio.com/account/delete`
 - Web navigation allowlist: `custodyfolio.com` and `www.custodyfolio.com`
 - Scene privacy behavior: app returns to locked state when it leaves the active scene
-- Automated verification: 6 native security tests passed with 0 failures on 2026-07-16, and an unsigned Release archive completed with store validation enabled
+- Automated verification: 13 native security and behavior tests passed with 0 failures on 2026-08-06; the simulator build compiled and launched without warnings
 
 Do not submit to App Review until the production backend is ready for review access, including reviewed auth email delivery, auth redirect URLs, leaked-password protection, monitoring, backup/restore evidence, retention/deletion approval, and legal review.
 
@@ -135,13 +135,20 @@ The app uses standard HTTPS/TLS and account security. Complete Apple's encryptio
 
 ## Screenshot Plan
 
-Prepare screenshots for iPhone 6.9", iPhone 6.5", and iPad if supporting iPad:
+Prepared final screenshots for the required iPhone 6.5" and iPad 13" display classes:
+
+- `app-store-screenshots/final-01-home-1284x2778.jpg`
+- `app-store-screenshots/final-02-timeline-1284x2778.jpg`
+- `app-store-screenshots/final-03-attorney-access-1284x2778.jpg`
+- `app-store-screenshots/final-ipad-01-home-2064x2752.jpg`
+- `app-store-screenshots/final-ipad-02-timeline-2064x2752.jpg`
+- `app-store-screenshots/final-ipad-03-attorney-access-2064x2752.jpg`
+
+The screenshots use synthetic Apple Review data and cover:
 
 1. Home/workspace overview with synthetic data only.
 2. Timeline with synthetic records.
-3. Calendar with synthetic parenting-plan colors.
-4. Files/upload view with synthetic file names.
-5. Report/export view with synthetic chart data.
+3. Permanent attorney access with client-controlled revocation.
 
 Do not use real custody, child, court, message, phone, address, or evidence data in screenshots.
 

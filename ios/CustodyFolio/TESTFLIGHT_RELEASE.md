@@ -83,7 +83,7 @@ Record these completion facts from the command output in the release handoff:
 - Tester notification setting
 - Beta App Review result or remaining blocker
 
-The **Distribution** tab is only for a public App Store version. Do not create a new App Store version for routine TestFlight iterations. Keep the marketing version at `0.1.0` while testing that release and change it only when preparing a new public App Store version.
+The **Distribution** tab is only for a public App Store version. Do not create a new App Store version for routine TestFlight iterations. The first public release uses marketing version `1.0.0`; increment it only when preparing a later public App Store version.
 
 ## Safe preflight
 
