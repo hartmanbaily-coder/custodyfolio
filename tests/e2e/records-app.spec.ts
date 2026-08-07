@@ -1412,6 +1412,29 @@ test("workspace tab changes support native and browser back navigation", async (
   await expect(page.getByRole("heading", { name: "Notes & events", exact: true }).first()).toBeVisible();
 });
 
+test("workspace tab changes return the new section to the top", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/records");
+  await enterDemoWorkspace(page);
+
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+
+  await page
+    .getByRole("navigation", { name: "Records workspace" })
+    .getByRole("button", { name: "Attorney access", exact: true })
+    .click();
+
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await expect(
+    page.getByTestId("workspace-header").getByRole("heading", {
+      name: "Attorney access",
+      exact: true,
+    })
+  ).toBeVisible();
+});
+
 test("settings use structured time zone selectors for profiles and cases", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/records");
