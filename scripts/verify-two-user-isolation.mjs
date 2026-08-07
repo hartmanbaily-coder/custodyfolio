@@ -15,10 +15,10 @@ if (missing.length > 0) {
 }
 
 const appBaseUrl = (process.env.RECORDS_APP_BASE_URL || "http://127.0.0.1:3000").replace(/\/$/, "");
-const appOrigin = new URL(appBaseUrl).origin;
+const trustedOrigin = new URL(process.env.NEXT_PUBLIC_APP_URL || appBaseUrl).origin;
 const trustedJsonHeaders = {
   "Content-Type": "application/json",
-  Origin: appOrigin,
+  Origin: trustedOrigin,
   "Sec-Fetch-Site": "same-origin",
 };
 const supabase = createClient(
@@ -195,7 +195,19 @@ function syntheticDataset(ownerUserId, evidenceItems = []) {
         updatedAt: now,
       },
     ],
-    matters: [],
+    matters: [
+      {
+        id: caseId,
+        userId: ownerUserId,
+        caseName: "Synthetic isolation case",
+        childDisplayLabels: [],
+        userRoleLabel: "Parent A",
+        otherParentLabel: "Parent B",
+        timezone: "UTC",
+        createdAt: now,
+        updatedAt: now,
+      },
+    ],
     exchangeRules: [],
     scheduleExceptions: [],
     custodyDayAssignments: [],
@@ -349,7 +361,7 @@ try {
   const userADataset = await loadDataset(userACookies, userAId);
   const userBDataset = await loadDataset(userBCookies, userBId);
 
-  assert(userADataset?.users?.[0]?.id === userAId, "User A could not read their own dataset.");
+  assert(userADataset?.users?.[0]?.userId === userAId, "User A could not read their own dataset.");
   assert(userBDataset === null, "User B unexpectedly loaded User A's dataset.");
 
   await createSyntheticEvidenceObject();
