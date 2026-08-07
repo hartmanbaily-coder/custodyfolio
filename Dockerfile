@@ -27,6 +27,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
+FROM deps AS production-deps
+RUN npm prune --omit=dev
+
 FROM node:22-alpine AS runner
 WORKDIR /app
 
@@ -41,9 +44,12 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=production-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/verify-malware-scanner.mjs ./scripts/verify-malware-scanner.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/verify-supabase-auth-public-settings.mjs ./scripts/verify-supabase-auth-public-settings.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/verify-security-headers.mjs ./scripts/verify-security-headers.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/verify-security-event-sink.mjs ./scripts/verify-security-event-sink.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/verify-two-user-isolation.mjs ./scripts/verify-two-user-isolation.mjs
 
 USER nextjs
 
