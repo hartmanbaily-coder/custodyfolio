@@ -661,7 +661,10 @@ async function fetchText(fetchImpl, url, label) {
   return response.text();
 }
 
-async function verifyPublicLinks(fetchImpl = fetch) {
+export async function verifyPublicLinks({
+  fetchImpl = fetch,
+  requireAppIdentification = true,
+} = {}) {
   const testerBuddyHtml = await fetchText(
     fetchImpl,
     DEFAULTS.testerBuddyUrl,
@@ -680,6 +683,12 @@ async function verifyPublicLinks(fetchImpl = fetch) {
     "Public TestFlight link",
   );
   if (!testFlightHtml.includes(DEFAULTS.appName)) {
+    if (!requireAppIdentification) {
+      console.warn(
+        "Public TestFlight link is configured, but Apple is not currently presenting an externally testable build.",
+      );
+      return;
+    }
     throw new Error(
       `Public TestFlight page does not identify ${DEFAULTS.appName}.`,
     );
@@ -690,7 +699,7 @@ async function verifyPublicLinks(fetchImpl = fetch) {
 async function runPreflight(client) {
   await verifyGroup(client);
   await verifyReviewMetadata(client);
-  await verifyPublicLinks();
+  await verifyPublicLinks({ requireAppIdentification: false });
   console.log("App Store Connect API preflight passed.");
 }
 

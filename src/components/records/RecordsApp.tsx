@@ -480,6 +480,7 @@ export default function RecordsApp() {
       historyMaxIndexRef.current = nextIndex;
       activeViewRef.current = view;
       setActiveView(view);
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
       notifyNativeNavigationChanged({
         canGoBack: true,
         canGoForward: false,

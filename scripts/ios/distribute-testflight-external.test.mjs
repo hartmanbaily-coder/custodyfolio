@@ -8,6 +8,7 @@ import {
   selectUploadedBuild,
   selectSupersededGroupBuilds,
   sortBuildsByUploadedDateDescending,
+  verifyPublicLinks,
 } from "./distribute-testflight-external.mjs";
 
 function decodeJson(segment) {
@@ -142,6 +143,25 @@ test("extracts the TestFlight target from the TesterBuddy wrapper", () => {
     "https://testflight.apple.com/join/rVmv2VAF",
   );
   assert.equal(extractTestFlightUrl("<html>no link</html>"), null);
+});
+
+test("allows preflight when the configured public link has no available build yet", async () => {
+  const fetchImpl = async (url) => ({
+    ok: true,
+    status: 200,
+    text: async () =>
+      String(url).includes("testerbuddy.app")
+        ? `const TEST_URL = '${"https://testflight.apple.com/join/rVmv2VAF"}';`
+        : "<span>This beta isn't accepting any new testers right now.</span>",
+  });
+
+  await assert.doesNotReject(
+    verifyPublicLinks({ fetchImpl, requireAppIdentification: false }),
+  );
+  await assert.rejects(
+    verifyPublicLinks({ fetchImpl, requireAppIdentification: true }),
+    /does not identify Custody Folio/,
+  );
 });
 
 test("selects every public build except the exact release build for removal", () => {
