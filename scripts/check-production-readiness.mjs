@@ -256,6 +256,11 @@ const checks = [
     isEnabled(process.env.EDGE_WAF_ENABLED) && hasValue(process.env.EDGE_WAF_PROVIDER),
     "must be true and EDGE_WAF_PROVIDER must name the provider",
   ],
+  [
+    "EDGE_CONTROLS_TESTED_AT",
+    isRecentDate(process.env.EDGE_CONTROLS_TESTED_AT, 30),
+    "must be an ISO date within the last 30 days after npm run verify:edge-controls passes",
+  ],
   ["SECURITY_MONITORING_ENABLED", isEnabled(process.env.SECURITY_MONITORING_ENABLED), "must be true"],
   [
     "SECURITY_EVENT_SINK",

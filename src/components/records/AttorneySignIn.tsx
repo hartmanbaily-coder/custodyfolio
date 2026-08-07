@@ -231,14 +231,14 @@ export default function AttorneySignIn() {
             ) : mode === "reset" ? (
               <form onSubmit={resetPassword} className="mt-5 space-y-4">
                 <label className="grid gap-1.5 text-sm font-medium text-slate-700">Email<input name="email" type="email" autoComplete="email" className="input" /></label>
-                <label className="flex items-start gap-2 text-sm text-slate-700"><input name="adult" type="checkbox" defaultChecked className="mt-1" /><span>I am the adult owner of this attorney account.</span></label>
+                <label className="flex items-start gap-2 text-sm text-slate-700"><input name="adult" type="checkbox" className="mt-1" /><span>I am the adult owner of this attorney account.</span></label>
                 <button type="submit" className="btn-primary w-full" disabled={busy}>{busy ? "Sending…" : "Send reset link"}</button>
                 <button type="button" className="btn-secondary w-full" onClick={() => { setMode("email"); setError(""); setMessage(""); }}>Back to sign in</button>
               </form>
             ) : mode === "email" ? (
               <form onSubmit={emailSignInLink} className="mt-5 space-y-4">
                 <label className="grid gap-1.5 text-sm font-medium text-slate-700">Attorney account email<input name="email" type="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" className="input" /></label>
-                <label className="flex items-start gap-2 text-sm text-slate-700"><input name="adult" type="checkbox" defaultChecked className="mt-1" /><span>I am the adult attorney using this read-only account.</span></label>
+                <label className="flex items-start gap-2 text-sm text-slate-700"><input name="adult" type="checkbox" className="mt-1" /><span>I am the adult attorney using this read-only account.</span></label>
                 <button type="submit" className="btn-primary w-full" disabled={busy}>{busy ? "Sending…" : "Email secure sign-in link"}</button>
                 <button type="button" className="btn-secondary w-full" onClick={() => { setMode("login"); setError(""); setMessage(""); }}>Use password instead</button>
               </form>
@@ -246,7 +246,7 @@ export default function AttorneySignIn() {
               <form onSubmit={login} className="mt-5 space-y-4">
                 <label className="grid gap-1.5 text-sm font-medium text-slate-700">Email<input name="email" type="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" className="input" /></label>
                 <label className="grid gap-1.5 text-sm font-medium text-slate-700">Password<input name="password" type="password" autoComplete="current-password" className="input" /></label>
-                <label className="flex items-start gap-2 text-sm text-slate-700"><input name="adult" type="checkbox" defaultChecked className="mt-1" /><span>I am the adult attorney using this read-only account.</span></label>
+                <label className="flex items-start gap-2 text-sm text-slate-700"><input name="adult" type="checkbox" className="mt-1" /><span>I am the adult attorney using this read-only account.</span></label>
                 <button type="submit" className="btn-primary w-full" disabled={busy}>{busy ? "Signing in…" : "Open attorney portal"}</button>
                 <button type="button" className="w-full text-sm font-semibold text-teal-700" onClick={() => { setMode("reset"); setError(""); setMessage(""); }}>Forgot password?</button>
                 <button type="button" className="w-full text-sm font-semibold text-teal-700" onClick={() => { setMode("email"); setError(""); setMessage(""); }}>Email a sign-in link instead</button>

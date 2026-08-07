@@ -605,7 +605,7 @@ describe("privacy and safety helpers", () => {
     const titles = preview.tables.map((table) => table.title);
     const csv = reportPreviewToCsv(preview);
 
-    expect(preview.title).toBe("Full Case Profile Export");
+    expect(preview.title).toBe("Entire Case History Export");
     expect(fullRange.from.localeCompare("2026-05-01")).toBeLessThanOrEqual(0);
     expect(titles).toEqual(expect.arrayContaining([
       "Case profile",
@@ -873,9 +873,9 @@ describe("privacy and safety helpers", () => {
 
     expect(exchangePreview.charts.map((chart) => chart.title)).toContain("Late exchanges by recorded party");
     expect(facetimePreview.metrics.map((metric) => metric.label)).toContain("After call/request");
-    expect(facetimePreview.charts.map((chart) => chart.title)).toContain("No FaceTime records by month");
+    expect(facetimePreview.charts.map((chart) => chart.title)).toContain("Uncompleted virtual contact by month");
     expect(correlationPreview.charts.map((chart) => chart.title)).toContain(
-      "No FaceTime records after filing notes"
+      "Uncompleted virtual contact after filing notes"
     );
     expect(correlationPreview.summaries.join(" ")).toContain("timing overlap only");
     expect(csv.split("\n")[0]).toContain("Date");

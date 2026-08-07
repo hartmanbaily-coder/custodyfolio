@@ -217,7 +217,7 @@ export default function AttorneyAccept() {
                   </label>
                 ) : null}
                 <label className="flex items-start gap-2 text-sm leading-5 text-slate-700">
-                  <input name="adult" type="checkbox" defaultChecked className="mt-1" />
+                  <input name="adult" type="checkbox" className="mt-1" />
                   <span>I am the adult attorney invited to this read-only matter.</span>
                 </label>
                 <button type="submit" className="btn-primary w-full" disabled={busy}>

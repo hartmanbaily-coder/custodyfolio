@@ -100,8 +100,8 @@ jobs:
           }
 
           const readinessResponse = await get(`${baseUrl}/api/records/readiness`);
-          if (![200, 503].includes(readinessResponse.status)) {
-            fail(`/api/records/readiness returned HTTP ${readinessResponse.status}`);
+          if (readinessResponse.status !== 200) {
+            fail(`/api/records/readiness returned HTTP ${readinessResponse.status}; production is not ready.`);
           }
 
           const readiness = await readinessResponse.json();
@@ -135,6 +135,12 @@ jobs:
           const undeclared = blockerIds.filter((id) => !declaredCheckIds.has(id));
           if (undeclared.length > 0) {
             fail(`Readiness blockers missing from checks catalog: ${undeclared.join(", ")}`);
+          }
+          if (readiness.status !== "ready") {
+            fail(`Readiness status is ${String(readiness.status || "missing")}; expected ready.`);
+          }
+          if (blockerIds.length > 0) {
+            fail(`Production readiness blockers remain: ${blockerIds.join(", ")}`);
           }
 
           console.log(

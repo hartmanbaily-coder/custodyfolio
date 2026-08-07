@@ -101,24 +101,24 @@ export interface SectionExportPacket {
 }
 
 export const reportTypeLabels: Record<ReportType, string> = {
-  full_profile: "Full Profile Export",
+  full_profile: "Selected Date Range Export",
   financial_records: "Financial Records",
   exchange_compliance: "Parenting Time Report",
   facetime_cancellations: "Communication Report",
   incident_timeline: "Timeline Report",
-  filing_facetime_correlation: "Filing / FaceTime Timing Report",
+  filing_facetime_correlation: "Filing / Communication Timing Report",
   child_support_payment: "Child Support Payment Report",
   expense_reimbursement: "Expense/Reimbursement Report",
   combined_attorney_summary: "Attorney Issue Summary",
   combined_court_packet: "Combined Court Issue Packet",
-  full_profile_export: "Full Case Profile Export",
+  full_profile_export: "Entire Case History Export",
 };
 
 export const reportsTabReportTypes: Array<{ value: ReportType; label: string; description: string }> = [
   {
     value: "full_profile",
     label: reportTypeLabels.full_profile,
-    description: "Packages the complete selected profile into one organized, printable export.",
+    description: "Packages report-included records from the selected date range into one organized, printable export.",
   },
   {
     value: "financial_records",
@@ -133,7 +133,7 @@ export const reportsTabReportTypes: Array<{ value: ReportType; label: string; de
   {
     value: "facetime_cancellations",
     label: reportTypeLabels.facetime_cancellations,
-    description: "Summarizes no FaceTime records and whether notice came after a call/request.",
+    description: "Summarizes virtual contact that was not completed and whether notice came after a call or request.",
   },
   {
     value: "incident_timeline",
@@ -143,7 +143,7 @@ export const reportsTabReportTypes: Array<{ value: ReportType; label: string; de
   {
     value: "filing_facetime_correlation",
     label: reportTypeLabels.filing_facetime_correlation,
-    description: "Compares court/attorney filing notes with nearby no FaceTime records.",
+    description: "Compares court or attorney filing notes with nearby uncompleted virtual contact records.",
   },
   {
     value: "combined_attorney_summary",
@@ -158,7 +158,7 @@ export const reportsTabReportTypes: Array<{ value: ReportType; label: string; de
   {
     value: "full_profile_export",
     label: reportTypeLabels.full_profile_export,
-    description: "Packages the complete case history into organized, print-friendly sections for offline review and highlighting.",
+    description: "Includes the entire saved case history, even items excluded from issue-focused reports, for offline review and highlighting.",
   },
 ];
 
@@ -364,8 +364,8 @@ function eventMatchesFilingLanguage(event: CalendarEvent) {
 function issueLabelForEvent(event: CalendarEvent) {
   if (isLateExchangeTimelineEvent(event)) return "Late exchange";
   if (isMissedExchangeTimelineEvent(event)) return "Missed/refused exchange";
-  if (isPostCallFaceTimeNotice(event)) return "No FaceTime after call/request";
-  if (isNoFaceTimeTimelineEvent(event)) return "No FaceTime";
+  if (isPostCallFaceTimeNotice(event)) return "Virtual contact not completed after call/request";
+  if (isNoFaceTimeTimelineEvent(event)) return "Virtual contact not completed";
   if (eventMatchesFilingLanguage(event)) return "Court/attorney filing note";
   return eventSeverityLabel(event.severity);
 }
@@ -1386,7 +1386,7 @@ export function buildReportPreview(
 
   if (reportType === "facetime_cancellations") {
     const table: SectionExportTable = {
-      title: "No FaceTime records",
+      title: "Virtual contact not completed",
       headers: ["Date", "Time", "Issue", "Title", "Detail", "Summary", "Notes", "Tags"],
       rows: noFaceTimeRows(events).map((row) => [
         row.date,
@@ -1403,17 +1403,17 @@ export function buildReportPreview(
     return {
       ...base,
       title: reportTypeLabels.facetime_cancellations,
-      focus: "FaceTime cancellations and notice timing",
+      focus: "Virtual contact outcomes and notice timing",
       summaries: [
-        `${noFaceTimeEvents.length} no FaceTime record${noFaceTimeEvents.length === 1 ? "" : "s"} are in this range.`,
+        `${noFaceTimeEvents.length} uncompleted virtual contact record${noFaceTimeEvents.length === 1 ? "" : "s"} ${noFaceTimeEvents.length === 1 ? "is" : "are"} in this range.`,
         `${postCallNoFaceTimeEvents.length} of those records (${postCallShare}) indicate notice after a call/request or unanswered call based on the entered notes/tags.`,
-        "The report separates post call notice from other no FaceTime records so the timing pattern is visible.",
+        "The report separates post-call notice from other uncompleted contact records so the timing pattern is visible.",
       ],
       metrics: [
-        { label: "No FaceTime records", value: noFaceTimeEvents.length, detail: `${range.from} to ${range.to}` },
+        { label: "Contact not completed", value: noFaceTimeEvents.length, detail: `${range.from} to ${range.to}` },
         { label: "After call/request", value: postCallNoFaceTimeEvents.length, detail: postCallShare },
         {
-          label: "Other no FaceTime",
+          label: "Other uncompleted contact",
           value: noFaceTimeEvents.length - postCallNoFaceTimeEvents.length,
           detail: "No post call marker found",
         },
@@ -1422,12 +1422,12 @@ export function buildReportPreview(
       charts: [
         {
           kind: "line",
-          title: "No FaceTime records by month",
-          description: "Compares all no FaceTime records with the subset marked after a call/request.",
+          title: "Uncompleted virtual contact by month",
+          description: "Compares all uncompleted contact records with the subset marked after a call or request.",
           unit: "records",
-          seriesLabels: ["No FaceTime", "After call/request"],
+          seriesLabels: ["Not completed", "After call/request"],
           rows: facetimeTrendRows,
-          emptyLabel: "No no FaceTime records in this range.",
+          emptyLabel: "No uncompleted virtual contact records in this range.",
         },
         {
           kind: "bar",
@@ -1436,9 +1436,9 @@ export function buildReportPreview(
           unit: "records",
           rows: [
             { label: "Notice after call/request", value: postCallNoFaceTimeEvents.length },
-            { label: "Other no FaceTime records", value: noFaceTimeEvents.length - postCallNoFaceTimeEvents.length },
+            { label: "Other uncompleted contact", value: noFaceTimeEvents.length - postCallNoFaceTimeEvents.length },
           ],
-          emptyLabel: "No no FaceTime records in this range.",
+          emptyLabel: "No uncompleted virtual contact records in this range.",
         },
       ],
       tables: [table],
@@ -1447,7 +1447,7 @@ export function buildReportPreview(
 
   if (reportType === "filing_facetime_correlation") {
     const table: SectionExportTable = {
-      title: "Filing notes with nearby no FaceTime counts",
+      title: "Filing notes with nearby uncompleted contact counts",
       headers: ["Date", "Time", "Filing note", "Same day", "Within 7 days", "Within 14 days", "Note text"],
       rows: filingCorrelationRows(filingEvents, noFaceTimeEvents).map((row) => [
         row.date,
@@ -1464,22 +1464,22 @@ export function buildReportPreview(
     return {
       ...base,
       title: reportTypeLabels.filing_facetime_correlation,
-      focus: "Filing dates compared with no FaceTime timing",
+      focus: "Filing dates compared with virtual contact timing",
       summaries: [
         `${filingEvents.length} court/attorney filing note${filingEvents.length === 1 ? "" : "s"} are detected in this range.`,
-        `${within7Total} no FaceTime record${within7Total === 1 ? "" : "s"} fall within seven days after those filing notes.`,
-        "This report shows timing overlap only; it does not claim why a FaceTime did or did not occur.",
+        `${within7Total} uncompleted virtual contact record${within7Total === 1 ? "" : "s"} fall within seven days after those filing notes.`,
+        "This report shows timing overlap only; it does not claim why virtual contact did or did not occur.",
       ],
       metrics: [
         { label: "Filing notes", value: filingEvents.length, detail: "Court/attorney notes with filing language" },
-        { label: "No FaceTime records", value: noFaceTimeEvents.length, detail: `${range.from} to ${range.to}` },
+        { label: "Contact not completed", value: noFaceTimeEvents.length, detail: `${range.from} to ${range.to}` },
         { label: "Within 7 days", value: within7Total, detail: "After filing note dates" },
-        { label: "Post call notices", value: postCallNoFaceTimeEvents.length, detail: "Subset of no FaceTime records" },
+        { label: "Post call notices", value: postCallNoFaceTimeEvents.length, detail: "Subset of uncompleted contact records" },
       ],
       charts: [
         {
           kind: "bar",
-          title: "No FaceTime records after filing notes",
+          title: "Uncompleted virtual contact after filing notes",
           description: `For each filing note date, bars compare ${formatDateRangeWindow(0)}, within 7 days, and within 14 days.`,
           unit: "records",
           seriesLabels: ["Same day", "Within 7 days", "Within 14 days"],
@@ -1488,11 +1488,11 @@ export function buildReportPreview(
         },
         {
           kind: "line",
-          title: "Monthly filing notes and no FaceTime records",
+          title: "Monthly filing notes and uncompleted virtual contact",
           unit: "records",
-          seriesLabels: ["Filing notes", "No FaceTime", "After call/request"],
+          seriesLabels: ["Filing notes", "Contact not completed", "After call/request"],
           rows: filingTrendRows,
-          emptyLabel: "No filing or no FaceTime records in this range.",
+          emptyLabel: "No filing or uncompleted virtual contact records in this range.",
         },
       ],
       tables: [table],
@@ -1508,13 +1508,13 @@ export function buildReportPreview(
       focus: "Timeline issue pattern",
       summaries: [
         `${issueEvents.length} timeline record${issueEvents.length === 1 ? "" : "s"} match the issue filters in this range.`,
-        `${lateExchangeEvents.length} are marked late exchange records and ${noFaceTimeEvents.length} are no FaceTime records.`,
+        `${lateExchangeEvents.length} are marked late exchange records and ${noFaceTimeEvents.length} are uncompleted virtual contact records.`,
         "Custody day color blocks are excluded from this report so the timeline only shows event records.",
       ],
       metrics: [
         { label: "Issue records", value: issueEvents.length, detail: `${range.from} to ${range.to}` },
         { label: "Late exchanges", value: lateExchangeEvents.length, detail: "Log or note pattern" },
-        { label: "No FaceTime", value: noFaceTimeEvents.length, detail: "Communication notes" },
+        { label: "Contact not completed", value: noFaceTimeEvents.length, detail: "Communication notes" },
         { label: "Missed/refused", value: missedExchangeEvents.length, detail: "Exchange records" },
       ],
       charts: [
@@ -1530,7 +1530,7 @@ export function buildReportPreview(
           kind: "line",
           title: "Monthly issue trend",
           unit: "records",
-          seriesLabels: ["Late exchange", "No FaceTime", "Missed/refused exchange"],
+          seriesLabels: ["Late exchange", "Contact not completed", "Missed/refused exchange"],
           rows: issueTrendRows,
           emptyLabel: "No issue trend rows in this range.",
         },
@@ -1817,7 +1817,7 @@ export function buildReportPreview(
     focus: isCourtPacket ? "Combined court issue packet" : "Attorney issue review",
     summaries: [
       `${issueEvents.length} issue record${issueEvents.length === 1 ? "" : "s"} are included from ${range.from} to ${range.to}.`,
-      `${lateExchangeEvents.length} late exchange record${lateExchangeEvents.length === 1 ? "" : "s"}, ${noFaceTimeEvents.length} no FaceTime record${noFaceTimeEvents.length === 1 ? "" : "s"}, and ${filingEvents.length} court/attorney filing note${filingEvents.length === 1 ? "" : "s"} are detected.`,
+      `${lateExchangeEvents.length} late exchange record${lateExchangeEvents.length === 1 ? "" : "s"}, ${noFaceTimeEvents.length} uncompleted virtual contact record${noFaceTimeEvents.length === 1 ? "" : "s"}, and ${filingEvents.length} court/attorney filing note${filingEvents.length === 1 ? "" : "s"} are detected.`,
       isCourtPacket
         ? "The court packet includes custody schedule context, logged exchange details, and issue timeline rows. It does not include child support or expense sections."
         : "The attorney summary contains issue timeline rows only. It excludes routine custody schedule, child support, and expense records.",
@@ -1825,7 +1825,7 @@ export function buildReportPreview(
     metrics: [
       { label: "Issue records", value: issueEvents.length, detail: `${range.from} to ${range.to}` },
       { label: "Late exchanges", value: lateExchangeEvents.length, detail: "Exchange logs/notes" },
-      { label: "No FaceTime", value: noFaceTimeEvents.length, detail: `${postCallNoFaceTimeEvents.length} after call/request` },
+      { label: "Contact not completed", value: noFaceTimeEvents.length, detail: `${postCallNoFaceTimeEvents.length} after call/request` },
       { label: "Filing notes", value: filingEvents.length, detail: "Court/attorney timing records" },
     ],
     charts: [
@@ -1841,7 +1841,7 @@ export function buildReportPreview(
         kind: "line",
         title: "Monthly issue trend",
         unit: "records",
-        seriesLabels: ["Late exchange", "No FaceTime", "Missed/refused exchange"],
+        seriesLabels: ["Late exchange", "Contact not completed", "Missed/refused exchange"],
         rows: issueTrendRows,
         emptyLabel: "No issue trend rows in this range.",
       },

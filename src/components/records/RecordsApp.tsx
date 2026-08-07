@@ -437,6 +437,7 @@ export default function RecordsApp() {
     currentMonthKey(new Date(), defaultRecordsTimezone)
   );
   const [calendarMode, setCalendarMode] = useState<"month" | "list" | "timeline">("month");
+  const [calendarTask, setCalendarTask] = useState<"view" | "edit">("view");
   const [selectedDay, setSelectedDay] = useState(() => formatLocalDate(new Date(), defaultRecordsTimezone));
   const [reportType, setReportType] = useState<ReportType>("full_profile");
   const [toast, setToast] = useState("");
@@ -491,6 +492,7 @@ export default function RecordsApp() {
   }, [caseTimezone]);
 
   const openRecurringExchangeSchedule = useCallback(() => {
+    setCalendarTask("edit");
     openView("Calendar");
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
@@ -504,13 +506,15 @@ export default function RecordsApp() {
   }, [openView]);
 
   useEffect(() => {
-    activeViewRef.current = "Dashboard";
-    historyIndexRef.current = 0;
-    historyMaxIndexRef.current = 0;
-    setActiveView("Dashboard");
-    window.history.replaceState(recordsHistoryState("Dashboard", 0), "");
+    const restoredView = activeViewFromHistoryState(window.history.state) || "Dashboard";
+    const restoredIndex = historyIndexFromState(window.history.state) || 0;
+    activeViewRef.current = restoredView;
+    historyIndexRef.current = restoredIndex;
+    historyMaxIndexRef.current = restoredIndex;
+    setActiveView(restoredView);
+    window.history.replaceState(recordsHistoryState(restoredView, restoredIndex), "");
     notifyNativeNavigationChanged({
-      canGoBack: false,
+      canGoBack: restoredIndex > 0,
       canGoForward: false,
     });
 
@@ -814,8 +818,8 @@ export default function RecordsApp() {
   return (
     <div className="records-app-shell min-h-screen bg-gradient-to-br from-[#f8faff] via-[#edf4fc] to-[#f4f7fc] text-slate-950">
       <div className="records-app-grid grid min-h-screen lg:grid-cols-[288px_minmax(0,1fr)]">
-        <aside className="overflow-hidden border-b border-slate-200 bg-white/95 lg:overflow-visible lg:border-b-0 lg:border-r lg:border-slate-200">
-          <div className="flex flex-col p-4 lg:sticky lg:top-0 lg:h-screen">
+        <aside className="overflow-hidden border-b border-slate-200 bg-white/95 lg:border-b-0 lg:border-r lg:border-slate-200">
+          <div className="flex flex-col p-4 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto">
             <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
               <Image
                 src="/app-icons/icon-192.png"
@@ -832,7 +836,7 @@ export default function RecordsApp() {
               </div>
             </div>
 
-            <nav className="mt-5 flex max-w-full gap-2 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50/80 p-2 lg:block lg:space-y-4 lg:overflow-visible" aria-label="Records workspace">
+            <nav className="mt-5 flex max-w-full gap-2 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50/80 p-2 lg:block lg:space-y-4 lg:overflow-visible lg:pb-4" aria-label="Records workspace">
               {navGroups.map((group) => (
                 <div key={group.label} className="shrink-0">
                   <p className="mb-1 hidden border-b border-teal-200 px-2 pb-1 text-xs font-bold uppercase tracking-[0.14em] text-teal-700 lg:block">
@@ -914,6 +918,8 @@ export default function RecordsApp() {
                 caseId={effectiveCaseId}
                 mode={calendarMode}
                 setMode={setCalendarMode}
+                calendarTask={calendarTask}
+                setCalendarTask={setCalendarTask}
                 selectedDay={selectedDay}
                 setSelectedDay={setSelectedDay}
                 calendarMonthKey={calendarMonthKey}
@@ -967,6 +973,7 @@ export default function RecordsApp() {
                 caseId={effectiveCaseId}
                 timezone={caseTimezone}
                 notes={selected.dateNotes}
+                communicationLabel={terminology.communication}
                 flash={flash}
               />
             )}
@@ -995,6 +1002,7 @@ export default function RecordsApp() {
                 orders={selected.childSupportOrders}
                 payments={selected.childSupportPayments}
                 obligations={supportObligations}
+                historyObligations={supportHistoryObligations}
                 supportRows={supportRows}
                 supportStats={supportStats}
                 flash={flash}
@@ -1023,6 +1031,7 @@ export default function RecordsApp() {
                 userId={userId}
                 caseId={effectiveCaseId}
                 range={range}
+                terminology={terminology}
                 flash={flash}
                 updateDataset={updateDataset}
               />
@@ -1642,7 +1651,7 @@ function LoginScreen({
                   />
                 </Field>
                 <label className="flex items-start gap-2 text-sm leading-5 text-slate-700">
-                  <input name="adult" type="checkbox" defaultChecked className="mt-1" />
+                  <input name="adult" type="checkbox" className="mt-1" />
                   <span>I am an adult user requesting access to my own records account.</span>
                 </label>
                 {error && <p className="text-sm font-medium text-red-700">{error}</p>}
@@ -1675,7 +1684,7 @@ function LoginScreen({
                   />
                 </Field>
                 <label className="flex items-start gap-2 text-sm leading-5 text-slate-700">
-                  <input name="adult" type="checkbox" defaultChecked className="mt-1" />
+                  <input name="adult" type="checkbox" className="mt-1" />
                   <span>I am an adult user requesting access to my own records account.</span>
                 </label>
                 {error && <p className="text-sm font-medium text-red-700">{error}</p>}
@@ -1719,7 +1728,7 @@ function LoginScreen({
                   />
                 </Field>
                 <label className="flex items-start gap-2 text-sm leading-5 text-slate-700">
-                  <input name="adult" type="checkbox" defaultChecked className="mt-1" />
+                  <input name="adult" type="checkbox" className="mt-1" />
                   <span>
                     {invitedAttorneySignup
                       ? "I am the adult attorney invited to this read-only case."
@@ -1820,7 +1829,7 @@ function LoginScreen({
                   />
                 </div>
                 <label className="flex items-start gap-2 text-sm leading-5 text-slate-700">
-                  <input name="adult" type="checkbox" defaultChecked className="mt-1" />
+                  <input name="adult" type="checkbox" className="mt-1" />
                   <span>
                     I am an adult user and will use privacy minded labels for sensitive records.
                   </span>
@@ -1978,6 +1987,8 @@ function CalendarView({
   caseId,
   mode,
   setMode,
+  calendarTask,
+  setCalendarTask,
   selectedDay,
   setSelectedDay,
   calendarMonthKey,
@@ -1995,6 +2006,8 @@ function CalendarView({
   caseId: string;
   mode: "month" | "list" | "timeline";
   setMode: (mode: "month" | "list" | "timeline") => void;
+  calendarTask: "view" | "edit";
+  setCalendarTask: (task: "view" | "edit") => void;
   selectedDay: string;
   setSelectedDay: (day: string) => void;
   calendarMonthKey: string;
@@ -2004,7 +2017,6 @@ function CalendarView({
   otherParentLabel: string;
   flash: (message: string) => void;
 }) {
-  const [calendarTask, setCalendarTask] = useState<"view" | "edit">("view");
   const monthKey = monthKeyFromDate(`${calendarMonthKey}-01`, timezone);
   const monthRange = getMonthBounds(monthKey, timezone);
   const monthDays = buildMonthDays(monthKey);
@@ -4133,17 +4145,17 @@ const faceTimeOutcomeOptions: Array<{ value: FaceTimeOutcome; label: string }> =
 ];
 
 const faceTimeOutcomeTitles: Record<FaceTimeOutcome, string> = {
-  completed: "FaceTime completed",
-  not_conducted: "No FaceTime conducted",
-  attempted_unanswered: "FaceTime attempt unanswered",
-  declined_or_canceled: "FaceTime canceled or declined",
+  completed: "Virtual contact completed",
+  not_conducted: "Virtual contact not conducted",
+  attempted_unanswered: "Virtual contact attempt unanswered",
+  declined_or_canceled: "Virtual contact canceled or declined",
 };
 
 const faceTimeOutcomeStatements: Record<FaceTimeOutcome, string> = {
-  completed: "FaceTime was conducted.",
-  not_conducted: "FaceTime was not conducted.",
-  attempted_unanswered: "A FaceTime attempt was not answered.",
-  declined_or_canceled: "FaceTime was canceled or declined.",
+  completed: "Virtual contact was completed.",
+  not_conducted: "Virtual contact was not completed.",
+  attempted_unanswered: "A virtual contact attempt was not answered.",
+  declined_or_canceled: "Virtual contact was canceled or declined.",
 };
 
 function NotesView({
@@ -4152,6 +4164,7 @@ function NotesView({
   caseId,
   timezone,
   notes,
+  communicationLabel,
   flash,
 }: {
   updateDataset: ReturnType<typeof useRecordsStore>["updateDataset"];
@@ -4159,6 +4172,7 @@ function NotesView({
   caseId: string;
   timezone: string;
   notes: ReturnType<typeof useSelectedRecords>["dateNotes"];
+  communicationLabel: string;
   flash: (message: string) => void;
 }) {
   const [filter, setFilter] = useState("all");
@@ -4200,7 +4214,7 @@ function NotesView({
       includeInReports: formData.get("includeInReports") === "on",
     });
     if (!parsed.success) {
-      return flash(parsed.error.issues[0]?.message || "Check the FaceTime outcome form.");
+      return flash(parsed.error.issues[0]?.message || "Check the virtual contact outcome form.");
     }
 
     const noteId = createId("note");
@@ -4229,15 +4243,15 @@ function NotesView({
             action: "created",
             entityType: "dateNote",
             entityId: noteId,
-            metadataSummary: "Structured FaceTime outcome saved without communication details in audit metadata.",
+            metadataSummary: "Structured virtual contact outcome saved without communication details in audit metadata.",
           }
         )
       );
       form.reset();
       setFaceTimeOutcome("not_conducted");
-      flash("FaceTime outcome saved and reflected in the dashboard date range.");
+      flash("Virtual contact outcome saved and reflected in the dashboard date range.");
     } catch (error) {
-      flash(error instanceof Error ? error.message : "FaceTime outcome save failed.");
+      flash(error instanceof Error ? error.message : "Virtual contact outcome save failed.");
     } finally {
       setFaceTimeSaving(false);
     }
@@ -4341,10 +4355,10 @@ function NotesView({
   return (
     <div className="grid min-w-0 gap-4 xl:grid-cols-[420px_1fr]">
       <div className="min-w-0 space-y-4">
-        <Panel title="Log FaceTime outcome" action="Dashboard source">
+        <Panel title={`Log ${communicationLabel.toLowerCase()} outcome`} action="Dashboard source">
           <p className="mb-3 text-xs leading-5 text-slate-600">
-            This structured entry updates the No FaceTime and Post call notices dashboard
-            counters when its date is inside the selected range.
+            Use this for a scheduled phone call, video call, or similar contact. It updates the
+            communication counters when its date is inside the selected range.
           </p>
           <form data-testid="facetime-outcome-form" onSubmit={saveFaceTimeOutcome} className="grid gap-3">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -4360,7 +4374,7 @@ function NotesView({
                 <input name="noteTime" type="time" className="input" />
               </Field>
             </div>
-            <Field label="FaceTime outcome">
+            <Field label={`${communicationLabel} outcome`}>
               <select
                 name="faceTimeOutcome"
                 className="input"
@@ -4390,7 +4404,7 @@ function NotesView({
               Include this outcome in selected reports
             </label>
             <button className="btn-primary" type="submit" disabled={faceTimeSaving}>
-              {faceTimeSaving ? "Saving outcome…" : "Save FaceTime outcome"}
+              {faceTimeSaving ? "Saving outcome…" : "Save virtual contact outcome"}
             </button>
           </form>
         </Panel>
@@ -5716,11 +5730,16 @@ function EvidenceView({
               name="file"
               type="file"
               className="input"
-              accept=".docx,.pdf,.png,.jpg,.jpeg,.heic,.txt,.csv"
+              accept=".docx,.pdf,.png,.jpg,.jpeg,.heic,.heif,.txt,.csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf,image/png,image/jpeg,image/heic,image/heif,text/plain,text/csv"
             />
           </Field>
           <Field label="Record date">
-            <input name="evidenceDate" type="date" className="input" defaultValue="2026-06-10" />
+            <input
+              name="evidenceDate"
+              type="date"
+              className="input"
+              defaultValue={formatLocalDate(new Date(), timezone)}
+            />
           </Field>
           <Field label="Description">
             <textarea name="description" className="input min-h-20" />
@@ -5896,6 +5915,7 @@ function ChildSupportView({
   orders,
   payments,
   obligations,
+  historyObligations,
   supportRows,
   supportStats,
   flash,
@@ -5907,6 +5927,7 @@ function ChildSupportView({
   orders: ReturnType<typeof useSelectedRecords>["childSupportOrders"];
   payments: ReturnType<typeof useSelectedRecords>["childSupportPayments"];
   obligations: ChildSupportObligation[];
+  historyObligations: ChildSupportObligation[];
   supportRows: Array<{ month: string; amountDue: number; amountPaid: number; unpaidBalance: number }>;
   supportStats: ReturnType<typeof calculateChildSupportObligationStats>;
   flash: (message: string) => void;
@@ -5925,7 +5946,7 @@ function ChildSupportView({
     editingPayment?.childSupportOrderId || paymentOrderId || firstOrder?.id || "";
   const activePaymentOrder =
     orders.find((order) => order.id === activePaymentOrderId) || firstOrder;
-  const activeOrderObligations = obligations.filter(
+  const activeOrderObligations = historyObligations.filter(
     (obligation) => obligation.childSupportOrderId === activePaymentOrderId
   );
   const defaultPaymentDueDate = editingPayment?.dueDate || "";
@@ -6388,7 +6409,11 @@ function ChildSupportView({
               <SupportTrendLine rows={supportRows} />
             </Panel>
           ) : null}
-          {supportTab === "overview" || supportTab === "history" ? <SupportObligationsPanel obligations={obligations} /> : null}
+          {supportTab === "overview" || supportTab === "history" ? (
+            <SupportObligationsPanel
+              obligations={supportTab === "history" ? historyObligations : obligations}
+            />
+          ) : null}
           {supportTab === "history" ? <SupportPaymentsPanel
             className="hidden xl:block"
             payments={payments}
@@ -6806,6 +6831,7 @@ function ReportsView({
   userId,
   caseId,
   range,
+  terminology,
   updateDataset,
   flash,
 }: {
@@ -6815,6 +6841,7 @@ function ReportsView({
   userId: string;
   caseId: string;
   range: DateRange;
+  terminology: CaseTerminology;
   updateDataset: ReturnType<typeof useRecordsStore>["updateDataset"];
   flash: (message: string) => void;
 }) {
@@ -6825,8 +6852,20 @@ function ReportsView({
     notes: false,
   });
   const exportReviewComplete = exportReviewItems.every((item) => exportReview[item.key]);
+  const reportOptions = reportsTabReportTypes.map((item) => {
+    if (item.value === "exchange_compliance") {
+      return { ...item, label: `${terminology.parentingTime} Report` };
+    }
+    if (item.value === "facetime_cancellations") {
+      return { ...item, label: `${terminology.communication} Report` };
+    }
+    if (item.value === "filing_facetime_correlation") {
+      return { ...item, label: `Filing / ${terminology.communication} Timing Report` };
+    }
+    return item;
+  });
   const selectedReportOption =
-    reportsTabReportTypes.find((item) => item.value === reportType) || reportsTabReportTypes[0];
+    reportOptions.find((item) => item.value === reportType) || reportOptions[0];
 
   function toggleExportReview(key: ExportReviewKey, checked: boolean) {
     setExportReview((current) => ({ ...current, [key]: checked }));
@@ -6903,7 +6942,7 @@ function ReportsView({
               onChange={(event) => setReportType(event.target.value as ReportType)}
               className="input"
             >
-              {reportsTabReportTypes.map((item) => (
+              {reportOptions.map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label}
                 </option>

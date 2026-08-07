@@ -13,7 +13,9 @@
     "test:unit": "vitest run",
     "test:deploy": "bash deploy/production/test-health-recovery.sh",
     "test:e2e": "playwright test",
+    "test:e2e:ci": "playwright test --project=chromium",
     "test:e2e:webkit": "playwright test --config=playwright.webkit.config.ts",
+    "test:e2e:webkit:attorney": "playwright test --config=playwright.webkit.config.ts --grep attorney",
     "security:audit": "npm audit --omit=dev --audit-level=high",
     "security:secrets": "node scripts/check-secrets.mjs",
     "security:scan": "npm run security:secrets && npm run security:audit",
@@ -36,7 +38,6 @@
     "test:ios:testflight": "node --test scripts/ios/distribute-testflight-external.test.mjs"
   },
   "dependencies": {
-    "@playwright/test": "^1.60.0",
     "@supabase/supabase-js": "^2.86.2",
     "heic-to": "^1.5.2",
     "jspdf": "^4.2.1",
@@ -51,6 +52,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

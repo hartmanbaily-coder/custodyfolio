@@ -50,6 +50,17 @@ import {
 
 type PortalView = "Overview" | "Timeline" | "Calendar" | "Exchanges" | "Notes" | "Files" | "Child Support" | "Expenses" | "Reports";
 const portalViews: PortalView[] = ["Overview", "Timeline", "Calendar", "Exchanges", "Notes", "Files", "Child Support", "Expenses", "Reports"];
+const portalViewLabels: Record<PortalView, string> = {
+  Overview: "Overview",
+  Timeline: "Timeline",
+  Calendar: "Calendar",
+  Exchanges: "Parenting time",
+  Notes: "Notes & events",
+  Files: "Files & evidence",
+  "Child Support": "Child support",
+  Expenses: "Expenses",
+  Reports: "Reports",
+};
 const exportableViewSections: Partial<Record<PortalView, SectionExportId>> = {
   Timeline: "timeline",
   Calendar: "calendar",
@@ -502,7 +513,7 @@ export default function AttorneyPortal() {
             </div>
           </div>
         </section>
-        <nav className="mt-4 flex max-w-full gap-2 overflow-x-auto pb-2" aria-label="Shared matter sections">{portalViews.map((item) => <button key={item} type="button" onClick={() => setView(item)} className={`shrink-0 rounded-md px-3 py-2 text-sm font-semibold ${view === item ? "bg-teal-700 text-white" : "border border-slate-200 bg-white text-slate-700"}`}>{item}</button>)}</nav>
+        <nav className="mt-4 flex max-w-full gap-2 overflow-x-auto pb-2" aria-label="Shared matter sections">{portalViews.map((item) => <button key={item} type="button" onClick={() => setView(item)} className={`shrink-0 rounded-md px-3 py-2 text-sm font-semibold ${view === item ? "bg-teal-700 text-white" : "border border-slate-200 bg-white text-slate-700"}`}>{portalViewLabels[item]}</button>)}</nav>
         {message ? <p role="status" aria-live="polite" className="mt-3 rounded-md border border-slate-200 bg-white p-3 text-sm">{message}</p> : null}
         <main className="mt-4 min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           {view === "Overview" ? <div><h2 className="text-lg font-semibold">Shared case overview</h2><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["Timeline records", timeline.length],["Notes", dataset?.dateNotes.length || 0],["Files", evidence.length],["Expenses", dataset?.expenseItems.length || 0]].map(([label,value]) => <div key={String(label)} className="rounded-md border bg-slate-50 p-4"><p className="text-xs uppercase text-slate-500">{label}</p><p className="mt-1 text-2xl font-semibold">{value}</p></div>)}</div><p className="mt-4 text-sm leading-6 text-slate-600">Granted case information is refreshed from the owner’s current persisted snapshot. Access is checked again on every protected request.</p></div> : null}
@@ -573,7 +584,7 @@ export default function AttorneyPortal() {
           ) : null}
           {view === "Notes" ? (
             <div>
-              <h2 className="text-lg font-semibold">Notes</h2>
+              <h2 className="text-lg font-semibold">Notes & events</h2>
               <p className="mt-1 text-sm text-slate-600">Choose each note you want included in attorney-created exports.</p>
               <div className="mt-3 space-y-3">
                 {dataset?.dateNotes.map((record) => (

@@ -43,6 +43,7 @@ const readyEnv = {
   EDGE_RATE_LIMITING_PROVIDER: "cloudflare",
   EDGE_WAF_ENABLED: "true",
   EDGE_WAF_PROVIDER: "cloudflare",
+  EDGE_CONTROLS_TESTED_AT: "2026-06-10",
   SECURITY_MONITORING_ENABLED: "true",
   AUDIT_LOG_REVIEW_ENABLED: "true",
   BACKUP_RESTORE_TESTED_AT: "2026-06-01",
@@ -148,6 +149,19 @@ describe("production readiness", () => {
     expect(report.ready).toBe(true);
     expect(report.blockers.map((item) => item.id)).not.toContain("customer-resource-profile");
     expect(report.warnings.map((item) => item.id)).toContain("customer-resource-profile");
+  });
+
+  it("does not trust edge-control flags without a recent live verification", () => {
+    const report = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        EDGE_CONTROLS_TESTED_AT: "",
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+
+    expect(report.ready).toBe(false);
+    expect(report.blockers.map((item) => item.id)).toContain("edge-controls-tested");
   });
 
   it("allows non-Supabase safety gates to pass while Supabase final work is deferred", () => {
@@ -321,6 +335,7 @@ describe("production readiness", () => {
         EDGE_RATE_LIMITING_ENABLED: "false",
         EDGE_RATE_LIMITING_PROVIDER: "",
         EDGE_WAF_PROVIDER: "",
+        EDGE_CONTROLS_TESTED_AT: "2026-01-01",
         SECURITY_MONITORING_ENABLED: "false",
         SECURITY_EVENT_SINK: "",
         BACKUP_RESTORE_TESTED_AT: "2025-01-01",
@@ -345,6 +360,7 @@ describe("production readiness", () => {
         "malware-scanner-tested",
         "edge-rate-limits",
         "edge-waf",
+        "edge-controls-tested",
         "security-monitoring",
         "security-event-sink",
         "backup-restore-tested",

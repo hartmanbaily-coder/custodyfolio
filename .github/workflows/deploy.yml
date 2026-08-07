@@ -33,13 +33,54 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify app before deploy
+      - name: Install browser test runtimes
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Verify app
         run: |
           npm run lint
           npm run typecheck
           npm run test:unit
           npm run test:deploy
+          npm run test:e2e:ci
+          npm run test:e2e:webkit:attorney
           npm run security:secrets
           npm run security:audit
           npm run verify:env-template
           npm run build
+
+  deploy-production:
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout validated revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Configure pinned production SSH identity
+        env:
+          PRODUCTION_SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+          PRODUCTION_KNOWN_HOSTS: ${{ secrets.PRODUCTION_KNOWN_HOSTS }}
+        run: |
+          test -n "$PRODUCTION_SSH_PRIVATE_KEY"
+          test -n "$PRODUCTION_KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$PRODUCTION_SSH_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$PRODUCTION_KNOWN_HOSTS" > "$HOME/.ssh/custodyfolio_known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/custodyfolio_known_hosts"
+
+      - name: Deploy validated revision with rollback protection
+        env:
+          DEPLOY_KNOWN_HOSTS: ${{ runner.temp }}/unused
+          DEPLOY_PORT: ${{ secrets.PRODUCTION_SSH_PORT }}
+          DEPLOY_USER: losttofound
+          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+        run: |
+          test -n "$PRODUCTION_HOST"
+          export DEPLOY_KNOWN_HOSTS="$HOME/.ssh/custodyfolio_known_hosts"
+          ./deploy/production/deploy-from-mac.sh "$PRODUCTION_HOST" "${GITHUB_SHA:0:12}"

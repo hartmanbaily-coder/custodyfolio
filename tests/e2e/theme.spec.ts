@@ -9,6 +9,7 @@ test("appearance follows the system by default and persists explicit choices", a
   await expect(page.locator("html")).toHaveClass(/dark/);
 
   await page.goto("/records");
+  await page.getByRole("checkbox", { name: /I am an adult user/i }).check();
   await page.getByRole("button", { name: "Enter records workspace" }).click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
 
@@ -31,8 +32,10 @@ test("appearance follows the system by default and persists explicit choices", a
 test("dark workspace reports remain white in print output", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("custody-folio-theme", "dark"));
   await page.goto("/records");
+  await page.getByRole("checkbox", { name: /I am an adult user/i }).check();
   await page.getByRole("button", { name: "Enter records workspace" }).click();
   await page.getByRole("button", { name: "Reports", exact: true }).click();
+  await page.getByRole("button", { name: "Preview report" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
   await page.emulateMedia({ media: "print" });

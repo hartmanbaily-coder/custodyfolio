@@ -425,6 +425,13 @@ export function evaluateProductionReadiness(
       "Enable WAF/bot protections at the hosting or CDN edge, then set EDGE_WAF_PROVIDER."
     ),
     check(
+      "edge-controls-tested",
+      "Production WAF and rate limits were verified recently",
+      isRecentDate(env.EDGE_CONTROLS_TESTED_AT, generatedAt, 30),
+      "blocker",
+      "Run npm run verify:edge-controls against production and set EDGE_CONTROLS_TESTED_AT to the emitted ISO date."
+    ),
+    check(
       "security-monitoring",
       "Security monitoring and alerting are enabled",
       isEnabled(env.SECURITY_MONITORING_ENABLED),
