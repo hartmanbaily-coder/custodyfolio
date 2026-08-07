@@ -25,8 +25,8 @@ build the only build in External Beta, submits it for Beta App Review, waits
 until it is Testing, and verifies the public TestFlight and TesterBuddy links.
 
 The command only runs from a clean checkout at exactly origin/main. It uses
-automatic signing from the Apple account signed in to Xcode and lets Xcode
-choose the next unused build number during upload.
+the App Store Connect API key configured in .env.testflight for automatic
+signing and upload, and lets Xcode choose the next unused build number.
 
 Options:
   --dry-run  Verify the release checkout and Xcode configuration without
@@ -92,8 +92,34 @@ echo "Upload policy: Xcode will manage the next unused App Store Connect build n
 echo "Checking App Store Connect API access and public beta configuration…"
 node "$ROOT_DIR/scripts/ios/distribute-testflight-external.mjs" --preflight
 
+load_asc_environment_value() {
+  local variable_name="$1"
+  node -e '
+    const { existsSync } = require("node:fs");
+    const [environmentPath, variableName] = process.argv.slice(1);
+    if (existsSync(environmentPath)) process.loadEnvFile(environmentPath);
+    const value = process.env[variableName]?.trim();
+    if (!value) process.exit(1);
+    process.stdout.write(value);
+  ' "$ROOT_DIR/.env.testflight" "$variable_name"
+}
+
+asc_issuer_id="$(load_asc_environment_value ASC_ISSUER_ID)" || fail "ASC_ISSUER_ID is unavailable."
+asc_key_id="$(load_asc_environment_value ASC_KEY_ID)" || fail "ASC_KEY_ID is unavailable."
+asc_private_key_path="$(load_asc_environment_value ASC_PRIVATE_KEY_PATH)" || fail "ASC_PRIVATE_KEY_PATH is unavailable."
+if [[ "$asc_private_key_path" != /* ]]; then
+  asc_private_key_path="$ROOT_DIR/$asc_private_key_path"
+fi
+[[ -f "$asc_private_key_path" ]] || fail "The configured App Store Connect private key file does not exist."
+
+xcodebuild_authentication=(
+  -authenticationKeyPath "$asc_private_key_path"
+  -authenticationKeyID "$asc_key_id"
+  -authenticationKeyIssuerID "$asc_issuer_id"
+)
+
 if "$DRY_RUN"; then
-  echo "Dry run passed, including App Store Connect API and public-link checks. No archive or upload was created."
+  echo "Dry run passed, including App Store Connect API, Xcode authentication, and public-link checks. No archive or upload was created."
   exit 0
 fi
 
@@ -114,6 +140,7 @@ xcodebuild \
   -archivePath "$archive_path" \
   -derivedDataPath "$derived_data_path" \
   -allowProvisioningUpdates \
+  "${xcodebuild_authentication[@]}" \
   archive
 
 echo "Uploading archive to App Store Connect…"
@@ -122,7 +149,8 @@ xcodebuild \
   -archivePath "$archive_path" \
   -exportPath "$export_path" \
   -exportOptionsPlist "$EXPORT_OPTIONS_PATH" \
-  -allowProvisioningUpdates
+  -allowProvisioningUpdates \
+  "${xcodebuild_authentication[@]}"
 
 echo
 echo "Upload submitted. Completing automatic external TestFlight distribution…"
