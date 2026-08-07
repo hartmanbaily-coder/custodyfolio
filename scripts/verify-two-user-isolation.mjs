@@ -15,6 +15,12 @@ if (missing.length > 0) {
 }
 
 const appBaseUrl = (process.env.RECORDS_APP_BASE_URL || "http://127.0.0.1:3000").replace(/\/$/, "");
+const appOrigin = new URL(appBaseUrl).origin;
+const trustedJsonHeaders = {
+  "Content-Type": "application/json",
+  Origin: appOrigin,
+  "Sec-Fetch-Site": "same-origin",
+};
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -125,7 +131,7 @@ async function createTestUser(email) {
 async function login(email) {
   const response = await fetch(`${appBaseUrl}/api/records/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: trustedJsonHeaders,
     body: JSON.stringify({
       email,
       password,
@@ -139,7 +145,7 @@ async function login(email) {
     const verifyResponse = await fetch(`${appBaseUrl}/api/records/auth/mfa/enroll/verify`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        ...trustedJsonHeaders,
         Cookie: enrollmentCookies,
       },
       body: JSON.stringify({
@@ -180,7 +186,8 @@ function syntheticDataset(ownerUserId, evidenceItems = []) {
   return {
     users: [
       {
-        id: ownerUserId,
+        id: `profile-${ownerUserId}`,
+        userId: ownerUserId,
         email: "synthetic-isolation@example.invalid",
         displayName: "Synthetic Isolation User",
         timezone: "UTC",
@@ -198,6 +205,7 @@ function syntheticDataset(ownerUserId, evidenceItems = []) {
     childSupportOrders: [],
     childSupportPayments: [],
     expenseItems: [],
+    timelineDesignations: [],
     auditLogs: [],
   };
 }
@@ -206,8 +214,9 @@ async function saveDataset(cookies, ownerUserId, evidenceItems = []) {
   const response = await fetch(`${appBaseUrl}/api/records/dataset?caseId=${encodeURIComponent(caseKey)}`, {
     method: "PUT",
     headers: {
-      "Content-Type": "application/json",
+      ...trustedJsonHeaders,
       Cookie: cookies,
+      "x-custody-folio-account": ownerUserId,
     },
     body: JSON.stringify({ dataset: syntheticDataset(ownerUserId, evidenceItems) }),
   });
@@ -218,9 +227,12 @@ async function saveDataset(cookies, ownerUserId, evidenceItems = []) {
   }
 }
 
-async function loadDataset(cookies) {
+async function loadDataset(cookies, ownerUserId) {
   const response = await fetch(`${appBaseUrl}/api/records/dataset?caseId=${encodeURIComponent(caseKey)}`, {
-    headers: { Cookie: cookies },
+    headers: {
+      Cookie: cookies,
+      "x-custody-folio-account": ownerUserId,
+    },
   });
 
   const body = await response.json().catch(() => ({}));
@@ -283,7 +295,7 @@ async function evidenceDownload(cookies, metadata) {
   return fetch(`${appBaseUrl}/api/records/evidence/download`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
+      ...trustedJsonHeaders,
       Cookie: cookies,
     },
     body: JSON.stringify({ evidence: metadata }),
@@ -294,7 +306,7 @@ async function evidenceDelete(cookies, metadata) {
   return fetch(`${appBaseUrl}/api/records/evidence/delete`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
+      ...trustedJsonHeaders,
       Cookie: cookies,
     },
     body: JSON.stringify({ evidence: metadata }),
@@ -334,8 +346,8 @@ try {
   userBId = userBId || userBLogin.userId;
 
   await saveDataset(userACookies, userAId);
-  const userADataset = await loadDataset(userACookies);
-  const userBDataset = await loadDataset(userBCookies);
+  const userADataset = await loadDataset(userACookies, userAId);
+  const userBDataset = await loadDataset(userBCookies, userBId);
 
   assert(userADataset?.users?.[0]?.id === userAId, "User A could not read their own dataset.");
   assert(userBDataset === null, "User B unexpectedly loaded User A's dataset.");
