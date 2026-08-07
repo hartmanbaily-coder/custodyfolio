@@ -48,9 +48,9 @@ For webhook sinks, the script requires a successful HTTPS response. For platform
 - `https://custodyfolio.com/records` responds successfully.
 - Required security headers are present.
 - `/api/records/readiness` responds with JSON.
-- Any readiness blockers are limited to the known unresolved launch gates.
+- Any readiness blockers are limited to the known unresolved launch gates. Those gates are logged as warnings during beta testing rather than reported as a service outage.
 
-If the workflow fails, it opens or comments on a GitHub issue labeled `live-monitor`. This provides a basic live drift alert, but it does not replace the required production monitoring channels above. Keep `SECURITY_MONITORING_ENABLED=false` until the owner has confirmed the alert channel is watched and the platform/SIEM/webhook event sink is visible in production logs.
+If the workflow fails, it opens or comments on a GitHub issue labeled `live-monitor`. A later successful run comments on and closes that issue. This provides a basic live drift alert, but it does not replace the required production monitoring channels above. Keep `SECURITY_MONITORING_ENABLED=false` until the owner has confirmed the alert channel is watched and the platform/SIEM/webhook event sink is visible in production logs.
 
 Current verified routing as of 2026-07-26:
 
@@ -67,7 +67,7 @@ This makes the published security contact usable and verifies the platform event
 | --- | --- | --- |
 | Failed records logins | 10 failures for one account or IP in 10 minutes | Medium |
 | Failed logins across many accounts | 25 failures in 10 minutes | High |
-| Readiness endpoint becomes not ready in production | Any transition | High |
+| Readiness endpoint gains an unexpected blocker, becomes malformed, or stops responding | Any transition | High |
 | Evidence download denied | 5 denied attempts by same user/IP in 15 minutes | High |
 | Evidence delete denied | Any repeated denial after one retry | High |
 | Evidence upload malware blocked | Any confirmed scanner block | High |

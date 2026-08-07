@@ -18,10 +18,28 @@ describe("live monitor workflow", () => {
     expect(workflow).toContain("--force");
   });
 
-  it("fails when production readiness is degraded or blocked", () => {
-    expect(workflow).toContain("readinessResponse.status !== 200");
-    expect(workflow).toContain('readiness.status !== "ready"');
-    expect(workflow).toContain("Production readiness blockers remain");
-    expect(workflow).not.toContain("[200, 503].includes(readinessResponse.status)");
+  it("treats only the documented launch approvals as non-outage blockers", () => {
+    expect(workflow).toContain("[200, 503].includes(readinessResponse.status)");
+    expect(workflow).toContain("allowedPendingLaunchBlockers");
+    expect(workflow).toContain('"backup-restore-tested"');
+    expect(workflow).toContain('"data-retention-policy"');
+    expect(workflow).toContain('"incident-response-plan"');
+    expect(workflow).toContain('"legal-review"');
+    expect(workflow).toContain("Customer launch approval blockers remain");
+    expect(workflow).not.toContain("readinessResponse.status !== 200");
+    expect(workflow).not.toContain("Production readiness blockers remain");
+  });
+
+  it("still fails for unexpected blockers or inconsistent readiness responses", () => {
+    expect(workflow).toContain("Unexpected production readiness blockers");
+    expect(workflow).toContain("does not match status");
+    expect(workflow).toContain("not_ready without an explanatory blocker");
+    expect(workflow).toContain("Readiness is ready but still reports blockers");
+  });
+
+  it("closes a stale monitor issue after recovery", () => {
+    expect(workflow).toContain("Close monitor issue on recovery");
+    expect(workflow).toContain("Live monitor recovered");
+    expect(workflow).toContain('gh issue close "$existing_issue" --reason completed');
   });
 });
