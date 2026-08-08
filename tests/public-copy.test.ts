@@ -33,6 +33,13 @@ const forbiddenPublicPhrases = [
 ];
 
 describe("customer facing copy", () => {
+  it("preserves the Custody Folio brand statement", () => {
+    const site = readFileSync(resolve(process.cwd(), "src/lib/site.ts"), "utf8");
+    expect(site).toContain(
+      'recordsTagline = "Remove the emotion. Track the data."'
+    );
+  });
+
   it("does not expose internal readiness or implementation language", () => {
     for (const file of customerFacingFiles) {
       const source = readFileSync(resolve(process.cwd(), file), "utf8");
