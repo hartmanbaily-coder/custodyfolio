@@ -97,6 +97,16 @@ export function selectUploadedBuild(builds, { buildNumber, uploadedAfter }) {
   return matches[0] ?? null;
 }
 
+export function selectExternalVerificationBuild(builds, buildNumber) {
+  const build = selectUploadedBuild(builds, { buildNumber });
+  if (!build) {
+    throw new Error(
+      `External Beta does not contain active build ${buildNumber}.`,
+    );
+  }
+  return build;
+}
+
 export function sortBuildsByUploadedDateDescending(builds) {
   return [...builds].sort((left, right) => {
     const leftUploadedAt = Date.parse(left.attributes?.uploadedDate) || 0;
@@ -331,6 +341,16 @@ async function listBuilds(client) {
     query(`/v1/apps/${DEFAULTS.appId}/builds`, {
       "fields[builds]": "version,uploadedDate,expired,processingState",
       limit: "50",
+    }),
+  );
+  return sortBuildsByUploadedDateDescending(payload.data);
+}
+
+async function listExternalBetaBuilds(client) {
+  const { payload } = await client.request(
+    query(`/v1/betaGroups/${DEFAULTS.betaGroupId}/builds`, {
+      "fields[builds]": "version,uploadedDate,expired,processingState",
+      limit: "200",
     }),
   );
   return sortBuildsByUploadedDateDescending(payload.data);
@@ -718,7 +738,12 @@ async function run(options) {
   if (options.preflight) return;
 
   const deadline = deadlineFrom(options.timeoutMinutes);
-  let build = await waitForBuild(client, options, deadline);
+  let build = options.verifyOnly
+    ? selectExternalVerificationBuild(
+        await listExternalBetaBuilds(client),
+        options.buildNumber,
+      )
+    : await waitForBuild(client, options, deadline);
   console.log(
     `Selected build ${build.attributes.version}, uploaded ${build.attributes.uploadedDate}.`,
   );
