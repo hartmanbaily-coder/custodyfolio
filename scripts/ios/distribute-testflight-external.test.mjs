@@ -145,14 +145,32 @@ test("extracts the TestFlight target from the TesterBuddy wrapper", () => {
   assert.equal(extractTestFlightUrl("<html>no link</html>"), null);
 });
 
-test("allows preflight when the configured public link has no available build yet", async () => {
+test("accepts Apple's generic fallback when it preserves the configured join link", async () => {
   const fetchImpl = async (url) => ({
     ok: true,
     status: 200,
     text: async () =>
       String(url).includes("testerbuddy.app")
         ? `const TEST_URL = '${"https://testflight.apple.com/join/rVmv2VAF"}';`
-        : "<span>This beta isn't accepting any new testers right now.</span>",
+        : `<meta name="apple-itunes-app" content="app-argument=${"https://testflight.apple.com/join/rVmv2VAF"}"><span>This beta isn't accepting any new testers right now.</span>`,
+  });
+
+  await assert.doesNotReject(
+    verifyPublicLinks({ fetchImpl, requireAppIdentification: false }),
+  );
+  await assert.doesNotReject(
+    verifyPublicLinks({ fetchImpl, requireAppIdentification: true }),
+  );
+});
+
+test("rejects a public TestFlight response that identifies neither the app nor join link", async () => {
+  const fetchImpl = async (url) => ({
+    ok: true,
+    status: 200,
+    text: async () =>
+      String(url).includes("testerbuddy.app")
+        ? `const TEST_URL = '${"https://testflight.apple.com/join/rVmv2VAF"}';`
+        : "<html><title>TestFlight - Apple</title></html>",
   });
 
   await assert.doesNotReject(

@@ -682,7 +682,10 @@ export async function verifyPublicLinks({
     DEFAULTS.publicTestFlightUrl,
     "Public TestFlight link",
   );
-  if (!testFlightHtml.includes(DEFAULTS.appName)) {
+  const pageIdentifiesApp = testFlightHtml.includes(DEFAULTS.appName);
+  const pageIdentifiesJoinLink =
+    extractTestFlightUrl(testFlightHtml) === DEFAULTS.publicTestFlightUrl;
+  if (!pageIdentifiesApp && !pageIdentifiesJoinLink) {
     if (!requireAppIdentification) {
       console.warn(
         "Public TestFlight link is configured, but Apple is not currently presenting an externally testable build.",
@@ -693,7 +696,11 @@ export async function verifyPublicLinks({
       `Public TestFlight page does not identify ${DEFAULTS.appName}.`,
     );
   }
-  console.log("TesterBuddy and public TestFlight links both resolve to Custody Folio.");
+  console.log(
+    pageIdentifiesApp
+      ? "TesterBuddy and public TestFlight links both resolve to Custody Folio."
+      : "TesterBuddy and Apple both expose the configured External Beta join link.",
+  );
 }
 
 async function runPreflight(client) {
