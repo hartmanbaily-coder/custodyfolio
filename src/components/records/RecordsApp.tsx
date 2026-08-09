@@ -2,7 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import type { FormEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
+import type {
+  Dispatch,
+  FormEvent,
+  PointerEvent as ReactPointerEvent,
+  ReactNode,
+  SetStateAction,
+} from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PolicyFooter from "@/components/PolicyFooter";
 import ThemeSelector from "@/components/ThemeSelector";
@@ -426,6 +432,7 @@ export default function RecordsApp() {
   const [sessionChecked, setSessionChecked] = useState(false);
   const [mfaResumeRequired, setMfaResumeRequired] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>("Dashboard");
+  const [mobileOptionsOpen, setMobileOptionsOpen] = useState(false);
   const activeViewRef = useRef<ActiveView>("Dashboard");
   const historyIndexRef = useRef(0);
   const historyMaxIndexRef = useRef(0);
@@ -473,6 +480,7 @@ export default function RecordsApp() {
   }, [selectedCase, selectedCaseId]);
 
   const openView = useCallback((view: ActiveView) => {
+    setMobileOptionsOpen(false);
     if (activeViewRef.current !== view) {
       const nextIndex = historyIndexRef.current + 1;
       window.history.pushState(recordsHistoryState(view, nextIndex), "");
@@ -525,6 +533,7 @@ export default function RecordsApp() {
       activeViewRef.current = view;
       historyIndexRef.current = index;
       setActiveView(view);
+      setMobileOptionsOpen(false);
       notifyNativeNavigationChanged({
         canGoBack: index > 0,
         canGoForward: index < historyMaxIndexRef.current,
@@ -878,6 +887,8 @@ export default function RecordsApp() {
         <main className="records-workspace min-w-0">
           <WorkspaceHeader
             activeViewTitle={activeViewLabel(activeView, terminology)}
+            mobileOptionsOpen={mobileOptionsOpen}
+            setMobileOptionsOpen={setMobileOptionsOpen}
             matters={selected.matters}
             selectedCaseId={effectiveCaseId}
             onSelectCase={selectCase}
@@ -7693,6 +7704,8 @@ function compactDateRangeLabel(range: DateRange) {
 
 function WorkspaceHeader({
   activeViewTitle,
+  mobileOptionsOpen,
+  setMobileOptionsOpen,
   matters,
   selectedCaseId,
   onSelectCase,
@@ -7704,6 +7717,8 @@ function WorkspaceHeader({
   onLogout,
 }: {
   activeViewTitle: string;
+  mobileOptionsOpen: boolean;
+  setMobileOptionsOpen: Dispatch<SetStateAction<boolean>>;
   matters: Array<{ id: string; caseName: string }>;
   selectedCaseId: string;
   onSelectCase: (caseId: string) => void;
@@ -7714,7 +7729,6 @@ function WorkspaceHeader({
   onOpenSettings: () => void;
   onLogout: () => void;
 }) {
-  const [mobileOptionsOpen, setMobileOptionsOpen] = useState(false);
   const selectedMatter = matters.find((matter) => matter.id === selectedCaseId);
   const selectedCaseName = selectedMatter?.caseName || "No case selected";
   const mobileOptionsId = "mobile-workspace-options";
@@ -7787,7 +7801,10 @@ function WorkspaceHeader({
               <select
                 aria-label="Case"
                 value={selectedCaseId}
-                onChange={(event) => onSelectCase(event.target.value)}
+                onChange={(event) => {
+                  setMobileOptionsOpen(false);
+                  onSelectCase(event.target.value);
+                }}
                 className="h-10 min-w-0 max-w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 lg:w-auto xl:w-60"
               >
                 {matters.map((matter) => (

@@ -56,6 +56,14 @@ async function enterDemoWorkspace(page: Page) {
   await page.getByRole("button", { name: "Enter records workspace" }).click();
 }
 
+async function revealDateRangeControls(page: Page) {
+  const fromDate = page.getByLabel("From date");
+  if (!(await fromDate.isVisible())) {
+    await page.getByRole("button", { name: "Options", exact: true }).click();
+  }
+  await expect(fromDate).toBeVisible();
+}
+
 test("records login and report workflow", async ({ page }) => {
   test.setTimeout(120_000);
   const currentCalendar = localDateParts();
@@ -88,6 +96,7 @@ test("records login and report workflow", async ({ page }) => {
       .filter({ visible: true })
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Your overview", exact: true })).toBeVisible();
+  await revealDateRangeControls(page);
   await page.getByLabel("From date").fill("2026-01-01");
   await page.getByLabel("To date").fill("2026-01-31");
 
@@ -241,6 +250,7 @@ test("records login and report workflow", async ({ page }) => {
   await page.locator("textarea[name=description]").fill("Uploaded through Files tab");
   await page.getByRole("button", { name: "Save file record" }).click();
   await expect(page.getByText("files-tab-document.txt")).toBeVisible();
+  await revealDateRangeControls(page);
   await page.getByLabel("From date").fill("2026-05-01");
   await page.getByLabel("To date").fill("2026-06-15");
 
@@ -256,6 +266,7 @@ test("records login and report workflow", async ({ page }) => {
   const timelineCsv = await readFile(timelinePath, "utf8");
   expect(timelineCsv.split("\n")[0]).toContain("date,time,type,source,title");
   expect(timelineCsv.trim().split("\n").length).toBeGreaterThan(1);
+  await revealDateRangeControls(page);
   await page.getByLabel("From date").fill("2030-01-01");
   await page.getByLabel("To date").fill("2030-01-31");
   await page.getByLabel("Type or status").selectOption("logged_exchange");
@@ -447,7 +458,10 @@ test("mobile child support records are visible, editable, and deletable", async 
 test("client can download a complete print-friendly case profile", async ({ page }) => {
   await page.goto("/records");
   await enterDemoWorkspace(page);
-  await page.getByRole("button", { name: "Reports", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Records workspace" })
+    .getByRole("button", { name: "Reports", exact: true })
+    .click();
   await page.getByLabel("Report type").selectOption("full_profile_export");
   await page.getByRole("button", { name: "Preview report" }).click();
 
@@ -1677,7 +1691,11 @@ test("records account recovery and deletion paths are reachable", async ({ page 
   await page.reload();
   await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
   await expect(page.locator('select[aria-label="Case"]')).toHaveCount(0);
-  await page.getByRole("button", { name: "Create case", exact: true }).click();
+  const createCase = page.getByRole("button", { name: "Create case", exact: true });
+  if (!(await createCase.isVisible())) {
+    await page.getByRole("button", { name: "Options", exact: true }).click();
+  }
+  await createCase.click();
   await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Case", exact: true }).click();
   await expect(page.getByText("Create or select a case to edit its details.")).toBeVisible();
