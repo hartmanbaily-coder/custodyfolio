@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   createAppStoreConnectToken,
   extractTestFlightUrl,
+  selectExternalVerificationBuild,
   selectUploadedBuild,
   selectSupersededGroupBuilds,
   sortBuildsByUploadedDateDescending,
@@ -61,6 +62,21 @@ test("selects one exact active build number", () => {
   assert.equal(
     selectUploadedBuild(builds, { buildNumber: "58" }),
     null,
+  );
+});
+
+test("verifies the exact build assigned to External Beta", () => {
+  const externalBuilds = [
+    { id: "external-14", attributes: { version: "14", expired: false } },
+  ];
+
+  assert.equal(
+    selectExternalVerificationBuild(externalBuilds, "14").id,
+    "external-14",
+  );
+  assert.throws(
+    () => selectExternalVerificationBuild(externalBuilds, "13"),
+    /External Beta does not contain active build 13/,
   );
 });
 
