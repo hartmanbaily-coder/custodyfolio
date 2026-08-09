@@ -34,7 +34,10 @@ test("dark workspace reports remain white in print output", async ({ page }) => 
   await page.goto("/records");
   await page.getByRole("checkbox", { name: /I am an adult user/i }).check();
   await page.getByRole("button", { name: "Enter records workspace" }).click();
-  await page.getByRole("button", { name: "Reports", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Records workspace" })
+    .getByRole("button", { name: "Reports", exact: true })
+    .click();
   await page.getByRole("button", { name: "Preview report" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
