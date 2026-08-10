@@ -105,6 +105,8 @@ const supabaseFinalEnvNames = new Set([
   "ATTORNEY_INVITE_DEV_DELIVERY",
   "OFFSITE_STORAGE_BACKUP_ENABLED",
   "OFFSITE_STORAGE_BACKUP_RETENTION_DAYS",
+  "OFFSITE_STORAGE_BACKUP_LIFECYCLE_DELETE_DAYS",
+  "OFFSITE_STORAGE_BACKUP_KEY_EXPIRES_AT",
   "BACKUP_RESTORE_TESTED_AT",
   "TWO_USER_ISOLATION_TESTED_AT",
 ]);
@@ -119,6 +121,14 @@ function isRecentDate(value, maxAgeDays) {
   const now = Date.now();
   if (!Number.isFinite(testedAt) || testedAt > now) return false;
   return now - testedAt <= maxAgeDays * 24 * 60 * 60 * 1000;
+}
+
+function isFutureDateAtLeast(value, minimumDays) {
+  if (!value) return false;
+  const expiresAt = Date.parse(value);
+  const now = Date.now();
+  if (!Number.isFinite(expiresAt)) return false;
+  return expiresAt - now >= minimumDays * 24 * 60 * 60 * 1000;
 }
 
 const malwareProvider = (process.env.MALWARE_SCAN_PROVIDER || "").trim().toLowerCase();
@@ -273,9 +283,15 @@ const checks = [
   [
     "OFFSITE_STORAGE_BACKUP_ENABLED",
     isEnabled(process.env.OFFSITE_STORAGE_BACKUP_ENABLED) &&
+      Number.isInteger(Number(process.env.OFFSITE_STORAGE_BACKUP_RETENTION_DAYS)) &&
+      Number.isInteger(Number(process.env.OFFSITE_STORAGE_BACKUP_LIFECYCLE_DELETE_DAYS)) &&
       Number(process.env.OFFSITE_STORAGE_BACKUP_RETENTION_DAYS) >= 1 &&
-      Number(process.env.OFFSITE_STORAGE_BACKUP_RETENTION_DAYS) <= 180,
-    "must be true with OFFSITE_STORAGE_BACKUP_RETENTION_DAYS between 1 and 180",
+      Number(process.env.OFFSITE_STORAGE_BACKUP_LIFECYCLE_DELETE_DAYS) >= 1 &&
+      Number(process.env.OFFSITE_STORAGE_BACKUP_RETENTION_DAYS) +
+        Number(process.env.OFFSITE_STORAGE_BACKUP_LIFECYCLE_DELETE_DAYS) <=
+        180 &&
+      isFutureDateAtLeast(process.env.OFFSITE_STORAGE_BACKUP_KEY_EXPIRES_AT, 30),
+    "must be true with Object Lock plus lifecycle deletion no more than 180 days and a key expiry at least 30 days away",
   ],
   [
     "BACKUP_RESTORE_TESTED_AT",

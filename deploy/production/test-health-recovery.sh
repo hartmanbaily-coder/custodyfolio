@@ -150,6 +150,35 @@ grep -Fq 'compose --profile ops' "${backup_docker_log}"
 grep -Fq 'run --rm --no-deps backup' "${backup_docker_log}"
 test -s "${backup_state_dir}/storage-backup-last-success"
 
+cat >"${env_file}" <<'EOF'
+NEXT_PUBLIC_APP_URL=https://custodyfolio.com
+OFFSITE_STORAGE_BACKUP_ENABLED=false
+BACKUP_RESTORE_TESTED_AT=2025-01-01
+EOF
+cat >"${backup_env_file}" <<'EOF'
+OFFSITE_BACKUP_S3_ENDPOINT=https://s3.us-east-005.backblazeb2.com
+OFFSITE_BACKUP_S3_REGION=us-east-005
+OFFSITE_BACKUP_S3_BUCKET=custody-folio-evidence-test
+OFFSITE_BACKUP_S3_ACCESS_KEY_ID=test-key-id
+OFFSITE_BACKUP_S3_SECRET_ACCESS_KEY=test-secret-key
+OFFSITE_BACKUP_RETENTION_DAYS=178
+OFFSITE_BACKUP_OBJECT_LOCK_MODE=COMPLIANCE
+OFFSITE_BACKUP_LIFECYCLE_DELETE_DAYS=1
+OFFSITE_BACKUP_KEY_EXPIRES_AT=2027-08-10
+OFFSITE_BACKUP_RESTORE_TESTED_AT=2026-08-10
+EOF
+chmod 0600 "${env_file}" "${backup_env_file}"
+LOSTTOFOUND_ENV_FILE="${env_file}" \
+LOSTTOFOUND_BACKUP_ENV_FILE="${backup_env_file}" \
+  "${script_dir}/configure-storage-backup-readiness.sh"
+grep -q '^NEXT_PUBLIC_APP_URL=https://custodyfolio.com$' "${env_file}"
+grep -q '^OFFSITE_STORAGE_BACKUP_ENABLED=true$' "${env_file}"
+grep -q '^OFFSITE_STORAGE_BACKUP_RETENTION_DAYS=178$' "${env_file}"
+grep -q '^OFFSITE_STORAGE_BACKUP_LIFECYCLE_DELETE_DAYS=1$' "${env_file}"
+grep -q '^OFFSITE_STORAGE_BACKUP_KEY_EXPIRES_AT=2027-08-10$' "${env_file}"
+grep -q '^BACKUP_RESTORE_TESTED_AT=2026-08-10$' "${env_file}"
+test "$(grep -c '^OFFSITE_STORAGE_BACKUP_ENABLED=' "${env_file}")" -eq 1
+
 compose_source="${script_dir}/compose.yml"
 grep -q 'CLAMD_CONF_ConcurrentDatabaseReload: "no"' "${compose_source}"
 grep -q 'CLAMD_CONF_MaxThreads: "2"' "${compose_source}"
@@ -230,6 +259,7 @@ grep -q 'current-deployment' "${script_dir}/deploy.sh"
 grep -q 'launch-approval-pending' "${script_dir}/deploy.sh"
 grep -q 'deployed successfully for testing' "${script_dir}/deploy.sh"
 grep -q 'install-storage-backup-timer.sh' "${script_dir}/deploy.sh"
+grep -q 'configure-storage-backup-readiness.sh' "${script_dir}/deploy-from-mac.sh"
 grep -q -- "--exclude '.mcp.json'" "${script_dir}/deploy-from-mac.sh"
 grep -q -- "--exclude '.codex/'" "${script_dir}/deploy-from-mac.sh"
 grep -q -- "--exclude '.agents/'" "${script_dir}/deploy-from-mac.sh"

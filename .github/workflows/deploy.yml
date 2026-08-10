@@ -79,11 +79,30 @@ jobs:
 
       - name: Deploy validated revision with rollback protection
         env:
+          OFFSITE_BACKUP_S3_ACCESS_KEY_ID: ${{ secrets.OFFSITE_BACKUP_S3_ACCESS_KEY_ID }}
+          OFFSITE_BACKUP_S3_SECRET_ACCESS_KEY: ${{ secrets.OFFSITE_BACKUP_S3_SECRET_ACCESS_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ runner.temp }}/unused
           DEPLOY_PORT: ${{ secrets.PRODUCTION_SSH_PORT }}
           DEPLOY_USER: losttofound
           PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
         run: |
           test -n "$PRODUCTION_HOST"
+          test -n "$OFFSITE_BACKUP_S3_ACCESS_KEY_ID"
+          test -n "$OFFSITE_BACKUP_S3_SECRET_ACCESS_KEY"
+          umask 077
+          backup_env="$RUNNER_TEMP/custodyfolio-backup.env"
+          printf '%s\n' \
+            'OFFSITE_BACKUP_S3_ENDPOINT=https://s3.us-east-005.backblazeb2.com' \
+            'OFFSITE_BACKUP_S3_REGION=us-east-005' \
+            'OFFSITE_BACKUP_S3_BUCKET=custody-folio-evidence-cieuilbpnwuvnrxrlczj' \
+            "OFFSITE_BACKUP_S3_ACCESS_KEY_ID=$OFFSITE_BACKUP_S3_ACCESS_KEY_ID" \
+            "OFFSITE_BACKUP_S3_SECRET_ACCESS_KEY=$OFFSITE_BACKUP_S3_SECRET_ACCESS_KEY" \
+            'OFFSITE_BACKUP_RETENTION_DAYS=178' \
+            'OFFSITE_BACKUP_OBJECT_LOCK_MODE=COMPLIANCE' \
+            'OFFSITE_BACKUP_LIFECYCLE_DELETE_DAYS=1' \
+            'OFFSITE_BACKUP_KEY_EXPIRES_AT=2027-08-10' \
+            'OFFSITE_BACKUP_RESTORE_TESTED_AT=2026-08-10' >"$backup_env"
+          chmod 0600 "$backup_env"
           export DEPLOY_KNOWN_HOSTS="$HOME/.ssh/custodyfolio_known_hosts"
+          export LOSTTOFOUND_BACKUP_ENV_SOURCE="$backup_env"
           ./deploy/production/deploy-from-mac.sh "$PRODUCTION_HOST" "${GITHUB_SHA:0:12}"

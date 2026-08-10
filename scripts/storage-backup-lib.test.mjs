@@ -18,15 +18,15 @@ const baseEnv = {
   OFFSITE_BACKUP_S3_BUCKET: "custody-folio-test-backups",
   OFFSITE_BACKUP_S3_ACCESS_KEY_ID: "test-access-key",
   OFFSITE_BACKUP_S3_SECRET_ACCESS_KEY: "test-secret-key",
-  OFFSITE_BACKUP_RETENTION_DAYS: "180",
+  OFFSITE_BACKUP_RETENTION_DAYS: "178",
   OFFSITE_BACKUP_OBJECT_LOCK_MODE: "COMPLIANCE",
 };
 
 test("requires HTTPS, production project matching, and at most 180 days retention", () => {
-  assert.equal(loadStorageBackupConfig(baseEnv).retentionDays, 180);
+  assert.equal(loadStorageBackupConfig(baseEnv).retentionDays, 178);
   assert.throws(
-    () => loadStorageBackupConfig({ ...baseEnv, OFFSITE_BACKUP_RETENTION_DAYS: "181" }),
-    /between 1 and 180/,
+    () => loadStorageBackupConfig({ ...baseEnv, OFFSITE_BACKUP_RETENTION_DAYS: "179" }),
+    /between 1 and 178/,
   );
   assert.throws(
     () => loadStorageBackupConfig({ ...baseEnv, OFFSITE_BACKUP_S3_ENDPOINT: "http://backup" }),
@@ -48,9 +48,9 @@ test("requires HTTPS, production project matching, and at most 180 days retentio
     () =>
       loadStorageBackupConfig({
         ...baseEnv,
-        OFFSITE_BACKUP_RETENTION_DAYS: "180 days",
+        OFFSITE_BACKUP_RETENTION_DAYS: "178 days",
       }),
-    /between 1 and 180/,
+    /between 1 and 178/,
   );
 });
 

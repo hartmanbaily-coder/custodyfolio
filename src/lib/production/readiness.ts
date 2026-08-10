@@ -152,6 +152,14 @@ function isRecentDate(value: string | undefined, nowIso: string, maxAgeDays: num
   return now - testedAt <= maxAgeDays * 24 * 60 * 60 * 1000;
 }
 
+function isFutureDateAtLeast(value: string | undefined, nowIso: string, minimumDays: number) {
+  if (!value) return false;
+  const expiresAt = Date.parse(value);
+  const now = Date.parse(nowIso);
+  if (!Number.isFinite(expiresAt) || !Number.isFinite(now)) return false;
+  return expiresAt - now >= minimumDays * 24 * 60 * 60 * 1000;
+}
+
 function check(
   id: string,
   label: string,
@@ -458,10 +466,16 @@ export function evaluateProductionReadiness(
       "offsite-storage-backup",
       "Private evidence has an immutable off-site backup",
       isEnabled(env.OFFSITE_STORAGE_BACKUP_ENABLED) &&
+        Number.isInteger(Number(env.OFFSITE_STORAGE_BACKUP_RETENTION_DAYS)) &&
+        Number.isInteger(Number(env.OFFSITE_STORAGE_BACKUP_LIFECYCLE_DELETE_DAYS)) &&
         Number(env.OFFSITE_STORAGE_BACKUP_RETENTION_DAYS) >= 1 &&
-        Number(env.OFFSITE_STORAGE_BACKUP_RETENTION_DAYS) <= 180,
+        Number(env.OFFSITE_STORAGE_BACKUP_LIFECYCLE_DELETE_DAYS) >= 1 &&
+        Number(env.OFFSITE_STORAGE_BACKUP_RETENTION_DAYS) +
+          Number(env.OFFSITE_STORAGE_BACKUP_LIFECYCLE_DELETE_DAYS) <=
+          180 &&
+        isFutureDateAtLeast(env.OFFSITE_STORAGE_BACKUP_KEY_EXPIRES_AT, generatedAt, 30),
       "blocker",
-      "Configure the daily isolated S3-compatible evidence backup with compliance retention of no more than 180 days."
+      "Configure the daily isolated backup so Object Lock plus lifecycle deletion is no more than 180 days, and rotate its scoped key at least 30 days before expiry."
     ),
     check(
       "backup-restore-tested",

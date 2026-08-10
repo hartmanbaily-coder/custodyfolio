@@ -10,7 +10,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { createClient } from "@supabase/supabase-js";
 
-export const MAX_BACKUP_RETENTION_DAYS = 180;
+export const MAX_BACKUP_RETENTION_DAYS = 178;
 const LIST_PAGE_SIZE = 100;
 
 function requireValue(env, name) {

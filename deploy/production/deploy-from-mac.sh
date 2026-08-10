@@ -7,6 +7,7 @@ port="${DEPLOY_PORT:-22}"
 user="${DEPLOY_USER:-losttofound}"
 known_hosts="${DEPLOY_KNOWN_HOSTS:-${HOME}/.ssh/losttofound_known_hosts}"
 remote_path="/srv/losttofound/app"
+backup_env_source="${LOSTTOFOUND_BACKUP_ENV_SOURCE:-}"
 
 if [[ -z ${host} ]]; then
   echo "Usage: $0 <host> [release-tag]" >&2
@@ -46,6 +47,21 @@ rsync -az --delete \
   --exclude 'test-results/' \
   -e "ssh -p ${port} -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${known_hosts}" \
   "${repo_root}/" "${user}@${host}:${remote_path}/"
+
+if [[ -n ${backup_env_source} ]]; then
+  if [[ ! -f ${backup_env_source} || ! -r ${backup_env_source} || -L ${backup_env_source} ]]; then
+    echo "Backup credential source is missing, unreadable, or symlinked." >&2
+    exit 1
+  fi
+  remote_backup_next="/srv/losttofound/config/backup.env.next-${release_tag}"
+  scp -P "${port}" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+    -o UserKnownHostsFile="${known_hosts}" \
+    "${backup_env_source}" "${user}@${host}:${remote_backup_next}"
+  ssh -p "${port}" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+    -o UserKnownHostsFile="${known_hosts}" \
+    "${user}@${host}" \
+    "chmod 0600 '${remote_backup_next}' && mv -f '${remote_backup_next}' '/srv/losttofound/config/backup.env' && cd '${remote_path}' && ./deploy/production/configure-storage-backup-readiness.sh"
+fi
 
 ssh -p "${port}" -o BatchMode=yes -o StrictHostKeyChecking=yes \
   -o UserKnownHostsFile="${known_hosts}" \

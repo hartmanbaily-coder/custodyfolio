@@ -61,6 +61,8 @@ const requiredKeys = [
   "AUDIT_LOG_REVIEW_ENABLED",
   "OFFSITE_STORAGE_BACKUP_ENABLED",
   "OFFSITE_STORAGE_BACKUP_RETENTION_DAYS",
+  "OFFSITE_STORAGE_BACKUP_LIFECYCLE_DELETE_DAYS",
+  "OFFSITE_STORAGE_BACKUP_KEY_EXPIRES_AT",
   "BACKUP_RESTORE_TESTED_AT",
   "TWO_USER_ISOLATION_TESTED_AT",
   "DATA_RETENTION_POLICY_APPROVED",
@@ -124,8 +126,12 @@ if (entries.get("OFFSITE_STORAGE_BACKUP_ENABLED") !== "true") {
   findings.push("OFFSITE_STORAGE_BACKUP_ENABLED must be true in the production template.");
 }
 
-if (entries.get("OFFSITE_STORAGE_BACKUP_RETENTION_DAYS") !== "180") {
-  findings.push("OFFSITE_STORAGE_BACKUP_RETENTION_DAYS must be 180 in the production template.");
+if (entries.get("OFFSITE_STORAGE_BACKUP_RETENTION_DAYS") !== "178") {
+  findings.push("OFFSITE_STORAGE_BACKUP_RETENTION_DAYS must be 178 in the production template.");
+}
+
+if (entries.get("OFFSITE_STORAGE_BACKUP_LIFECYCLE_DELETE_DAYS") !== "1") {
+  findings.push("OFFSITE_STORAGE_BACKUP_LIFECYCLE_DELETE_DAYS must be 1 in the production template.");
 }
 
 if (/eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}/.test(body)) {
