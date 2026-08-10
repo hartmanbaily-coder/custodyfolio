@@ -27,8 +27,23 @@ const sections: PolicySection[] = [
   {
     title: "Files and exports",
     body: [
-      "Uploaded files are checked before they can be stored or downloaded.",
+      "Uploaded files pass through automated malware screening before accepted storage. Screening reduces risk but cannot guarantee that every harmful or deceptive file will be detected.",
       "Files and generated reports are private inside the app. Protect any copy you download or share because the app cannot control it afterward.",
+    ],
+  },
+  {
+    title: "Security monitoring",
+    body: [
+      "The service records minimized authentication, request, evidence, attorney-access, deletion, and security events to detect abuse and investigate incidents.",
+      "Security logs may include timestamps, routes, request identifiers, status codes, and shortened hashes of IP addresses, browser or device information, account IDs, or case IDs. They are designed not to contain custody-record or file contents.",
+      "Access to production systems and logs is restricted and reviewed. Security and raw request logs are deleted under the retention periods stated in the Privacy Policy.",
+    ],
+  },
+  {
+    title: "Incident response",
+    body: [
+      "We investigate suspected unauthorized access, contain confirmed incidents, preserve necessary evidence, and notify affected people and regulators when applicable law requires notice.",
+      "Do not use email for an emergency or to meet a legal deadline. Security reports should omit sensitive case content unless we provide a protected method for sending it.",
     ],
   },
   {

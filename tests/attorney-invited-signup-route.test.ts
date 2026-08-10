@@ -41,6 +41,7 @@ function request(input: {
   password?: string;
   token?: string;
   adultConfirmed?: boolean;
+  legalAccepted?: boolean;
 } = {}) {
   const csrf = "attorney-signup-csrf";
   const token = input.token || "single-private-invitation-token";
@@ -54,6 +55,7 @@ function request(input: {
     },
     body: JSON.stringify({
       adultConfirmed: input.adultConfirmed ?? true,
+      legalAccepted: input.legalAccepted ?? true,
       email: input.email || "counsel@example.test",
       password: input.password || "strong-attorney-password",
     }),
@@ -84,11 +86,16 @@ describe("single-link invited attorney account creation", () => {
       token: "single-private-invitation-token",
       email: "counsel@example.test",
     });
-    expect(createUser).toHaveBeenCalledWith({
+    expect(createUser).toHaveBeenCalledWith(expect.objectContaining({
       email: "counsel@example.test",
       password: "strong-attorney-password",
       email_confirm: true,
-    });
+      user_metadata: expect.objectContaining({
+        custody_folio_terms_version: "2026-08-10",
+        custody_folio_privacy_version: "2026-08-10",
+        custody_folio_legal_acceptance_source: "attorney_signup",
+      }),
+    }));
     await expect(response.json()).resolves.toMatchObject({
       ok: true,
       message: expect.stringContaining("Continue with authenticator verification"),
@@ -135,10 +142,15 @@ describe("single-link invited attorney account creation", () => {
     const response = await POST(request());
 
     expect(response.status).toBe(201);
-    expect(updateUserById).toHaveBeenCalledWith("legacy-attorney-1", {
+    expect(updateUserById).toHaveBeenCalledWith("legacy-attorney-1", expect.objectContaining({
       password: "strong-attorney-password",
       email_confirm: true,
-    });
+      user_metadata: expect.objectContaining({
+        custody_folio_terms_version: "2026-08-10",
+        custody_folio_privacy_version: "2026-08-10",
+        custody_folio_legal_acceptance_source: "attorney_signup",
+      }),
+    }));
   });
 
   it("never resets an existing confirmed or previously used account", async () => {
@@ -181,6 +193,13 @@ describe("single-link invited attorney account creation", () => {
 
     expect(adultResponse.status).toBe(400);
     expect(passwordResponse.status).toBe(400);
+    expect(createUser).not.toHaveBeenCalled();
+  });
+
+  it("requires separate acceptance of the Terms and Privacy Policy", async () => {
+    const response = await POST(request({ legalAccepted: false }));
+
+    expect(response.status).toBe(400);
     expect(createUser).not.toHaveBeenCalled();
   });
 

@@ -443,6 +443,7 @@ export async function signUpRecordsAccount(
   email: string,
   password: string,
   adultConfirmed: boolean,
+  legalAccepted: boolean,
   invitedAttorney = false
 ): Promise<RecordsAuthMessage> {
   const endpoint = invitedAttorney
@@ -470,7 +471,7 @@ export async function signUpRecordsAccount(
     credentials: "same-origin",
     headers,
     body: JSON.stringify(
-      { email, password, adultConfirmed }
+      { email, password, adultConfirmed, legalAccepted }
     ),
   });
 

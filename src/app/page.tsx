@@ -108,6 +108,13 @@ export default function HomePage() {
               ))}
             </div>
           </div>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600">
+            Health-related records are optional. Review how they are handled in the{" "}
+            <Link href="/consumer-health-data" className="font-semibold text-teal-700 underline underline-offset-2">
+              Consumer Health Data Privacy Policy
+            </Link>
+            .
+          </p>
         </div>
 
         <div className="relative">

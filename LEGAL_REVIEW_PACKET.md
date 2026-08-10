@@ -1,6 +1,6 @@
 # Legal Review Packet
 
-Review date target: before accepting real custody, parenting-time, child support, payment, court, school, health-adjacent, or evidence records.
+Review status: public policies revised August 10, 2026; independent legal approval remains pending.
 
 This packet is not legal advice. It packages the current product materials for qualified counsel or an authorized reviewer.
 
@@ -32,22 +32,30 @@ The MVP does not provide legal advice, does not decide court strategy, does not 
 - `PRODUCTION_LAUNCH_REHEARSAL.md`
 - `/privacy` public page draft
 - `/terms` public page draft
+- `/consumer-health-data` Washington consumer health data policy
+- `/open-source` third-party license and source notice
+- versioned signup acceptance and attorney case-sharing authorization flows
 
-## Required Legal Decisions
+## Decisions Implemented For Safer Operation
 
-1. Whether the service should launch invite-only or allow self-registration.
-2. Required privacy policy language for custody, child, court, payment, school, health-adjacent, and evidence records.
-3. Whether additional state-specific privacy disclosures are required.
-4. Whether the product is child-directed, family-directed, or adult-directed for privacy-policy purposes.
-5. Retention periods for account, case, evidence, audit, security, request, and backup logs.
-6. Backup-aging disclosure after account or case deletion.
-7. Legal-hold process and who can place or release a hold.
-8. User export and deletion rights, timing, and exceptions.
-9. Incident and breach notification thresholds.
-10. Required disclaimers for timelines, reports, court packets, and issue summaries.
-11. Whether report wording needs stronger limits around evidentiary use.
-12. Vendor and subprocessors disclosure language.
-13. Open-source notice and distribution obligations for the bundled `heic-to`/libheif HEIC decoder (LGPL-3.0).
+1. Accounts and attorney access are limited to adults; attorney accounts remain invitation-gated and free.
+2. Customer records are not used for advertising or AI training, and AI processing remains disabled pending a separate opt-in design.
+3. Washington consumer health data has a separate policy and a separate, affirmative attorney-sharing authorization.
+4. Active account and case deletion is immediate; encrypted backup aging is capped at 180 days.
+5. Raw request logs are capped at 180 days; security, authentication, attorney-access, and deletion audit events are capped at 365 days; closed support/privacy correspondence is capped at 24 months absent a documented exception.
+6. Legal holds require a documented basis, narrow scope, access controls, user notice unless prohibited, and review at least every 90 days.
+7. No payment is currently required. Future subscription, renewal, cancellation, trial, and refund terms must be presented separately before any charge.
+8. The `heic-to` and libheif components are identified on a public open-source notice page with license and corresponding-source links.
+
+## Counsel Validation Still Required
+
+1. Confirm the operator name and notice address after Apple approves the Slantwire Studios entity conversion.
+2. Confirm Alaska governing-law and venue language for the intended launch footprint.
+3. Validate Washington My Health My Data Act scope, consent wording, processor contracts, rights workflow, and appeal language.
+4. Validate child/third-party record notices, the adult-only positioning, and any state privacy disclosures beyond Washington.
+5. Confirm retention maximums against provider contracts and production configuration.
+6. Review liability limits, warranty disclaimers, evidence/report language, legal-request process, and incident notification rules.
+7. Confirm that the published LGPL notices and distribution method satisfy the exact web and native bundles shipped.
 
 ## Product Wording To Approve
 

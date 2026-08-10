@@ -35,7 +35,14 @@ export interface ActiveAttorneyGrant {
 }
 
 type ServiceSupabase = ReturnType<typeof createSupabaseAdminClient>;
-const allowedAttorneyAuditMetadata = new Set(["reason", "reportType", "sectionId", "route"]);
+const allowedAttorneyAuditMetadata = new Set([
+  "reason",
+  "reportType",
+  "sectionId",
+  "route",
+  "consumerHealthSharingConsent",
+  "consentVersion",
+]);
 
 export function sanitizeAttorneyAuditMetadata(
   metadata: Record<string, string | number | boolean> | undefined

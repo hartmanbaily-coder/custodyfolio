@@ -88,9 +88,10 @@ export default function AttorneyAccept() {
     const password = String(form.get("password") || "");
     const confirmPassword = String(form.get("confirmPassword") || "");
     const adultConfirmed = form.get("adult") === "on";
+    const legalAccepted = accountMode === "sign_in" || form.get("legal") === "on";
 
-    if (!email.includes("@") || !password || !adultConfirmed) {
-      setError("Enter the invited email and password, then confirm adult use.");
+    if (!email.includes("@") || !password || !adultConfirmed || !legalAccepted) {
+      setError("Enter the invited email and password, confirm adult use, and accept the current policies.");
       return;
     }
     if (accountMode === "create" && password.length < 12) {
@@ -110,6 +111,7 @@ export default function AttorneyAccept() {
           email,
           password,
           adultConfirmed,
+          legalAccepted,
         });
       }
       await startAttorneySession(email, password);
@@ -218,8 +220,30 @@ export default function AttorneyAccept() {
                 ) : null}
                 <label className="flex items-start gap-2 text-sm leading-5 text-slate-700">
                   <input name="adult" type="checkbox" className="mt-1" />
-                  <span>I am the adult attorney invited to this read-only matter.</span>
+                  <span>
+                    {accountMode === "create" ? (
+                      "I am the adult attorney invited to this read-only matter."
+                    ) : (
+                      <>
+                        I am the adult attorney invited to this read-only matter and, by continuing, agree to the{" "}
+                        <Link href="/terms" className="font-semibold text-teal-700 underline underline-offset-2">
+                          Terms of Use
+                        </Link>{" "}
+                        and acknowledge the{" "}
+                        <Link href="/privacy" className="font-semibold text-teal-700 underline underline-offset-2">
+                          Privacy Policy
+                        </Link>
+                        .
+                      </>
+                    )}
+                  </span>
                 </label>
+                {accountMode === "create" ? (
+                  <label className="flex items-start gap-2 text-sm leading-5 text-slate-700">
+                    <input name="legal" type="checkbox" className="mt-1" />
+                    <span>I affirmatively accept the current Terms and Privacy Policy for this new attorney account.</span>
+                  </label>
+                ) : null}
                 <button type="submit" className="btn-primary w-full" disabled={busy}>
                   {busy ? "Opening…" : accountMode === "create" ? "Create account and continue" : "Sign in and continue"}
                 </button>

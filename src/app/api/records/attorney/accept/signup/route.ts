@@ -19,6 +19,11 @@ import {
   isPwnedPasswordCheckEnabled,
 } from "@/lib/security/pwnedPasswords";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
+import {
+  legalAcceptanceMetadata,
+  privacyVersion,
+  termsVersion,
+} from "@/lib/legal";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -86,15 +91,17 @@ export async function POST(request: NextRequest) {
     email?: unknown;
     password?: unknown;
     adultConfirmed?: unknown;
+    legalAccepted?: unknown;
   };
   const email = typeof body.email === "string" ? normalizeAttorneyEmail(body.email) : "";
   const password = typeof body.password === "string" ? body.password : "";
   const adultConfirmed = body.adultConfirmed === true;
+  const legalAccepted = body.legalAccepted === true;
   const minimumPasswordLength = recordsPasswordMinimumLength();
-  if (!adultConfirmed || !email.includes("@") || !isStrongRecordsPassword(password)) {
+  if (!adultConfirmed || !legalAccepted || !email.includes("@") || !isStrongRecordsPassword(password)) {
     return NextResponse.json(
       {
-        error: `Enter the invited email, confirm adult use, and use a password between ${minimumPasswordLength} and 128 characters.`,
+        error: `Enter the invited email, confirm adult use, accept the Terms and Privacy Policy, and use a password between ${minimumPasswordLength} and 128 characters.`,
       },
       { status: 400, headers: { "Cache-Control": "no-store" } }
     );
@@ -145,6 +152,7 @@ export async function POST(request: NextRequest) {
     email,
     password,
     email_confirm: true,
+    user_metadata: legalAcceptanceMetadata("attorney_signup"),
   });
   let accountUser = created.data.user;
   let recoveredLegacyInvite = false;
@@ -155,6 +163,10 @@ export async function POST(request: NextRequest) {
         const recovered = await admin.auth.admin.updateUserById(legacyInvite.id, {
           password,
           email_confirm: true,
+          user_metadata: {
+            ...(legacyInvite.user_metadata || {}),
+            ...legalAcceptanceMetadata("attorney_signup"),
+          },
         });
         if (recovered.error || !recovered.data.user?.id) {
           throw recovered.error || new Error("Legacy invited identity recovery failed.");
@@ -208,6 +220,14 @@ export async function POST(request: NextRequest) {
     detail: recoveredLegacyInvite
       ? "Unclaimed legacy attorney invite converted to a password account from the original private link."
       : "Invitation-gated attorney account created directly from the single private link.",
+  });
+  await recordSecurityEvent({
+    type: "policy_terms_accepted",
+    severity: "info",
+    request,
+    userId: accountUser.id,
+    status: 201,
+    detail: `Terms ${termsVersion}; Privacy ${privacyVersion}; source attorney signup.`,
   });
 
   return NextResponse.json(

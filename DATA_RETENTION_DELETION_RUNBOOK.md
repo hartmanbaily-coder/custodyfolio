@@ -1,6 +1,10 @@
 # Data Retention and Deletion Runbook
 
-Custody Folio should keep sensitive records only as long as users need them and as long as legitimate operational, security, legal, or backup constraints require. This runbook defines the production deletion and retention model to finalize with counsel before launch.
+Effective date: August 10, 2026
+
+Policy owner: Slantwire Studios
+
+Custody Folio keeps sensitive records only as long as users need them and as long as a specific operational, security, legal, or backup constraint requires. This runbook defines the production deletion and retention model. A qualified legal reviewer must approve material changes before `LEGAL_REVIEW_APPROVED=true` is set.
 
 This is product and operations guidance, not legal advice.
 
@@ -41,7 +45,7 @@ Warn users that exported files leave the app's protected storage and become thei
 
 ## Case Deletion
 
-Target behavior:
+Required behavior:
 
 1. User requests deletion for a case.
 2. App confirms the case label and warns that deletion removes records and private evidence files.
@@ -59,7 +63,7 @@ If deletion is queued:
 
 ## Account Deletion
 
-Target behavior:
+Required behavior:
 
 1. User requests account deletion.
 2. App confirms identity and reauthentication.
@@ -85,23 +89,26 @@ Evidence deletion must:
 
 Backups may retain deleted data until they expire. The production privacy policy must disclose this.
 
-Target backup model:
+Required backup model:
 
 - encrypted automated backups
 - restricted backup access
 - restore tests at least every 180 days
-- documented backup retention period
-- deleted data ages out of backups by the end of the backup retention period
+- a maximum 180-day backup retention period
+- deleted data ages out of backups no later than 180 days after verified deletion
 - restored environments must reapply deletion requests before being used for production traffic
 
-Fill before launch:
+Production limits:
 
-- Database backup retention:
-- Storage backup retention:
-- Log retention:
-- Audit retention:
-- Backup restore owner:
-- Backup restore test cadence:
+- Database backup retention: no more than 180 days
+- Private storage backup retention: no more than 180 days
+- Raw application and request logs: no more than 180 days; minimize IP addresses and user agents where practical
+- Authentication, security, attorney-access, and deletion audit events: no more than 365 days unless a documented legal hold applies
+- Closed support and privacy correspondence: no more than 24 months unless an active request, dispute, or documented legal hold requires longer
+- Backup restore owner: the Slantwire Studios infrastructure operator or a specifically designated incident lead
+- Backup restore test cadence: at least once every 180 days and after a material backup-provider change
+
+The operator must review provider settings at least quarterly. If a provider cannot meet these maximums, do not place new production customer data with that provider until the mismatch is corrected or the public policy is lawfully revised with required notice or consent.
 
 After a restore drill, copy `ops/backup-restore-evidence.example.json` to the ignored path `ops/backup-restore-evidence.json`, replace every placeholder with the real non-sensitive restore evidence, and run:
 
@@ -114,27 +121,26 @@ The verifier intentionally rejects the `.example.json` template and common place
 
 ## Legal Hold
 
-A deletion request may need to be paused if legally required. Before launch, counsel must define:
+A deletion request may be paused only when a documented legal requirement or a written, case-specific legal assessment requires it.
 
-- who can place a legal hold
-- what records are held
-- how the user is notified, if allowed
-- who can release the hold
-- how holds are reviewed
-- how held data is protected
+- Placement: only the Slantwire Studios operator, acting on documented legal process or advice, may place a hold.
+- Scope: identify the account, exact data categories, legal basis, start date, and the least amount of data necessary. Do not copy record contents into the hold log.
+- Notice: notify the affected user unless the law or legal process prohibits notice; record the reason if notice is delayed or withheld.
+- Protection: restrict held data to specifically authorized personnel and preserve existing encryption and access logging.
+- Review: review each hold at least every 90 days and record whether it remains necessary.
+- Release: the operator releases the hold when the documented basis ends, then completes the pending deletion promptly and records completion.
 
-Do not create broad indefinite holds without documented legal basis and review dates.
+Do not create broad, speculative, or indefinite holds.
 
 ## Security Log Retention
 
 Security logs should be retained long enough to investigate abuse and incidents, but should not include sensitive record contents.
 
-Suggested starting point to approve with counsel:
-
-- application security logs: 180 days
+- application security logs: up to 180 days
 - auth/security events: 365 days
 - deletion audit metadata: 365 days
-- raw request logs with IP addresses: 90 to 180 days, minimized where possible
+- attorney-access events: 365 days
+- raw request logs with IP addresses: up to 180 days, minimized where possible
 
 ## Deletion Verification
 
@@ -146,13 +152,11 @@ For each deletion request, verify:
 - readiness/monitoring did not report deletion failures
 - backup-aging disclosure applies until backup retention expires
 
-## Open Production Decisions
+## Change Control
 
-- exact retention periods
-- user self-service deletion scope
-- whether account deletion is immediate or queued
-- whether audit logs are retained after account deletion
-- legal hold policy
-- support contact and SLA
-- backup retention and restore process
-- how deletion requests are handled if records are subject to court/law enforcement requests
+- Signed-in account deletion is immediate for active records and private files; backup aging follows the 180-day maximum above.
+- Case deletion is self-service and immediate for active case data and evidence.
+- Minimal audit metadata may remain for up to 365 days when reasonably necessary for security, action verification, or legal compliance; it must not contain record contents.
+- Privacy and Washington consumer-health-data requests are acknowledged and completed within applicable legal deadlines; the public policy commits to a 45-day Washington response period and appeal process.
+- Court or law-enforcement requests are reviewed for validity and scope. Disclose only what is legally required, preserve confidentiality, and notify the user unless legally prohibited.
+- Any extension, new data category, new provider, new secondary use, or new legal-hold practice requires a documented privacy review and a matching public-policy update before it takes effect.

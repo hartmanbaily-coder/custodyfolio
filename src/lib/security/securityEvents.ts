@@ -13,6 +13,7 @@ export type SecurityEventType =
   | "auth_signup_confirmation_blocked"
   | "auth_signup_confirmation_resent"
   | "auth_signup_confirmation_resend_failed"
+  | "policy_terms_accepted"
   | "auth_email_confirmed"
   | "auth_email_confirm_failed"
   | "auth_password_reset_requested"
@@ -62,7 +63,7 @@ export interface SecurityEventInput {
 
 function hashForLog(value: string | undefined) {
   if (!value) return undefined;
-  const salt = process.env.SECURITY_LOG_HASH_SALT || process.env.AUTH_SECRET || "lost-to-found-records";
+  const salt = process.env.SECURITY_LOG_HASH_SALT || process.env.AUTH_SECRET || "custody-folio-records";
   return createHash("sha256").update(`${salt}:${value}`).digest("hex").slice(0, 24);
 }
 
@@ -99,7 +100,7 @@ function requestMetadata(request: NextRequest | undefined) {
 
 export async function recordSecurityEvent(input: SecurityEventInput) {
   const event = {
-    event: "lost_to_found_security_event",
+    event: "custody_folio_security_event",
     type: input.type,
     severity: input.severity,
     at: new Date().toISOString(),
@@ -130,7 +131,7 @@ export async function recordSecurityEvent(input: SecurityEventInput) {
   } catch {
     console.warn(
       JSON.stringify({
-        event: "lost_to_found_security_event_delivery_failed",
+        event: "custody_folio_security_event_delivery_failed",
         at: new Date().toISOString(),
         type: input.type,
       })

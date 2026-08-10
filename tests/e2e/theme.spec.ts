@@ -61,11 +61,13 @@ test("public pages expose route-specific canonicals and the complete policy set"
   );
   for (const path of [
     "/privacy",
+    "/consumer-health-data",
     "/terms",
     "/security",
     "/ai-data-use",
     "/subprocessors",
     "/accessibility",
+    "/open-source",
     "/contact",
     "/account/delete",
   ]) {

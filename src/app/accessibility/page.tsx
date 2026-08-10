@@ -11,8 +11,17 @@ const sections: PolicySection[] = [
   {
     title: "Commitment",
     body: [
-      "Custody Folio works to support keyboard navigation, readable text and contrast, labeled forms, visible focus, and mobile layouts.",
+      "Custody Folio uses WCAG 2.2 Level AA as its accessibility target. This is a design and testing target, not a claim that every page or user-uploaded file currently conforms.",
+      "The service works to support keyboard navigation, screen readers, readable text and contrast, labeled forms, visible focus, error identification, zoom, and mobile layouts.",
       "Charts and calendars include written labels or summaries where available.",
+    ],
+  },
+  {
+    title: "Testing and improvement",
+    body: [
+      "We use automated checks together with keyboard, zoom, responsive-layout, and assistive-technology review because automated testing alone cannot establish accessibility.",
+      "New or materially changed workflows should be checked as complete processes, including account creation, sign in, record entry, file handling, export, attorney access, and account deletion.",
+      "We prioritize barriers that prevent account access, privacy choices, safety information, or core recordkeeping tasks.",
     ],
   },
   {
@@ -27,6 +36,7 @@ const sections: PolicySection[] = [
     body: [
       "Tell us which page or task was difficult, what device or assistive technology you used, and what happened.",
       "Do not send private records or sensitive case details unless we ask for them.",
+      "We aim to acknowledge accessibility reports within five business days and will provide an available alternative or remediation update when reasonably possible.",
     ],
   },
 ];

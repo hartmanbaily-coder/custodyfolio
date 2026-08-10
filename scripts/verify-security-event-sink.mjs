@@ -16,7 +16,7 @@ function isHttpsUrl(value) {
 
 const sink = String(process.env.SECURITY_EVENT_SINK || "").trim().toLowerCase();
 const event = {
-  event: "lost_to_found_security_event",
+  event: "custody_folio_security_event",
   type: "readiness_monitoring_sink_test",
   severity: "info",
   at: new Date().toISOString(),

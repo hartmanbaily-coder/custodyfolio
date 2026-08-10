@@ -1,8 +1,8 @@
 # Terms Notes
 
-These notes are product and implementation guidance, not final legal terms.
+These notes are product and implementation guidance, not legal advice.
 
-The public `/terms` page contains a records-specific draft for counsel review before production launch.
+The public `/terms` page contains the operative records-specific Terms presented in the product. Independent counsel approval remains pending and is tracked separately by `LEGAL_REVIEW_APPROVED`; these notes do not replace the published Terms.
 
 ## Not Legal Advice
 

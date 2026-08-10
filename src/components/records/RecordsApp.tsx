@@ -1365,16 +1365,18 @@ function LoginScreen({
     const password = String(formData.get("password") || "");
     const confirmPassword = String(formData.get("confirmPassword") || "");
     const adultConfirmed = formData.get("adult") === "on";
+    const legalAccepted = formData.get("legal") === "on";
 
     if (
       !adultConfirmed ||
+      !legalAccepted ||
       !email.includes("@") ||
       password.length < minimumPasswordLength
     ) {
       setError(
         invitedAttorneySignup
-          ? `Enter the invited email, confirm adult use, and use at least ${minimumPasswordLength} characters.`
-          : `Enter an email, confirm adult use, and use at least ${minimumPasswordLength} characters.`
+          ? `Enter the invited email, confirm adult use, accept the Terms and Privacy Policy, and use at least ${minimumPasswordLength} characters.`
+          : `Enter an email, confirm adult use, accept the Terms and Privacy Policy, and use at least ${minimumPasswordLength} characters.`
       );
       return;
     }
@@ -1391,6 +1393,7 @@ function LoginScreen({
         email,
         password,
         adultConfirmed,
+        legalAccepted,
         invitedAttorneySignup
       );
       setMessage(result.message);
@@ -1747,6 +1750,20 @@ function LoginScreen({
                       : "I am an adult user and will use privacy minded labels for sensitive records."}
                   </span>
                 </label>
+                <label className="flex items-start gap-2 text-sm leading-5 text-slate-700">
+                  <input name="legal" type="checkbox" className="mt-1" />
+                  <span>
+                    I agree to the{" "}
+                    <Link href="/terms" className="font-semibold text-teal-700 underline underline-offset-2">
+                      Terms of Use
+                    </Link>{" "}
+                    and acknowledge the{" "}
+                    <Link href="/privacy" className="font-semibold text-teal-700 underline underline-offset-2">
+                      Privacy Policy
+                    </Link>
+                    .
+                  </span>
+                </label>
                 {error && <p className="text-sm font-medium text-red-700">{error}</p>}
                 <button
                   type="submit"
@@ -1843,7 +1860,15 @@ function LoginScreen({
                 <label className="flex items-start gap-2 text-sm leading-5 text-slate-700">
                   <input name="adult" type="checkbox" className="mt-1" />
                   <span>
-                    I am an adult user and will use privacy minded labels for sensitive records.
+                    I am an adult user and, by signing in, agree to the current{" "}
+                    <Link href="/terms" className="font-semibold text-teal-700 underline underline-offset-2">
+                      Terms of Use
+                    </Link>{" "}
+                    and acknowledge the{" "}
+                    <Link href="/privacy" className="font-semibold text-teal-700 underline underline-offset-2">
+                      Privacy Policy
+                    </Link>
+                    .
                   </span>
                 </label>
                 {error && (

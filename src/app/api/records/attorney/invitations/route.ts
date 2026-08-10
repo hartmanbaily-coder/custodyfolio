@@ -27,6 +27,7 @@ import {
 import { recordsAppBaseUrl } from "@/lib/records/authServer";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
+import { consumerHealthSharingConsentVersion } from "@/lib/legal";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,6 +35,7 @@ export const runtime = "nodejs";
 const createInvitationSchema = z.object({
   email: z.string().trim().email().max(254),
   caseId: z.string().trim().min(1).max(180),
+  healthDataSharingAuthorized: z.literal(true),
 });
 
 type InvitationRow = {
@@ -194,7 +196,10 @@ export async function POST(request: NextRequest) {
 
   const parsed = createInvitationSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Enter a valid attorney email and shared case." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Enter a valid attorney email and shared case, then authorize sharing this case with that attorney." },
+      { status: 400 }
+    );
   }
   const email = normalizeAttorneyEmail(parsed.data.email);
   if (email === normalizeAttorneyEmail(context.email)) {
@@ -265,14 +270,29 @@ export async function POST(request: NextRequest) {
   if (error || !data) {
     return NextResponse.json({ error: "Unable to create the attorney invitation." }, { status: 500 });
   }
-  await recordAttorneyAccessEvent({
+  const consentEvent = await recordAttorneyAccessEvent({
     supabase: context.supabase,
     ownerUserId: context.userId,
     actorUserId: context.userId,
     caseId: parsed.data.caseId,
     invitationId: data.id,
     eventType: "invitation_created",
+    metadata: {
+      consumerHealthSharingConsent: true,
+      consentVersion: consumerHealthSharingConsentVersion,
+    },
   });
+  if (!consentEvent.ok) {
+    await context.supabase
+      .from("records_attorney_invitations")
+      .update({ status: "revoked", revoked_at: new Date().toISOString() })
+      .eq("id", data.id)
+      .eq("owner_user_id", context.userId);
+    return NextResponse.json(
+      { error: "Unable to record your sharing authorization. No invitation was issued." },
+      { status: 500, headers: { "Cache-Control": "no-store" } }
+    );
+  }
 
   return NextResponse.json(
     {

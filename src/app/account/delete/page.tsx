@@ -15,7 +15,7 @@ const sections: PolicySection[] = [
     title: "What will be deleted",
     body: [
       "Deleting your account removes the account and its custody matters, calendars, notes, support and expense records, reports, and uploaded files from active systems.",
-      "Limited information may be kept when required by law, and deleted information may remain temporarily in backups.",
+      "Limited audit information may be kept when reasonably necessary for security or required by law. Deleted customer content ages out of encrypted backups no later than 180 days after verified deletion.",
     ],
   },
   {
@@ -29,7 +29,7 @@ const sections: PolicySection[] = [
     title: "What happens when you confirm",
     body: [
       "The signed-in account, active records, private evidence files, and Attorney Access are deleted immediately, and you are signed out.",
-      "Limited copies may remain temporarily in backups or when retention is required by law.",
+      "Encrypted backup copies age out no later than 180 days after verified deletion. A narrow, documented legal requirement may preserve only the information the law requires.",
     ],
   },
 ];

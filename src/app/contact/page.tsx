@@ -3,6 +3,8 @@ import Link from "next/link";
 import { PolicyPage, type PolicySection } from "@/components/PolicyPage";
 import {
   accountDeletionPath,
+  legalOperatorLocation,
+  legalOperatorName,
   pageMetadata,
   privacyEmail,
   privacyMailto,
@@ -20,6 +22,13 @@ export const metadata = pageMetadata({
 
 const sections: PolicySection[] = [
   {
+    title: "Operator",
+    body: [
+      `${legalOperatorName}, located in ${legalOperatorLocation}, operates Custody Folio.`,
+      "Use the monitored addresses below for written support, privacy, accessibility, security, and legal notices. Do not send sensitive case records unless we provide a protected method and ask for them.",
+    ],
+  },
+  {
     title: "Account and product support",
     body: [
       "Contact support for sign in, account recovery, files, imports, exports, calendars, reports, accessibility, or product problems.",
@@ -31,6 +40,8 @@ const sections: PolicySection[] = [
     body: [
       "Use the Account Deletion page to delete your account. Contact the privacy inbox for access, correction, export, or privacy questions.",
       "We may verify your identity before acting on an account or privacy request.",
+      "We respond within the period required by applicable law. Washington consumer-health requests are answered within 45 days, subject to a legally permitted extension with notice.",
+      "If a privacy request is denied, reply with the subject Privacy Appeal for a separate review and regulator-contact instructions where required.",
     ],
   },
   {

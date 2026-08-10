@@ -116,12 +116,16 @@ Counsel must review notification duties. For each incident, assess:
 - Applicable state breach-notification laws
 - Whether data qualifies as personal information or sensitive personal information
 - Whether child-related, court, payment, health-adjacent, or evidence content was involved
+- Whether the event may be a breach of unsecured, individually identifiable health information under the FTC Health Breach Notification Rule, including unauthorized disclosure or acquisition through an access-control failure
+- Whether Washington consumer health data was involved and whether Washington My Health My Data Act duties or state breach-notification duties apply
 - Whether law enforcement notification is appropriate
 - Whether a vendor or subprocessor must be notified
 - Whether user notification could impede law enforcement or containment
 - Whether identity-theft guidance is needed
 
 Do not delay internal containment while legal notification analysis is underway.
+
+If the FTC Health Breach Notification Rule may apply, preserve the facts needed to determine the date of discovery, affected people, information involved, acquisition or disclosure, encryption status, and notification deadlines. Obtain counsel promptly; covered notices generally must be made without unreasonable delay and no later than the applicable federal deadline. Do not assume that an app falls outside the rule merely because it is not covered by HIPAA.
 
 ## User Communications
 

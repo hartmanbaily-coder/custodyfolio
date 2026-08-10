@@ -4,11 +4,13 @@ import { describe, expect, it } from "vitest";
 
 const customerFacingFiles = [
   "src/app/privacy/page.tsx",
+  "src/app/consumer-health-data/page.tsx",
   "src/app/terms/page.tsx",
   "src/app/security/page.tsx",
   "src/app/accessibility/page.tsx",
   "src/app/ai-data-use/page.tsx",
   "src/app/subprocessors/page.tsx",
+  "src/app/open-source/page.tsx",
   "src/app/contact/page.tsx",
   "src/app/account/delete/page.tsx",
   "src/app/account/delete/AccountDeletionRequest.tsx",
@@ -60,16 +62,24 @@ describe("customer facing copy", () => {
     const site = readFileSync(resolve(process.cwd(), "src/lib/site.ts"), "utf8");
     for (const path of [
       "/privacy",
+      "/consumer-health-data",
       "/terms",
       "/security",
       "/ai-data-use",
       "/subprocessors",
       "/accessibility",
+      "/open-source",
       "/contact",
       "/account/delete",
     ]) {
       expect(site).toContain(path);
     }
+  });
+
+  it("prominently links the consumer health data policy from the home page", () => {
+    const home = readFileSync(resolve(process.cwd(), "src/app/page.tsx"), "utf8");
+    expect(home).toContain('href="/consumer-health-data"');
+    expect(home).toContain("Consumer Health Data Privacy Policy");
   });
 
   it("does not expose the retired product name in export filenames", () => {
@@ -118,6 +128,8 @@ describe("customer facing copy", () => {
     expect(attorneyAccess).toContain("How to give an attorney access");
     expect(attorneyAccess).toContain("Send the one private link yourself");
     expect(attorneyAccess).toContain("Review or revoke access here at any time");
+    expect(attorneyAccess).toContain("I authorize Custody Folio to share this selected case");
+    expect(attorneyAccess).toContain("Consumer Health Data Privacy Policy");
   });
 
   it("tells invited attorneys that the private invitation is a single-link flow", () => {

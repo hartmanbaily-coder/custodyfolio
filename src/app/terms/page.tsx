@@ -1,5 +1,10 @@
 import { PolicyPage, type PolicySection } from "@/components/PolicyPage";
-import { pageMetadata } from "@/lib/site";
+import {
+  legalOperatorLocation,
+  legalOperatorName,
+  pageMetadata,
+  supportEmail,
+} from "@/lib/site";
 
 export const metadata = pageMetadata({
   title: "Terms of Use",
@@ -9,58 +14,108 @@ export const metadata = pageMetadata({
 
 const sections: PolicySection[] = [
   {
-    title: "Purpose",
+    title: "Agreement and operator",
     body: [
-      "Custody Folio helps adults organize custody records, calendars, expenses, files, and reports.",
-      "It does not provide legal advice, legal representation, court findings, or a guarantee that any record will be accepted as evidence.",
-      "Consult a qualified attorney about your situation and applicable court rules.",
+      `${legalOperatorName}, located in ${legalOperatorLocation}, operates Custody Folio. These Terms form an agreement between you and ${legalOperatorName}.`,
+      "By creating an account or signing in after being shown the acceptance notice, you affirmatively agree to these Terms and acknowledge the Privacy Policy. If you do not agree, do not create or use an account.",
+      "You must be an adult legally able to enter this agreement. Children may not create or use accounts.",
     ],
   },
   {
-    title: "Accounts",
+    title: "Service and limited license",
     body: [
-      "You must be an adult and provide accurate account information.",
-      "Keep your password, email account, authenticator, and devices secure. Contact us promptly if you suspect unauthorized access.",
-      "Do not create an account for a child or allow a child to use your account.",
+      "Custody Folio gives adult users a private workspace to organize custody-related calendars, exchanges, notes, financial records, files, reports, and authorized attorney access.",
+      "While your account remains authorized, we grant you a personal, limited, nonexclusive, nontransferable, revocable license to use the service for lawful personal recordkeeping or authorized professional review.",
+      "Custody Folio and its software, design, branding, and original content remain owned by the operator or applicable licensors. Open-source components remain governed by their own licenses.",
     ],
   },
   {
-    title: "Your records",
+    title: "Not a law firm or emergency service",
     body: [
-      "You are responsible for records you enter, upload, export, or share and for having the right to use them.",
-      "Keep original source files, review generated reports for accuracy, and protect copies downloaded from the app.",
-      "We may reject unsafe, unsupported, or oversized files.",
+      "Custody Folio is an organizational tool. It does not provide legal advice, legal representation, court findings, case strategy, supervised exchanges, law-enforcement response, or emergency assistance.",
+      "Reports, charts, calculations, timelines, summaries, and exports depend on user-entered information and may contain errors. They do not guarantee admissibility, accuracy, completeness, legal effect, or a particular outcome.",
+      "Keep original source material, independently review every export, follow applicable court rules, and consult a qualified attorney about your circumstances. Contact emergency services for immediate safety concerns.",
+    ],
+  },
+  {
+    title: "Accounts and security",
+    body: [
+      "Provide accurate account information and use only accounts and matters you are authorized to access. You are responsible for activity under your account except activity caused by our breach of these Terms or applicable law.",
+      "Protect your email, password, authenticator, recovery information, devices, downloads, and exports. Notify us promptly at the security address if you suspect unauthorized access.",
+      "We may require identity or account-control verification for recovery, privacy requests, deletion, or other sensitive actions.",
+    ],
+  },
+  {
+    title: "Your records and permissions",
+    body: [
+      "You retain ownership of records and files you provide. You grant us a limited permission to host, copy, process, scan, transmit, and format them only as needed to provide, secure, support, and comply with law for the service.",
+      "You are responsible for the legality, accuracy, and appropriateness of information you enter, upload, export, or share and for having the necessary rights or authority concerning information about children and other people.",
+      "Do not enter unnecessary identifiers or sensitive information. Protect downloaded copies because they leave Custody Folio's access controls.",
+      "We may block or remove malware, illegal material, unsupported files, or content that creates a credible security or legal risk.",
+    ],
+  },
+  {
+    title: "Attorney access",
+    body: [
+      "A client may expressly authorize one adult attorney account to receive read-only access to a selected case. Access continues until the client revokes it, the attorney leaves, or the case or account is deleted.",
+      "Attorney users may view, select, download, print, and export shared records solely for the client matter and must protect those copies and comply with professional, ethical, confidentiality, and legal obligations.",
+      "Revocation blocks future requests but cannot recall a copy already downloaded or otherwise received. An invitation does not create representation or attorney-client privilege, and Custody Folio is not part of the attorney-client relationship.",
     ],
   },
   {
     title: "Acceptable use",
     body: [
-      "Do not use the service to harass, stalk, threaten, impersonate, surveil, dox, or unlawfully disclose another person's information.",
-      "Do not upload malware, exploit code, illegal content, or content you do not have the right to store or use.",
-      "Do not attempt to access another user's records, bypass account protections, or disrupt the service.",
+      "Do not use the service to harass, stalk, threaten, impersonate, unlawfully surveil, dox, retaliate against, exploit, or unlawfully disclose information about another person.",
+      "Do not upload malware, illegal content, misleading fabricated evidence, or material you have no right to possess or share.",
+      "Do not access another account without authorization, bypass security or rate limits, probe for vulnerabilities without written permission, scrape the service, interfere with operation, or use automated access not provided by us.",
     ],
   },
   {
-    title: "Attorney Access",
+    title: "Availability and changes to the service",
     body: [
-      "You may invite one adult attorney account to read the selected case until you revoke access, the attorney leaves the matter, or the case or account is deleted.",
-      "You can revoke future access, but copies already downloaded cannot be recalled.",
-      "An invitation does not establish legal representation or attorney client privilege.",
+      "We work to keep the service available but do not promise uninterrupted or error-free operation. Maintenance, security work, network failures, legal requirements, or provider outages may interrupt access.",
+      "Features may be added, changed, limited, or discontinued. When reasonably possible, we will provide advance notice before a material change that removes access to stored records and will preserve a reasonable export opportunity.",
+      "No payment is currently required under these Terms. Any future paid plan, subscription, renewal, cancellation, trial, or refund terms will be presented separately before a charge and will require any consent required by Apple or applicable law.",
     ],
   },
   {
-    title: "Availability and account actions",
+    title: "Suspension, termination, and deletion",
     body: [
-      "The service may be temporarily unavailable for maintenance, security, or provider outages.",
-      "We may limit or end access for misuse, security risk, or violation of these terms.",
-      "You can export records and permanently delete your signed-in account through the self-service deletion page. Limited information may be retained when required by law.",
+      "We may limit or suspend access when reasonably necessary to address misuse, a credible security risk, unlawful conduct, or a material breach of these Terms. We will use a proportionate response and provide notice when legally and practically permitted.",
+      "You may export records and permanently delete your signed-in account using the self-service deletion page. Account deletion is irreversible and ends attorney access.",
+      "Provisions concerning ownership, downloaded copies, disclaimers, responsibility, disputes, and any lawful retention survive account closure to the extent needed to give them effect.",
     ],
   },
   {
-    title: "Safety and changes",
+    title: "Disclaimers and responsibility",
     body: [
-      "Custody Folio is not an emergency service and does not monitor safety or enforce court orders. Contact emergency services when immediate help is needed.",
-      "We may update the service or these terms. The date on this page identifies the current version.",
+      "To the fullest extent permitted by law, the service is provided as available without warranties of merchantability, fitness for a particular purpose, title, noninfringement, uninterrupted availability, evidentiary acceptance, or legal outcome.",
+      "Nothing in these Terms excludes a warranty, remedy, or liability that applicable consumer law does not allow us to exclude. You remain responsible for independent backups of material needed for a legal or personal deadline.",
+      "Where permitted by law, neither party is liable to the other for indirect, incidental, special, exemplary, or consequential loss that was not reasonably foreseeable. Our total liability relating to the service will not exceed the greater of $100 or the amount you paid us during the preceding 12 months.",
+      "Where permitted by law, you are responsible for reasonable losses and claims caused by your unlawful content, unauthorized sharing, intentional misuse, or material violation of these Terms.",
+    ],
+  },
+  {
+    title: "Governing law and disputes",
+    body: [
+      "These Terms are governed by Alaska law and applicable United States federal law, without overriding mandatory consumer protections that apply where you live.",
+      `Before filing a non-emergency dispute, contact ${supportEmail} and provide a concise description so both sides can try to resolve it informally. This does not extend a legal deadline or prevent a party from seeking urgent relief.`,
+      "Unless mandatory law provides otherwise, disputes may be brought in a court with jurisdiction in Alaska. These Terms do not require private arbitration and do not waive a right that cannot lawfully be waived.",
+    ],
+  },
+  {
+    title: "General terms",
+    body: [
+      "If part of these Terms is unenforceable, the remaining provisions continue to apply and the affected provision will be limited only as much as necessary.",
+      "Our failure to enforce a provision is not a waiver. You may not transfer your account or this agreement without written permission; we may transfer the agreement as part of a lawful restructuring or business transfer subject to the Privacy Policy.",
+      "The Privacy Policy and any feature-specific terms expressly presented to you are incorporated into this agreement. Headings are for readability and do not limit the provisions.",
+    ],
+  },
+  {
+    title: "Changes and contact",
+    body: [
+      "The date at the top identifies the current version. We will post updated Terms and provide conspicuous notice of material changes. When required, you must affirmatively accept revised Terms before continuing to use the service.",
+      `Questions about these Terms may be sent to ${supportEmail}. Notices to Custody Folio should identify the account email but should not include sensitive case details in the subject line.`,
     ],
   },
 ];

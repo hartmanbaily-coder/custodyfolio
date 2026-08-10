@@ -13,6 +13,11 @@ import {
   isPwnedPasswordCheckEnabled,
 } from "@/lib/security/pwnedPasswords";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
+import {
+  legalAcceptanceMetadata,
+  privacyVersion,
+  termsVersion,
+} from "@/lib/legal";
 
 export const dynamic = "force-dynamic";
 
@@ -47,16 +52,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const body = parsed as { email?: unknown; password?: unknown; adultConfirmed?: unknown };
+  const body = parsed as {
+    email?: unknown;
+    password?: unknown;
+    adultConfirmed?: unknown;
+    legalAccepted?: unknown;
+  };
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body.password === "string" ? body.password : "";
   const adultConfirmed = body.adultConfirmed === true;
+  const legalAccepted = body.legalAccepted === true;
   const minimumPasswordLength = recordsPasswordMinimumLength();
 
-  if (!adultConfirmed || !email.includes("@") || !isStrongRecordsPassword(password)) {
+  if (!adultConfirmed || !legalAccepted || !email.includes("@") || !isStrongRecordsPassword(password)) {
     return NextResponse.json(
       {
-        error: `Enter a valid email, confirm adult use, and use a password between ${minimumPasswordLength} and 128 characters.`,
+        error: `Enter a valid email, confirm adult use, accept the Terms and Privacy Policy, and use a password between ${minimumPasswordLength} and 128 characters.`,
       },
       { status: 400 }
     );
@@ -92,11 +103,12 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createServerSupabaseAuthClient();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       emailRedirectTo: `${recordsAppBaseUrl(request)}/records?auth=confirmed`,
+      data: legalAcceptanceMetadata("signup"),
     },
   });
 
@@ -117,6 +129,17 @@ export async function POST(request: NextRequest) {
     request,
     status: 200,
   });
+
+  if (data.user?.id) {
+    await recordSecurityEvent({
+      type: "policy_terms_accepted",
+      severity: "info",
+      request,
+      userId: data.user.id,
+      status: 200,
+      detail: `Terms ${termsVersion}; Privacy ${privacyVersion}; source signup.`,
+    });
+  }
 
   return NextResponse.json(
     {

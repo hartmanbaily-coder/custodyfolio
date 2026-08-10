@@ -34,6 +34,7 @@ function request(password = "Long-Password!42") {
       email: "new-user@example.test",
       password,
       adultConfirmed: true,
+      legalAccepted: true,
     }),
   });
 }
@@ -42,7 +43,7 @@ describe("signup compromised-password guard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetRateLimitStore();
-    signUp.mockResolvedValue({ error: null });
+    signUp.mockResolvedValue({ data: { user: { id: "new-user-1" } }, error: null });
   });
 
   it("rejects a compromised password before creating the Supabase account", async () => {
@@ -80,7 +81,36 @@ describe("signup compromised-password guard", () => {
       message: expect.stringContaining("separately set up an authenticator"),
     });
     expect(signUp).toHaveBeenCalledWith(
-      expect.objectContaining({ email: "new-user@example.test", password: "Long-Password!42" })
+      expect.objectContaining({
+        email: "new-user@example.test",
+        password: "Long-Password!42",
+        options: expect.objectContaining({
+          data: expect.objectContaining({
+            custody_folio_terms_version: "2026-08-10",
+            custody_folio_privacy_version: "2026-08-10",
+            custody_folio_legal_acceptance_source: "signup",
+          }),
+        }),
+      })
     );
+  });
+
+  it("requires separate acceptance of the Terms and Privacy Policy", async () => {
+    checkPwnedPassword.mockResolvedValue({ status: "safe" });
+    const missingAcceptance = new NextRequest("https://custodyfolio.com/api/records/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: "new-user@example.test",
+        password: "Long-Password!42",
+        adultConfirmed: true,
+        legalAccepted: false,
+      }),
+    });
+
+    const response = await POST(missingAcceptance);
+
+    expect(response.status).toBe(400);
+    expect(signUp).not.toHaveBeenCalled();
   });
 });

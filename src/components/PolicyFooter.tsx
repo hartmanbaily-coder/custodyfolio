@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import {
+  legalOperatorLocation,
+  legalOperatorName,
   legalDisclaimer,
   publicPolicyLinks,
   recordsTagline,
@@ -62,6 +64,9 @@ function PolicyDetails({ notice, recordsNote }: Pick<PolicyFooterProps, "notice"
         <a href={supportMailto} className="font-mono font-semibold text-teal-700 underline underline-offset-2">
           {supportEmail}
         </a>
+      </p>
+      <p>
+        Custody Folio is operated by {legalOperatorName}, {legalOperatorLocation}.
       </p>
     </section>
   );

@@ -24,6 +24,7 @@ import {
 import { recordsCsrfError, verifyRecordsTrustedJsonRequest } from "@/lib/security/csrf";
 import { checkRateLimit, rateLimitClientAddress, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
+import { privacyVersion, termsVersion } from "@/lib/legal";
 
 export const dynamic = "force-dynamic";
 
@@ -392,6 +393,7 @@ async function handleLoginPost(request: NextRequest) {
     request,
     userId: session.userId,
     status: 200,
+    detail: `Adult use confirmed; Terms ${termsVersion}; Privacy ${privacyVersion}.`,
   });
 
   const response = NextResponse.json(

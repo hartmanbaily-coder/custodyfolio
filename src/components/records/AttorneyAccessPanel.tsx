@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import { attorneyMutation } from "@/lib/records/attorneyClient";
@@ -67,6 +68,7 @@ export default function AttorneyAccessPanel({
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [invitationUrl, setInvitationUrl] = useState("");
+  const [sharingAuthorized, setSharingAuthorized] = useState(false);
 
   const load = useCallback(async () => {
     if (!cloudStorageEnabled) return;
@@ -107,16 +109,25 @@ export default function AttorneyAccessPanel({
       setMessage("Confirm the client name and case name shown to the attorney before creating an invitation.");
       return;
     }
+    if (!sharingAuthorized) {
+      setMessage("Authorize sharing this case with the named attorney before creating an invitation.");
+      return;
+    }
     const form = event.currentTarget;
     const email = String(new FormData(form).get("attorneyEmail") || "");
     setBusy("create");
     setMessage("");
     setInvitationUrl("");
     try {
-      const result = await attorneyMutation("/api/records/attorney/invitations", { email, caseId });
+      const result = await attorneyMutation("/api/records/attorney/invitations", {
+        email,
+        caseId,
+        healthDataSharingAuthorized: true,
+      });
       setInvitationUrl(String(result.invitationUrl || ""));
       setMessage("Invitation created. Share the private link with the intended attorney. Accepted read-only access remains active until you revoke it.");
       form.reset();
+      setSharingAuthorized(false);
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to create invitation.");
@@ -126,6 +137,10 @@ export default function AttorneyAccessPanel({
   }
 
   async function reinvite(invitation: Invitation) {
+    if (!sharingAuthorized) {
+      setMessage("Authorize sharing this case with the named attorney before creating another invitation.");
+      return;
+    }
     setBusy(invitation.handle);
     setMessage("");
     setInvitationUrl("");
@@ -133,9 +148,11 @@ export default function AttorneyAccessPanel({
       const result = await attorneyMutation("/api/records/attorney/invitations", {
         email: invitation.email,
         caseId: invitation.caseId,
+        healthDataSharingAuthorized: true,
       });
       setInvitationUrl(String(result.invitationUrl || ""));
       setMessage("A new invitation was created. Accepted read-only access remains active until you revoke it. The prior access remains ended.");
+      setSharingAuthorized(false);
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to create a new invitation.");
@@ -145,6 +162,10 @@ export default function AttorneyAccessPanel({
   }
 
   async function invitationAction(invitation: Invitation, action: "resend" | "revoke") {
+    if (action === "resend" && !sharingAuthorized) {
+      setMessage("Authorize sharing this case with the named attorney before replacing the invitation link.");
+      return;
+    }
     setBusy(invitation.handle);
     setMessage("");
     setInvitationUrl("");
@@ -152,9 +173,11 @@ export default function AttorneyAccessPanel({
       const result = await attorneyMutation("/api/records/attorney/invitations/action", {
         handle: invitation.handle,
         action,
+        ...(action === "resend" ? { healthDataSharingAuthorized: true } : {}),
       });
       setInvitationUrl(String(result.invitationUrl || ""));
       setMessage(action === "revoke" ? "Attorney access revoked immediately." : "A new invitation replaced the prior link.");
+      if (action === "resend") setSharingAuthorized(false);
       await load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to update invitation.");
@@ -255,6 +278,19 @@ export default function AttorneyAccessPanel({
         Access history records dates and actions without including record contents. Deleting the case or account ends access.
       </div>
 
+      <label className="mt-4 flex items-start gap-3 rounded-md border border-teal-200 bg-teal-50 p-3 text-sm leading-6 text-teal-950">
+        <input
+          type="checkbox"
+          checked={sharingAuthorized}
+          onChange={(event) => setSharingAuthorized(event.target.checked)}
+          className="mt-1"
+          disabled={!profileReady || !newInvitationsEnabled || activeGrant}
+        />
+        <span>
+          I authorize Custody Folio to share this selected case, including any health-related information it contains, with the attorney named below. I understand the attorney can download copies that cannot be recalled. I can revoke future access at any time. See the <Link href="/consumer-health-data" target="_blank" className="font-semibold underline">Consumer Health Data Privacy Policy</Link>.
+        </span>
+      </label>
+
       {state?.delivery === "not_configured" ? (
         <p className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
           Attorney invitations are temporarily unavailable.
@@ -276,7 +312,7 @@ export default function AttorneyAccessPanel({
           Attorney email
           <input name="attorneyEmail" type="email" autoComplete="email" className="input" required maxLength={254} disabled={!profileReady || !newInvitationsEnabled || activeGrant || Boolean(pending)} />
         </label>
-        <button type="submit" className="btn-primary self-end" disabled={!profileReady || !newInvitationsEnabled || busy === "create" || activeGrant || Boolean(pending)}>
+        <button type="submit" className="btn-primary self-end" disabled={!profileReady || !newInvitationsEnabled || !sharingAuthorized || busy === "create" || activeGrant || Boolean(pending)}>
           {busy === "create" ? "Creating…" : "Create invitation"}
         </button>
       </form>
@@ -330,10 +366,10 @@ export default function AttorneyAccessPanel({
               </div>
               <div className="flex flex-wrap gap-2">
                 {(invitation.status === "pending" || invitation.status === "expired") ? (
-                  <button type="button" className="btn-secondary" disabled={busy === invitation.handle} onClick={() => void invitationAction(invitation, "resend")}>Replace with new link</button>
+                  <button type="button" className="btn-secondary" disabled={busy === invitation.handle || !sharingAuthorized} onClick={() => void invitationAction(invitation, "resend")}>Replace with new link</button>
                 ) : null}
                 {invitation.status === "accepted" && invitation.accessExpiresAt && !invitation.accessActive ? (
-                  <button type="button" className="btn-secondary" disabled={busy === invitation.handle || !profileReady || !newInvitationsEnabled || Boolean(pending)} onClick={() => void reinvite(invitation)}>Invite again</button>
+                  <button type="button" className="btn-secondary" disabled={busy === invitation.handle || !profileReady || !newInvitationsEnabled || !sharingAuthorized || Boolean(pending)} onClick={() => void reinvite(invitation)}>Invite again</button>
                 ) : null}
                 {(invitation.status === "pending" || (invitation.status === "accepted" && invitation.accessActive)) ? (
                   <button type="button" className="btn-secondary text-red-700" disabled={busy === invitation.handle} onClick={() => void invitationAction(invitation, "revoke")}>Revoke access</button>

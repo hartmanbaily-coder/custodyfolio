@@ -14,6 +14,7 @@ import {
 import { recordsAppBaseUrl } from "@/lib/records/authServer";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
+import { consumerHealthSharingConsentVersion } from "@/lib/legal";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -37,6 +38,7 @@ export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) as {
     handle?: unknown;
     action?: unknown;
+    healthDataSharingAuthorized?: unknown;
   };
   const handleValue = typeof body.handle === "string" ? body.handle : "";
   const action = body.action === "resend" || body.action === "revoke" ? body.action : "";
@@ -75,6 +77,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   }
 
+  if (body.healthDataSharingAuthorized !== true) {
+    return NextResponse.json(
+      { error: "Authorize sharing this case with the attorney before replacing the invitation link." },
+      { status: 400, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
   const delivery = attorneyInvitationDeliveryMode();
   if (delivery === "not_configured") {
     return NextResponse.json(
@@ -99,14 +108,29 @@ export async function POST(request: NextRequest) {
   if (error || !replacementId) {
     return NextResponse.json({ error: "Unable to replace the invitation." }, { status: 500 });
   }
-  await recordAttorneyAccessEvent({
+  const consentEvent = await recordAttorneyAccessEvent({
     supabase: context.supabase,
     ownerUserId: context.userId,
     actorUserId: context.userId,
     caseId: invitation.case_id,
     invitationId: replacementId as string,
     eventType: "invitation_resent",
+    metadata: {
+      consumerHealthSharingConsent: true,
+      consentVersion: consumerHealthSharingConsentVersion,
+    },
   });
+  if (!consentEvent.ok) {
+    await context.supabase
+      .from("records_attorney_invitations")
+      .update({ status: "revoked", revoked_at: new Date().toISOString() })
+      .eq("id", replacementId as string)
+      .eq("owner_user_id", context.userId);
+    return NextResponse.json(
+      { error: "Unable to record your sharing authorization. No replacement link was issued." },
+      { status: 500, headers: { "Cache-Control": "no-store" } }
+    );
+  }
   return NextResponse.json(
     {
       ok: true,

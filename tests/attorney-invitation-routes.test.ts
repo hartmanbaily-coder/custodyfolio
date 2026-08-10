@@ -48,6 +48,7 @@ describe("attorney invitation owner routes", () => {
       caseName: "Jordan v. Taylor",
       confirmed: true,
     });
+    recordAttorneyAccessEvent.mockResolvedValue({ ok: true });
   });
 
   it("creates a seven-day invitation while persisting only encrypted email and token hash", async () => {
@@ -97,6 +98,7 @@ describe("attorney invitation owner routes", () => {
     const response = await createInvitation(request("/api/records/attorney/invitations", {
       email: "Counsel@Example.com",
       caseId: "case-1",
+      healthDataSharingAuthorized: true,
     }));
     const body = await response.json();
     expect(response.status).toBe(201);
@@ -132,6 +134,7 @@ describe("attorney invitation owner routes", () => {
     const response = await createInvitation(request("/api/records/attorney/invitations", {
       email: "counsel@example.com",
       caseId: "case-1",
+      healthDataSharingAuthorized: true,
     }));
 
     expect(response.status).toBe(409);
@@ -212,7 +215,7 @@ describe("attorney invitation owner routes", () => {
 
     const response = await invitationAction(request(
       "/api/records/attorney/invitations/action",
-      { handle, action: "resend" }
+      { handle, action: "resend", healthDataSharingAuthorized: true }
     ));
     const body = await response.json();
     const rawToken = String(body.invitationUrl).split("#token=")[1];
@@ -226,7 +229,30 @@ describe("attorney invitation owner routes", () => {
     expect(recordAttorneyAccessEvent).toHaveBeenCalledWith(expect.objectContaining({
       invitationId: "invite-2",
       eventType: "invitation_resent",
+      metadata: {
+        consumerHealthSharingConsent: true,
+        consentVersion: "2026-08-10",
+      },
     }));
+  });
+
+  it("does not issue an invitation without separate case-sharing authorization", async () => {
+    getAttorneyAuthContext.mockResolvedValue({
+      supabase: {},
+      userId: ownerId,
+      email: "owner@example.com",
+      emailConfirmedAt: "2026-01-01T00:00:00.000Z",
+      assuranceLevel: "aal2",
+    });
+
+    const response = await createInvitation(request("/api/records/attorney/invitations", {
+      email: "counsel@example.com",
+      caseId: "case-1",
+      healthDataSharingAuthorized: false,
+    }));
+
+    expect(response.status).toBe(400);
+    expect(recordAttorneyAccessEvent).not.toHaveBeenCalled();
   });
 
   it("rate-limits repeated invitation creation attempts before authentication", async () => {

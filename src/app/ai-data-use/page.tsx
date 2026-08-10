@@ -12,14 +12,15 @@ const sections: PolicySection[] = [
     title: "Current status",
     body: [
       "AI assisted import is not currently enabled for customer records.",
-      "Custody Folio does not send custody records to an AI provider for import processing while this feature is off.",
+      "Custody Folio does not currently send custody records, files, reports, account data, or attorney-shared matters to an AI provider for import, summarization, training, or other AI processing.",
     ],
   },
   {
     title: "If this changes",
     body: [
-      "Before enabling AI assisted import, we will identify the provider, explain what information would be sent and why, and ask the user to choose whether to use it.",
+      "Before enabling any customer-record AI feature, we will identify the provider, explain what information would be sent, the purpose, retention, training restrictions, and material risks, update applicable privacy and subprocessor disclosures, and ask the user to affirmatively choose whether to use it.",
       "AI generated drafts would require user review and would not provide legal advice or court findings.",
+      "AI processing will remain optional unless a new essential use is separately disclosed and lawfully implemented.",
     ],
   },
 ];

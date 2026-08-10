@@ -4,7 +4,7 @@
 
 The product may collect account profile data, custody matter labels, exchange rules, exchange logs, date-based notes, evidence metadata, child support order records, payment records, expense records, report exports, and audit events.
 
-The MVP uses synthetic demo data and browser storage only.
+The local demonstration mode uses browser storage. Production account mode uses Supabase authentication, database storage, and private object storage through the server-side access controls described in the public Privacy, Security, and Subprocessors pages.
 
 ## Sensitive Data Categories
 
@@ -38,7 +38,7 @@ Production evidence storage must be private by default:
 
 ## Deletion and Export
 
-The MVP includes local export and local case deletion controls. Production must document:
+The product includes case/profile exports, file downloads, case deletion, and signed-in account deletion. Production operations must keep documented:
 
 - Account export format
 - Case export format
@@ -47,7 +47,7 @@ The MVP includes local export and local case deletion controls. Production must 
 - Backup retention
 - Legal hold or abuse-report exceptions if any
 
-See `DATA_RETENTION_DELETION_RUNBOOK.md` for the production deletion, retention, backup-aging, and legal-hold model to finalize before launch.
+See `DATA_RETENTION_DELETION_RUNBOOK.md` for the production deletion, retention, backup-aging, and legal-hold model. Material changes require privacy and legal review before the public commitments change.
 
 ## Third-Party Vendors
 
