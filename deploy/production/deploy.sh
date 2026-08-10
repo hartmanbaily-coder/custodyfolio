@@ -40,6 +40,12 @@ export COMPOSE_PROJECT_NAME=losttofound
 export LOSTTOFOUND_ENV_FILE="${env_file}"
 export LOSTTOFOUND_IMAGE_TAG="${release_tag}"
 
+build_cache_retention="${DOCKER_BUILD_CACHE_RETENTION:-48h}"
+if [[ ! ${build_cache_retention} =~ ^[1-9][0-9]*[hm]$ ]]; then
+  echo "DOCKER_BUILD_CACHE_RETENTION must be a positive duration in hours or minutes." >&2
+  exit 1
+fi
+
 reload_caddy() {
   local attempts="${CADDY_RELOAD_ATTEMPTS:-12}"
   local sleep_seconds="${CADDY_RELOAD_SLEEP_SECONDS:-2}"
@@ -82,6 +88,10 @@ fi
 
 cd "${app_root}"
 docker compose --env-file "${env_file}" -f "${compose_file}" config --quiet
+# Rootless BuildKit keeps cache from every release unless it is pruned explicitly.
+# Bound that cache before building so a full disk cannot prevent a safe deployment.
+# Tagged release images remain untouched for rollback and incident recovery.
+docker builder prune --all --force --filter "until=${build_cache_retention}" >/dev/null
 docker compose --env-file "${env_file}" -f "${compose_file}" build --pull losttofound
 docker compose --env-file "${env_file}" -f "${compose_file}" up -d --remove-orphans
 

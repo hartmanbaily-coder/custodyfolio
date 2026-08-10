@@ -146,6 +146,9 @@ grep -q 'npm prune --omit=dev' "${script_dir}/../../Dockerfile"
 grep -q 'exit 2' "${script_dir}/smoke-test.sh"
 grep -q 'smoke_status.*-ne 2' "${script_dir}/deploy.sh"
 grep -q 'down --remove-orphans' "${script_dir}/deploy.sh"
+grep -Fq 'DOCKER_BUILD_CACHE_RETENTION:-48h' "${script_dir}/deploy.sh"
+grep -Fq 'docker builder prune --all --force --filter "until=${build_cache_retention}"' \
+  "${script_dir}/deploy.sh"
 grep -q 'caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile' \
   "${script_dir}/deploy.sh"
 if grep -q -- '--force-recreate caddy' "${script_dir}/deploy.sh"; then
