@@ -66,10 +66,11 @@ done
 
 for attempt in $(seq 1 "${public_health_attempts}"); do
   cloudflared_container="$(docker compose --env-file "${env_file}" -f "${compose_file}" ps -q cloudflared)"
+  # Public reachability is the current tunnel signal. Avoid scanning the
+  # container's unbounded logs: grep -q can trigger SIGPIPE under pipefail and
+  # turn an early successful match into a false failed deployment.
   if [[ -n ${cloudflared_container} ]] && \
     [[ $(docker inspect --format '{{.State.Running}}' "${cloudflared_container}") == "true" ]] && \
-    docker compose --env-file "${env_file}" -f "${compose_file}" logs --no-color cloudflared 2>&1 | \
-      grep -q 'Registered tunnel connection' && \
     curl "${curl_probe[@]}" "${public_url}/records"; then
     break
   fi

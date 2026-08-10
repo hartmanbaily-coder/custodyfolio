@@ -122,7 +122,10 @@ if grep -Eq '"(80:80|443:443|443:443/udp)"' "${compose_source}"; then
   exit 1
 fi
 grep -q 'ps -q cloudflared' "${script_dir}/smoke-test.sh"
-grep -q 'Registered tunnel connection' "${script_dir}/smoke-test.sh"
+if grep -q 'Registered tunnel connection' "${script_dir}/smoke-test.sh"; then
+  echo "Smoke test must not scan unbounded tunnel logs under pipefail." >&2
+  exit 1
+fi
 grep -q 'LOSTTOFOUND_PUBLIC_URL:-https://custodyfolio.com' "${script_dir}/smoke-test.sh"
 grep -q 'not present in its checks catalog' "${script_dir}/smoke-test.sh"
 grep -q 'declaredCheckIds' "${script_dir}/../../.github/workflows/live-monitor.yml"
