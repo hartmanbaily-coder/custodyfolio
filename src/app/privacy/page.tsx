@@ -54,7 +54,7 @@ const sections: PolicySection[] = [
   {
     title: "Service providers and disclosures",
     body: [
-      "Supabase provides authentication, database, and private file storage; Hetzner hosts the application; Cloudflare provides network delivery, DNS, and security protection; and Resend delivers authentication email.",
+      "Supabase provides authentication, database, and private file storage; Backblaze provides encrypted off-site evidence backups; Hetzner hosts the application; Cloudflare provides network delivery, DNS, and security protection; and Resend delivers authentication email.",
       "Apple iCloud Mail processes support, privacy, and security messages. Have I Been Pwned processes password-hash prefixes only when compromised-password screening is enabled.",
       "Providers process information only to provide contracted services and are required to protect it. The current provider list and processing descriptions appear on the Subprocessors page.",
       "We may disclose information in response to valid legal process, to protect people or the service, or as part of a business transfer where the recipient assumes these privacy obligations. We review requests and disclose only what we reasonably believe is required.",

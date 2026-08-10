@@ -106,6 +106,50 @@ grep -q 'OnUnitInactiveSec=1min' \
   "${tmp_dir}/home/.config/systemd/user/losttofound-health-watchdog.timer"
 grep -q -- '--user enable --now losttofound-health-watchdog.timer' "${systemctl_log}"
 
+backup_env_file="${tmp_dir}/backup.env"
+backup_unit_dir="${tmp_dir}/backup-units"
+touch "${backup_env_file}"
+chmod 0600 "${backup_env_file}"
+: >"${systemctl_log}"
+LOSTTOFOUND_BACKUP_ENV_FILE="${backup_env_file}" \
+LOSTTOFOUND_USER_UNIT_DIR="${backup_unit_dir}" \
+SYSTEMCTL_BIN="${systemctl_stub}" \
+SYSTEMCTL_STUB_LOG="${systemctl_log}" \
+  "${script_dir}/install-storage-backup-timer.sh"
+grep -q 'ExecStart=.*/run-storage-backup.sh' \
+  "${backup_unit_dir}/custodyfolio-storage-backup.service"
+grep -q '^OnCalendar=\*-\*-\* 03:30:00 UTC$' \
+  "${backup_unit_dir}/custodyfolio-storage-backup.timer"
+grep -q '^RandomizedDelaySec=30min$' \
+  "${backup_unit_dir}/custodyfolio-storage-backup.timer"
+grep -q '^Persistent=true$' \
+  "${backup_unit_dir}/custodyfolio-storage-backup.timer"
+grep -q -- '--user enable --now custodyfolio-storage-backup.timer' "${systemctl_log}"
+
+backup_state_dir="${tmp_dir}/backup-state"
+backup_docker_stub="${tmp_dir}/backup-docker"
+backup_docker_log="${tmp_dir}/backup-docker-commands"
+mkdir -p "${backup_state_dir}"
+printf '%s\n' test-release >"${backup_state_dir}/current-release"
+chmod 0600 "${env_file}" "${backup_env_file}"
+cat >"${backup_docker_stub}" <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+printf '%s\n' "$*" >>"${BACKUP_DOCKER_STUB_LOG}"
+EOF
+chmod 0700 "${backup_docker_stub}"
+DOCKER_BIN="${backup_docker_stub}" \
+BACKUP_DOCKER_STUB_LOG="${backup_docker_log}" \
+LOSTTOFOUND_APP_ROOT="${tmp_dir}" \
+LOSTTOFOUND_COMPOSE_FILE="${compose_file}" \
+LOSTTOFOUND_ENV_FILE="${env_file}" \
+LOSTTOFOUND_BACKUP_ENV_FILE="${backup_env_file}" \
+LOSTTOFOUND_STATE_DIR="${backup_state_dir}" \
+  "${script_dir}/run-storage-backup.sh"
+grep -Fq 'compose --profile ops' "${backup_docker_log}"
+grep -Fq 'run --rm --no-deps backup' "${backup_docker_log}"
+test -s "${backup_state_dir}/storage-backup-last-success"
+
 compose_source="${script_dir}/compose.yml"
 grep -q 'CLAMD_CONF_ConcurrentDatabaseReload: "no"' "${compose_source}"
 grep -q 'CLAMD_CONF_MaxThreads: "2"' "${compose_source}"
@@ -117,6 +161,10 @@ grep -q 'NET_BIND_SERVICE' "${compose_source}"
 grep -q 'cloudflare/cloudflared:2026.7.2' "${compose_source}"
 grep -q 'CLOUDFLARED_TOKEN_FILE' "${compose_source}"
 grep -q 'TRUST_PROXY_HEADERS: "true"' "${compose_source}"
+grep -q '^  backup:$' "${compose_source}"
+grep -q 'LOSTTOFOUND_BACKUP_ENV_FILE' "${compose_source}"
+grep -q 'scripts/backup-supabase-storage.mjs' "${compose_source}"
+grep -q 'read_only: true' "${compose_source}"
 if grep -Eq '"(80:80|443:443|443:443/udp)"' "${compose_source}"; then
   echo "Production origin must not publish web ports directly." >&2
   exit 1
@@ -145,6 +193,9 @@ grep -q 'node scripts/verify-supabase-auth-public-settings.mjs' "${script_dir}/s
 grep -q 'verify-supabase-auth-public-settings.mjs' "${script_dir}/../../Dockerfile"
 grep -q 'verify-security-event-sink.mjs' "${script_dir}/../../Dockerfile"
 grep -q 'verify-two-user-isolation.mjs' "${script_dir}/../../Dockerfile"
+grep -q 'storage-backup-lib.mjs' "${script_dir}/../../Dockerfile"
+grep -q 'backup-supabase-storage.mjs' "${script_dir}/../../Dockerfile"
+grep -q 'verify-supabase-storage-backup.mjs' "${script_dir}/../../Dockerfile"
 grep -q 'npm prune --omit=dev' "${script_dir}/../../Dockerfile"
 grep -q 'exit 2' "${script_dir}/smoke-test.sh"
 grep -q 'smoke_status.*-ne 2' "${script_dir}/deploy.sh"
@@ -178,6 +229,7 @@ grep -q 'current-readiness' "${script_dir}/deploy.sh"
 grep -q 'current-deployment' "${script_dir}/deploy.sh"
 grep -q 'launch-approval-pending' "${script_dir}/deploy.sh"
 grep -q 'deployed successfully for testing' "${script_dir}/deploy.sh"
+grep -q 'install-storage-backup-timer.sh' "${script_dir}/deploy.sh"
 grep -q -- "--exclude '.mcp.json'" "${script_dir}/deploy-from-mac.sh"
 grep -q -- "--exclude '.codex/'" "${script_dir}/deploy-from-mac.sh"
 grep -q -- "--exclude '.agents/'" "${script_dir}/deploy-from-mac.sh"

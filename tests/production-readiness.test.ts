@@ -46,6 +46,8 @@ const readyEnv = {
   EDGE_CONTROLS_TESTED_AT: "2026-06-10",
   SECURITY_MONITORING_ENABLED: "true",
   AUDIT_LOG_REVIEW_ENABLED: "true",
+  OFFSITE_STORAGE_BACKUP_ENABLED: "true",
+  OFFSITE_STORAGE_BACKUP_RETENTION_DAYS: "180",
   BACKUP_RESTORE_TESTED_AT: "2026-06-01",
   TWO_USER_ISOLATION_TESTED_AT: "2026-06-10",
   DATA_RETENTION_POLICY_APPROVED: "true",
@@ -164,6 +166,20 @@ describe("production readiness", () => {
     expect(report.blockers.map((item) => item.id)).toContain("edge-controls-tested");
   });
 
+  it("blocks launch without a bounded immutable off-site evidence backup", () => {
+    const report = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        OFFSITE_STORAGE_BACKUP_ENABLED: "false",
+        OFFSITE_STORAGE_BACKUP_RETENTION_DAYS: "181",
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+
+    expect(report.ready).toBe(false);
+    expect(report.blockers.map((item) => item.id)).toContain("offsite-storage-backup");
+  });
+
   it("allows non-Supabase safety gates to pass while Supabase final work is deferred", () => {
     const report = evaluateProductionReadiness(
       {
@@ -184,6 +200,8 @@ describe("production readiness", () => {
         SUPABASE_CURRENT_PASSWORD_REQUIRED: "",
         SUPABASE_AUTH_HARDENING_VERIFIED_AT: "",
         RECORDS_EVIDENCE_BUCKET: "",
+        OFFSITE_STORAGE_BACKUP_ENABLED: "",
+        OFFSITE_STORAGE_BACKUP_RETENTION_DAYS: "",
         BACKUP_RESTORE_TESTED_AT: "",
         TWO_USER_ISOLATION_TESTED_AT: "",
       },
@@ -208,6 +226,7 @@ describe("production readiness", () => {
         "supabase-custom-smtp",
         "supabase-auth-redirects",
         "records-evidence-bucket",
+        "offsite-storage-backup",
         "supabase-auth-hardening-verified",
         "two-user-isolation-tested",
       ])

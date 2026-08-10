@@ -59,6 +59,8 @@ const requiredKeys = [
   "EDGE_CONTROLS_TESTED_AT",
   "SECURITY_MONITORING_ENABLED",
   "AUDIT_LOG_REVIEW_ENABLED",
+  "OFFSITE_STORAGE_BACKUP_ENABLED",
+  "OFFSITE_STORAGE_BACKUP_RETENTION_DAYS",
   "BACKUP_RESTORE_TESTED_AT",
   "TWO_USER_ISOLATION_TESTED_AT",
   "DATA_RETENTION_POLICY_APPROVED",
@@ -116,6 +118,14 @@ if (entries.get("EXPECTED_SUPABASE_PROJECT_REF") !== "cieuilbpnwuvnrxrlczj") {
 
 if (entries.get("STARTER_RESOURCE_PROFILE") !== "true") {
   findings.push("STARTER_RESOURCE_PROFILE must remain true in the 4 GiB starter template.");
+}
+
+if (entries.get("OFFSITE_STORAGE_BACKUP_ENABLED") !== "true") {
+  findings.push("OFFSITE_STORAGE_BACKUP_ENABLED must be true in the production template.");
+}
+
+if (entries.get("OFFSITE_STORAGE_BACKUP_RETENTION_DAYS") !== "180") {
+  findings.push("OFFSITE_STORAGE_BACKUP_RETENTION_DAYS must be 180 in the production template.");
 }
 
 if (/eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}/.test(body)) {

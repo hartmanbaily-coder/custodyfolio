@@ -24,6 +24,13 @@ const sections: PolicySection[] = [
     ],
   },
   {
+    title: "Backblaze",
+    body: [
+      "Provides encrypted, access-restricted off-site backup storage for private evidence files because Supabase database backups do not include Storage objects.",
+      "May process encrypted backup copies of uploaded evidence and the minimum object metadata required for recovery. Compliance retention prevents alteration or early deletion and expires no later than 180 days after the applicable backup.",
+    ],
+  },
+  {
     title: "Cloudflare",
     body: [
       "Provides website traffic protection, DNS, and domain services.",

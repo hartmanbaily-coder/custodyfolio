@@ -90,6 +90,32 @@ services:
       start_period: 30s
     logging: *default-logging
 
+  backup:
+    profiles:
+      - ops
+    image: losttofound:${LOSTTOFOUND_IMAGE_TAG:-local}
+    entrypoint:
+      - node
+      - scripts/backup-supabase-storage.mjs
+    env_file:
+      - path: ${LOSTTOFOUND_ENV_FILE:-/srv/losttofound/config/app.env}
+        required: true
+      - path: ${LOSTTOFOUND_BACKUP_ENV_FILE:-/srv/losttofound/config/backup.env}
+        required: false
+    networks:
+      - updates
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 512m
+    cpus: 0.5
+    logging: *default-logging
+
   caddy:
     image: caddy:2.11.4-alpine
     restart: unless-stopped

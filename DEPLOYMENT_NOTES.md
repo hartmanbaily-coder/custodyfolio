@@ -141,6 +141,8 @@ Run `npm run verify:security-events` after configuring `SECURITY_EVENT_SINK`. Fo
 
 Run a backup restore drill, save the non-sensitive evidence artifact at ignored path `ops/backup-restore-evidence.json`, and run `npm run verify:backup-restore` before setting `BACKUP_RESTORE_TESTED_AT`.
 
+Private Supabase Storage evidence must also be copied daily to a separate S3-compatible account. Copy `deploy/production/backup.env.example` to `/srv/losttofound/config/backup.env`, keep it owned by the deployment user with mode `0600`, and use a bucket-scoped application key that cannot bypass Object Lock. The bucket and every uploaded object must use compliance retention no longer than 180 days. Deployments install `custodyfolio-storage-backup.timer` only after that secret file exists. Run `npm run verify:storage-backup` inside the one-shot backup container after the first backup and at each restore drill. Supabase database backups do not include Storage objects.
+
 For production records, both storage mode variables must be set to `supabase`. Local/demo mode is intentionally blocked by the production readiness check.
 
 Do not enable `RECORDS_ALLOW_BEARER_AUTH` in production. Records API authentication should use the server-managed HttpOnly cookies set by `/api/records/auth/login`.

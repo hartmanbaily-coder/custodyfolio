@@ -39,6 +39,7 @@ yarn-error.log*
 !.env.example
 !.env.production.example
 !.env.testflight.example
+/deploy/production/backup.env
 
 # production evidence artifacts
 /ops/backup-restore-evidence.json

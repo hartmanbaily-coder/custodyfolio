@@ -103,6 +103,8 @@ const supabaseFinalEnvNames = new Set([
   "ATTORNEY_PORTAL_SECRET",
   "ATTORNEY_INVITE_OWNER_SHARE_ENABLED",
   "ATTORNEY_INVITE_DEV_DELIVERY",
+  "OFFSITE_STORAGE_BACKUP_ENABLED",
+  "OFFSITE_STORAGE_BACKUP_RETENTION_DAYS",
   "BACKUP_RESTORE_TESTED_AT",
   "TWO_USER_ISOLATION_TESTED_AT",
 ]);
@@ -267,6 +269,13 @@ const checks = [
     isOneOf(process.env.SECURITY_EVENT_SINK, ["platform", "siem", "webhook"]) &&
       (securityEventSink !== "webhook" || isHttpsUrl(process.env.SECURITY_EVENT_WEBHOOK_URL)),
     "must be platform, siem, or webhook; webhook requires HTTPS SECURITY_EVENT_WEBHOOK_URL",
+  ],
+  [
+    "OFFSITE_STORAGE_BACKUP_ENABLED",
+    isEnabled(process.env.OFFSITE_STORAGE_BACKUP_ENABLED) &&
+      Number(process.env.OFFSITE_STORAGE_BACKUP_RETENTION_DAYS) >= 1 &&
+      Number(process.env.OFFSITE_STORAGE_BACKUP_RETENTION_DAYS) <= 180,
+    "must be true with OFFSITE_STORAGE_BACKUP_RETENTION_DAYS between 1 and 180",
   ],
   [
     "BACKUP_RESTORE_TESTED_AT",

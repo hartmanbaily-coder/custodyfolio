@@ -50,6 +50,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/scripts/verify-supabase-auth-publ
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/verify-security-headers.mjs ./scripts/verify-security-headers.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/verify-security-event-sink.mjs ./scripts/verify-security-event-sink.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/verify-two-user-isolation.mjs ./scripts/verify-two-user-isolation.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/storage-backup-lib.mjs ./scripts/storage-backup-lib.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/backup-supabase-storage.mjs ./scripts/backup-supabase-storage.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/verify-supabase-storage-backup.mjs ./scripts/verify-supabase-storage-backup.mjs
 
 USER nextjs
 

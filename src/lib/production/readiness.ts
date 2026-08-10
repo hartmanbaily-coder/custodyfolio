@@ -49,6 +49,7 @@ export const supabaseFinalCheckIds = [
   "attorney-portal-secret",
   "attorney-owner-share-delivery",
   "attorney-development-delivery",
+  "offsite-storage-backup",
   "backup-restore-tested",
   "two-user-isolation-tested",
 ] as const;
@@ -452,6 +453,15 @@ export function evaluateProductionReadiness(
       isEnabled(env.AUDIT_LOG_REVIEW_ENABLED),
       "warning",
       "Define recurring review of auth, evidence, export, and administrative audit events."
+    ),
+    check(
+      "offsite-storage-backup",
+      "Private evidence has an immutable off-site backup",
+      isEnabled(env.OFFSITE_STORAGE_BACKUP_ENABLED) &&
+        Number(env.OFFSITE_STORAGE_BACKUP_RETENTION_DAYS) >= 1 &&
+        Number(env.OFFSITE_STORAGE_BACKUP_RETENTION_DAYS) <= 180,
+      "blocker",
+      "Configure the daily isolated S3-compatible evidence backup with compliance retention of no more than 180 days."
     ),
     check(
       "backup-restore-tested",

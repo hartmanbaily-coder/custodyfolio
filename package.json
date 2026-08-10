@@ -30,6 +30,9 @@
     "verify:supabase-auth": "node scripts/verify-supabase-auth-public-settings.mjs",
     "verify:security-events": "node scripts/verify-security-event-sink.mjs",
     "verify:backup-restore": "node scripts/verify-backup-restore-evidence.mjs",
+    "backup:storage": "node scripts/backup-supabase-storage.mjs",
+    "verify:storage-backup": "node scripts/verify-supabase-storage-backup.mjs",
+    "test:storage-backup": "node --test scripts/storage-backup-lib.test.mjs",
     "cleanup:retired-grant-bucket": "node scripts/delete-retired-grant-bucket.mjs",
     "ios:testflight": "bash scripts/ios/release-testflight.sh",
     "ios:testflight:dry-run": "bash scripts/ios/release-testflight.sh --dry-run",
@@ -38,6 +41,7 @@
     "test:ios:testflight": "node --test scripts/ios/distribute-testflight-external.test.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1107.0",
     "@supabase/supabase-js": "^2.86.2",
     "heic-to": "^1.5.2",
     "jspdf": "^4.2.1",

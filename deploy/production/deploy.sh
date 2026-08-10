@@ -125,6 +125,12 @@ fi
 
 "${script_dir}/install-health-watchdog.sh"
 printf '%s\n' "${release_tag}" >"${state_dir}/current-release"
+backup_env_file="${LOSTTOFOUND_BACKUP_ENV_FILE:-/srv/losttofound/config/backup.env}"
+if [[ -r ${backup_env_file} ]]; then
+  "${script_dir}/install-storage-backup-timer.sh"
+else
+  echo "Off-site backup timer installation deferred until backup.env is configured."
+fi
 printf '%s\n' "healthy" >"${state_dir}/current-deployment"
 docker image prune --force >/dev/null
 if [[ ${smoke_status} -eq 2 ]]; then
