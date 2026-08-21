@@ -205,6 +205,63 @@ if grep -q 'Registered tunnel connection' "${script_dir}/smoke-test.sh"; then
 fi
 grep -q 'LOSTTOFOUND_PUBLIC_URL:-https://custodyfolio.com' "${script_dir}/smoke-test.sh"
 grep -q 'not present in its checks catalog' "${script_dir}/smoke-test.sh"
+grep -Fq '(.billing.checks // []) | any(("billing:" + .id) == $blocker)' \
+  "${script_dir}/smoke-test.sh"
+grep -q 'readiness-blocker-classification.sh' "${script_dir}/smoke-test.sh"
+grep -q 'Technical or security readiness blockers remain' "${script_dir}/smoke-test.sh"
+classification_source="${script_dir}/readiness-blocker-classification.sh"
+(
+  source "${classification_source}"
+  readiness_blockers_are_approval_only \
+    data-retention-policy incident-response-plan legal-review
+)
+if (
+  source "${classification_source}"
+  readiness_blockers_are_approval_only legal-review auth-secret
+); then
+  echo "Technical readiness blockers must never qualify for the launch-pending override." >&2
+  exit 1
+fi
+if (
+  source "${classification_source}"
+  readiness_blockers_are_approval_only
+); then
+  echo "An empty blocker set must not qualify for the launch-pending override." >&2
+  exit 1
+fi
+(
+  source "${classification_source}"
+  readiness_blockers_are_servicing_only_pending \
+    incident-response-plan \
+    legal-review \
+    billing:billing-checkout-enabled \
+    billing:production-readiness \
+    billing:apple-notifications-v2 \
+    billing:billing-tests-recent \
+    billing:billing-policy-versions \
+    billing:billing-tax-review \
+    billing:live-billing-approval
+)
+if (
+  source "${classification_source}"
+  readiness_blockers_are_servicing_only_pending \
+    legal-review billing:stripe-live-key
+); then
+  echo "Missing Stripe live credentials must never qualify for servicing-only deployment." >&2
+  exit 1
+fi
+if (
+  source "${classification_source}"
+  readiness_blockers_are_servicing_only_pending
+); then
+  echo "An empty blocker set must not qualify for servicing-only deployment." >&2
+  exit 1
+fi
+grep -q 'billing_mode.*== "live"' "${script_dir}/smoke-test.sh"
+grep -q 'billing_checkout_enabled.*== "false"' "${script_dir}/smoke-test.sh"
+grep -q 'billing_live_canary_authorized.*== "false"' "${script_dir}/smoke-test.sh"
+grep -q 'apple_billing_environment.*== "production"' "${script_dir}/smoke-test.sh"
+grep -q 'readiness_blockers_are_servicing_only_pending' "${script_dir}/smoke-test.sh"
 grep -q 'declaredCheckIds' "${script_dir}/../../.github/workflows/live-monitor.yml"
 if grep -Eq 'supabase-custom-smtp|two-user-isolation-tested|malware-scanner-tested' \
   "${script_dir}/smoke-test.sh"; then
