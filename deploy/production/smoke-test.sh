@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${script_dir}/readiness-blocker-classification.sh"
 compose_file="${script_dir}/compose.yml"
 env_file="${LOSTTOFOUND_ENV_FILE:-/srv/losttofound/config/app.env}"
 runtime_uid="$(id -u)"
@@ -101,7 +102,9 @@ fi
 
 if ! jq -e '
   (.blockers | type == "array" and all(.[]; (.id | type == "string") and (.id | length > 0))) and
-  (.checks | type == "array" and all(.[]; (.id | type == "string") and (.id | length > 0)))
+  (.checks | type == "array" and all(.[]; (.id | type == "string") and (.id | length > 0))) and
+  ((.billing.required // false) != true or
+    (.billing.checks | type == "array" and all(.[]; (.id | type == "string") and (.id | length > 0))))
 ' "${readiness_file}" >/dev/null; then
   echo "Readiness API returned malformed blockers or checks." >&2
   exit 1
@@ -110,20 +113,66 @@ fi
 mapfile -t readiness_blockers < <(jq -r '.blockers[].id' "${readiness_file}")
 for blocker in "${readiness_blockers[@]}"; do
   if ! jq -e --arg blocker "${blocker}" \
-    '.checks | any(.id == $blocker)' "${readiness_file}" >/dev/null; then
+    '(.checks | any(.id == $blocker)) or
+      ((.billing.checks // []) | any(("billing:" + .id) == $blocker))' \
+    "${readiness_file}" >/dev/null; then
     echo "Readiness API blocker '${blocker}' is not present in its checks catalog." >&2
     exit 1
   fi
 done
 
+env_exact_value() {
+  local key="$1"
+  awk -v key="${key}" '
+    /^[[:space:]]*#/ { next }
+    index($0, key "=") == 1 {
+      count += 1
+      value = substr($0, length(key) + 2)
+    }
+    END {
+      if (count == 1) {
+        print value
+        exit 0
+      }
+      exit 1
+    }
+  ' "${env_file}"
+}
+
+billing_mode="$(env_exact_value BILLING_MODE || true)"
+billing_checkout_enabled="$(env_exact_value BILLING_CHECKOUT_ENABLED || true)"
+billing_live_canary_authorized="$(env_exact_value BILLING_LIVE_CANARY_AUTHORIZED || true)"
+apple_billing_environment="$(env_exact_value APPLE_BILLING_ENVIRONMENT || true)"
+billing_servicing_only=false
+if [[ ${billing_mode} == "live" ]] && \
+  [[ ${billing_checkout_enabled} == "false" ]] && \
+  [[ ${billing_live_canary_authorized} == "false" ]] && \
+  [[ ${apple_billing_environment} == "production" ]]; then
+  billing_servicing_only=true
+fi
+
 if [[ ${readiness_status} == "not_ready" && ${#readiness_blockers[@]} -eq 0 ]]; then
   echo "Readiness API returned not_ready without an explanatory blocker." >&2
   exit 1
 fi
-readiness_blocked=false
+readiness_approval_pending=false
+readiness_technical_blocked=false
 if [[ ${readiness_status} == "not_ready" ]]; then
-  readiness_blocked=true
-  echo "Customer launch approval checks remain pending: ${readiness_blockers[*]}" >&2
+  readiness_approval_pending=true
+  if readiness_blockers_are_approval_only "${readiness_blockers[@]}"; then
+    :
+  elif [[ ${billing_servicing_only} == "true" ]] && \
+    readiness_blockers_are_servicing_only_pending "${readiness_blockers[@]}"; then
+    :
+  else
+    readiness_technical_blocked=true
+    readiness_approval_pending=false
+  fi
+  if [[ ${readiness_technical_blocked} == "true" ]]; then
+    echo "Technical or security readiness blockers remain: ${readiness_blockers[*]}" >&2
+  else
+    echo "Customer launch approval checks remain pending: ${readiness_blockers[*]}" >&2
+  fi
 fi
 
 login_status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
@@ -146,7 +195,12 @@ docker compose --env-file "${env_file}" -f "${compose_file}" exec -T losttofound
   env RECORDS_APP_BASE_URL=http://caddy:8080 ALLOW_INSECURE_HEADER_CHECK=true \
   node scripts/verify-security-headers.mjs
 
-if [[ ${readiness_blocked} == "true" ]]; then
+if [[ ${readiness_technical_blocked} == "true" ]]; then
+  echo "Application health checks passed, but technical or security readiness blockers prevent deployment." >&2
+  exit 1
+fi
+
+if [[ ${readiness_approval_pending} == "true" ]]; then
   echo "Application health checks passed; this release is ready for testing while customer launch approval remains pending." >&2
   exit 2
 fi
