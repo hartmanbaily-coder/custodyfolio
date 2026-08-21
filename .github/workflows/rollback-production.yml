@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: Existing validated losttofound image tag, without the losttofound: prefix
+        description: "Existing validated losttofound image tag, without the losttofound: prefix"
         required: true
         type: string
 
