@@ -30,6 +30,22 @@ const secretPatterns = [
     pattern: /sk_live_[a-zA-Z0-9]{16,}/,
   },
   {
+    name: "Stripe live restricted key",
+    pattern: /rk_live_[a-zA-Z0-9]{16,}/,
+  },
+  {
+    name: "Stripe webhook signing secret",
+    pattern: /whsec_[a-zA-Z0-9]{16,}/,
+  },
+  {
+    name: "base64-encoded private key",
+    pattern: /LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0t[a-zA-Z0-9+/=_-]{20,}/,
+  },
+  {
+    name: "encoded production approval manifest",
+    pattern: /PRODUCTION_APPROVAL_MANIFEST_BASE64=[a-zA-Z0-9_-]{40,}/,
+  },
+  {
     name: "GitHub token",
     pattern: /gh[pousr]_[a-zA-Z0-9_]{36,}/,
   },

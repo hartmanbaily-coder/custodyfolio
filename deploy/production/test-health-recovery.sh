@@ -284,7 +284,12 @@ grep -q 'backup-supabase-storage.mjs' "${script_dir}/../../Dockerfile"
 grep -q 'verify-supabase-storage-backup.mjs' "${script_dir}/../../Dockerfile"
 grep -q 'npm prune --omit=dev' "${script_dir}/../../Dockerfile"
 grep -q 'exit 2' "${script_dir}/smoke-test.sh"
-grep -q 'smoke_status.*-ne 2' "${script_dir}/deploy.sh"
+grep -q 'smoke_status.*-eq 2' "${script_dir}/deploy.sh"
+grep -q 'ALLOW_LAUNCH_PENDING_DEPLOY:-false' "${script_dir}/deploy.sh"
+grep -q 'Deployment readiness blockers are present; refusing to publish' "${script_dir}/deploy.sh"
+grep -q 'request_body @records_dataset_body' "${script_dir}/Caddyfile"
+grep -q 'request_body @records_evidence_upload_body' "${script_dir}/Caddyfile"
+grep -q 'request_body @records_api_body' "${script_dir}/Caddyfile"
 grep -q 'down --remove-orphans' "${script_dir}/deploy.sh"
 grep -Fq 'DOCKER_BUILD_CACHE_RETENTION:-48h' "${script_dir}/deploy.sh"
 grep -Fq 'docker builder prune --all --force --filter "until=${build_cache_retention}"' \
@@ -327,8 +332,39 @@ grep -q 'billing.required == true' \
   "${script_dir}/../../.github/workflows/rollback-production.yml"
 grep -q 'stripe-live-webhook' \
   "${script_dir}/../../.github/workflows/rollback-production.yml"
+grep -q 'configure-approval-evidence.sh' "${script_dir}/deploy-from-mac.sh"
+grep -q 'PRODUCTION_APPROVAL_MANIFEST_SOURCE' "${script_dir}/deploy-from-mac.sh"
+grep -q 'PRODUCTION_APPROVAL_SCOPES' "${script_dir}/deploy-from-mac.sh"
+grep -q 'verify-production-approval-manifest.mjs' "${script_dir}/deploy-from-mac.sh"
+grep -q "ALLOW_LAUNCH_PENDING_DEPLOY='\${allow_launch_pending}'" \
+  "${script_dir}/deploy-from-mac.sh"
 grep -q -- "--exclude '.mcp.json'" "${script_dir}/deploy-from-mac.sh"
 grep -q -- "--exclude '.codex/'" "${script_dir}/deploy-from-mac.sh"
 grep -q -- "--exclude '.agents/'" "${script_dir}/deploy-from-mac.sh"
+
+approval_env_file="${tmp_dir}/approval-app.env"
+approval_manifest_file="${tmp_dir}/approval-manifest.json"
+approval_digest="$(sed -n 's/^export const productionPolicyBundleSha256 = "\([^"]*\)";$/\1/p' "${script_dir}/../../src/generated/productionPolicyBundle.mjs")"
+cat >"${approval_env_file}" <<'EOF'
+NEXT_PUBLIC_APP_URL=https://custodyfolio.com
+PRODUCTION_APPROVAL_MANIFEST_BASE64=stale-evidence
+EOF
+cat >"${approval_manifest_file}" <<EOF
+{"schemaVersion":1,"policyBundleSha256":"${approval_digest}","approvals":{}}
+EOF
+chmod 0600 "${approval_env_file}" "${approval_manifest_file}"
+LOSTTOFOUND_ENV_FILE="${approval_env_file}" \
+  "${script_dir}/configure-approval-evidence.sh" "${approval_manifest_file}"
+test "$(grep -c '^PRODUCTION_APPROVAL_MANIFEST_BASE64=' "${approval_env_file}")" -eq 1
+expected_approval_evidence="$(base64 <"${approval_manifest_file}" | tr -d '\r\n')"
+grep -Fqx "PRODUCTION_APPROVAL_MANIFEST_BASE64=${expected_approval_evidence}" "${approval_env_file}"
+
+approval_failure="${tmp_dir}/approval-failure.log"
+if LOSTTOFOUND_ENV_FILE="${approval_env_file}" PRODUCTION_APPROVAL_SCOPES=unknown \
+  "${script_dir}/configure-approval-evidence.sh" "${approval_manifest_file}" 2>"${approval_failure}"; then
+  echo "Approval evidence configuration must reject an unknown approval scope." >&2
+  exit 1
+fi
+grep -q 'must contain only retention, incident, or legal' "${approval_failure}"
 
 echo "Scanner health recovery tests passed."

@@ -5,7 +5,9 @@ import { resetRateLimitStore } from "@/lib/security/rateLimit";
 const userId = "11111111-1111-4111-8111-111111111111";
 const getRecordsAuthContext = vi.hoisted(() => vi.fn());
 const storageUpload = vi.hoisted(() => vi.fn());
+const storageRemove = vi.hoisted(() => vi.fn());
 const snapshotMaybeSingle = vi.hoisted(() => vi.fn());
+const deletionMaybeSingle = vi.hoisted(() => vi.fn());
 const scanEvidenceFile = vi.hoisted(() => vi.fn());
 const recordSecurityEvent = vi.hoisted(() => vi.fn());
 
@@ -38,6 +40,7 @@ describe("evidence upload route storage ownership", () => {
     process.env.EVIDENCE_MAX_FILE_BYTES = "10485760";
 
     storageUpload.mockResolvedValue({ error: null });
+    storageRemove.mockResolvedValue({ error: null });
     scanEvidenceFile.mockResolvedValue({
       status: "clean",
       provider: "clamav",
@@ -54,6 +57,7 @@ describe("evidence upload route storage ownership", () => {
       },
       error: null,
     });
+    deletionMaybeSingle.mockResolvedValue({ data: null, error: null });
     const snapshotQuery = {
       select: vi.fn(),
       eq: vi.fn(),
@@ -61,12 +65,23 @@ describe("evidence upload route storage ownership", () => {
     };
     snapshotQuery.select.mockReturnValue(snapshotQuery);
     snapshotQuery.eq.mockReturnValue(snapshotQuery);
+    const deletionQuery = {
+      select: vi.fn(),
+      eq: vi.fn(),
+      maybeSingle: deletionMaybeSingle,
+    };
+    deletionQuery.select.mockReturnValue(deletionQuery);
+    deletionQuery.eq.mockReturnValue(deletionQuery);
     getRecordsAuthContext.mockResolvedValue({
       userId,
       supabase: {
-        from: vi.fn(() => snapshotQuery),
+        from: vi.fn((table: string) =>
+          table === "records_account_deletion_tombstones"
+            ? deletionQuery
+            : snapshotQuery
+        ),
         storage: {
-          from: vi.fn(() => ({ upload: storageUpload })),
+          from: vi.fn(() => ({ upload: storageUpload, remove: storageRemove })),
         },
       },
     });
@@ -199,6 +214,27 @@ describe("evidence upload route storage ownership", () => {
     );
   });
 
+  it("rejects an oversized multipart request before parsing or authentication", async () => {
+    const request = new NextRequest(
+      "https://custodyfolio.com/api/records/evidence/upload",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "multipart/form-data; boundary=unused",
+          "Content-Length": String(12 * 1024 * 1024),
+          "x-custody-folio-account": userId,
+        },
+        body: "--unused--",
+      }
+    );
+
+    const response = await POST(request);
+
+    expect(response?.status).toBe(413);
+    expect(getRecordsAuthContext).not.toHaveBeenCalled();
+    expect(storageUpload).not.toHaveBeenCalled();
+  });
+
   it("rejects an upload for a case outside the authenticated account snapshot", async () => {
     const formData = new FormData();
     formData.append("file", new File(["private"], "private.txt", { type: "text/plain" }));
@@ -226,5 +262,48 @@ describe("evidence upload route storage ownership", () => {
         caseId: "case-from-another-account",
       })
     );
+  });
+
+  it("removes an uploaded object when case deletion wins the upload race", async () => {
+    const activeSnapshot = {
+      data: { dataset: { matters: [{ id: "case-1", userId }] } },
+      error: null,
+    };
+    const pendingSnapshot = {
+      data: {
+        dataset: {
+          matters: [
+            {
+              id: "case-1",
+              userId,
+              deletionPendingAt: "2026-08-12T00:00:00.000Z",
+            },
+          ],
+        },
+      },
+      error: null,
+    };
+    snapshotMaybeSingle
+      .mockResolvedValueOnce(activeSnapshot)
+      .mockResolvedValueOnce(activeSnapshot)
+      .mockResolvedValueOnce(pendingSnapshot);
+
+    const formData = new FormData();
+    formData.append("file", new File(["private"], "private.txt", { type: "text/plain" }));
+    formData.append("caseId", "case-1");
+    formData.append("evidenceId", "evidence-race");
+    const response = await POST(
+      new NextRequest("https://custodyfolio.com/api/records/evidence/upload", {
+        method: "POST",
+        headers: { "x-custody-folio-account": userId },
+        body: formData,
+      })
+    );
+
+    expect(response?.status).toBe(409);
+    expect(storageUpload).toHaveBeenCalledOnce();
+    expect(storageRemove).toHaveBeenCalledWith([
+      `${userId}/case-1/evidence-race/evidence-race.txt`,
+    ]);
   });
 });

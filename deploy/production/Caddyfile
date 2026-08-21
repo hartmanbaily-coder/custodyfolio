@@ -18,6 +18,21 @@
 		-X-Powered-By
 	}
 
+	@records_dataset_body path /api/records/dataset
+	request_body @records_dataset_body {
+		max_size 2MB
+	}
+
+	@records_api_body path /api/records/*
+	request_body @records_api_body {
+		max_size 12MB
+	}
+
+	@records_evidence_upload_body path /api/records/evidence/upload
+	request_body @records_evidence_upload_body {
+		max_size 11MB
+	}
+
 	handle {
 		reverse_proxy losttofound:3000 {
 			header_up Host {host}

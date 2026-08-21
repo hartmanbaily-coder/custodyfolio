@@ -4,6 +4,41 @@ import XCTest
 @testable import CustodyFolio
 
 final class NativeSecurityPolicyTests: XCTestCase {
+    func testBillingBridgeAcceptsOnlyKnownProductsAndUUIDBindings() {
+        let requestId = UUID()
+        let accountToken = UUID()
+        let request = NativeBillingBridgePolicy.request(from: [
+            "action": "purchase",
+            "requestId": requestId.uuidString,
+            "appAccountToken": accountToken.uuidString,
+            "productId": NativeBillingBridgePolicy.monthlyProductId,
+        ])
+
+        XCTAssertEqual(
+            request,
+            NativeBillingBridgeRequest(
+                action: .purchase,
+                requestId: requestId,
+                appAccountToken: accountToken,
+                productId: NativeBillingBridgePolicy.monthlyProductId
+            )
+        )
+    }
+
+    func testBillingBridgeRejectsUnknownProductAndMalformedToken() {
+        XCTAssertNil(NativeBillingBridgePolicy.request(from: [
+            "action": "purchase",
+            "requestId": UUID().uuidString,
+            "appAccountToken": UUID().uuidString,
+            "productId": "io.attacker.subscription",
+        ]))
+        XCTAssertNil(NativeBillingBridgePolicy.request(from: [
+            "action": "restore",
+            "requestId": UUID().uuidString,
+            "appAccountToken": "not-a-uuid",
+        ]))
+    }
+
     func testAppearancePreferenceAcceptsOnlySupportedMainBridgeValues() {
         XCTAssertEqual(
             AppearancePreferencePolicy.preference(

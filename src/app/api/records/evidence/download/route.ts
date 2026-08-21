@@ -13,6 +13,7 @@ import type { EvidenceItem } from "@/lib/records/types";
 import { evidenceFileName } from "@/lib/records/validation";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
+import { requireRecordsCapability } from "@/lib/billing/capabilities";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -44,6 +45,8 @@ export async function POST(request: NextRequest) {
 
   const context = await getRecordsAuthContext(request);
   if ("error" in context) return context.error;
+  const capability = await requireRecordsCapability(context, "evidence:download");
+  if (!capability.ok) return capability.error;
 
   const evidence = await readEvidenceBody(request);
   if (!evidence?.id) {
@@ -66,6 +69,7 @@ export async function POST(request: NextRequest) {
       id: storedEvidence.id,
       userId: storedEvidence.userId,
       caseId: storedEvidence.caseId,
+      originalFileName: storedEvidence.originalFileName,
       storagePath: storedEvidence.storagePath,
       malwareScanStatus: storedEvidence.malwareScanStatus,
     },

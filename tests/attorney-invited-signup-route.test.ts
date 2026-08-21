@@ -1,44 +1,31 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthApiError } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
 import { resetRateLimitStore } from "@/lib/security/rateLimit";
 import { recordsCsrfCookieName } from "@/lib/security/csrf";
 
-const createUser = vi.hoisted(() => vi.fn());
-const listUsers = vi.hoisted(() => vi.fn());
-const updateUserById = vi.hoisted(() => vi.fn());
+const signInWithOtp = vi.hoisted(() => vi.fn());
 const findPendingAttorneyInvitationForEmail = vi.hoisted(() => vi.fn());
 const checkAttorneyGuestEntitlement = vi.hoisted(() => vi.fn());
-const checkPwnedPassword = vi.hoisted(() => vi.fn());
-const isPwnedPasswordCheckEnabled = vi.hoisted(() => vi.fn());
 const recordSecurityEvent = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/supabaseAdmin", () => ({
-  createSupabaseAdminClient: () => ({
-    auth: { admin: { createUser, listUsers, updateUserById } },
-  }),
+vi.mock("@/lib/supabaseClient", () => ({
+  createServerSupabaseAuthClient: () => ({ auth: { signInWithOtp } }),
 }));
 vi.mock("@/lib/records/authServer", () => ({
   isSupabaseRecordsMode: () => true,
-  isStrongRecordsPassword: (password: string) => password.length >= 12 && password.length <= 128,
-  recordsPasswordMinimumLength: () => 12,
+  recordsAppBaseUrl: () => "https://custodyfolio.com",
 }));
 vi.mock("@/lib/records/attorneyServer", () => ({
   attorneyAcceptanceCookieName: "l2f-attorney-invite",
   findPendingAttorneyInvitationForEmail,
 }));
 vi.mock("@/lib/records/attorneyEntitlement", () => ({ checkAttorneyGuestEntitlement }));
-vi.mock("@/lib/security/pwnedPasswords", () => ({
-  checkPwnedPassword,
-  isPwnedPasswordCheckEnabled,
-}));
 vi.mock("@/lib/security/securityEvents", () => ({ recordSecurityEvent }));
 
 import { POST } from "@/app/api/records/attorney/accept/signup/route";
 
 function request(input: {
   email?: string;
-  password?: string;
   token?: string;
   adultConfirmed?: boolean;
   legalAccepted?: boolean;
@@ -57,125 +44,65 @@ function request(input: {
       adultConfirmed: input.adultConfirmed ?? true,
       legalAccepted: input.legalAccepted ?? true,
       email: input.email || "counsel@example.test",
-      password: input.password || "strong-attorney-password",
+      password: "attacker-chosen-password-must-be-ignored",
     }),
   });
 }
 
-describe("single-link invited attorney account creation", () => {
+describe("invited attorney account creation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetRateLimitStore();
     checkAttorneyGuestEntitlement.mockReturnValue({ allowed: true });
     findPendingAttorneyInvitationForEmail.mockResolvedValue({ id: "invite-1" });
-    isPwnedPasswordCheckEnabled.mockReturnValue(false);
-    checkPwnedPassword.mockResolvedValue({ status: "safe" });
-    createUser.mockResolvedValue({
-      data: { user: { id: "attorney-1", email: "counsel@example.test" } },
-      error: null,
-    });
-    listUsers.mockResolvedValue({ data: { users: [] }, error: null });
-    updateUserById.mockResolvedValue({ data: { user: null }, error: null });
+    signInWithOtp.mockResolvedValue({ data: { user: null, session: null }, error: null });
   });
 
-  it("creates a confirmed account directly from the one private link without sending email", async () => {
+  it("sends mailbox authentication without accepting a caller-chosen password", async () => {
     const response = await POST(request({ email: " Counsel@Example.test " }));
 
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(202);
     expect(findPendingAttorneyInvitationForEmail).toHaveBeenCalledWith({
       token: "single-private-invitation-token",
       email: "counsel@example.test",
     });
-    expect(createUser).toHaveBeenCalledWith(expect.objectContaining({
+    expect(signInWithOtp).toHaveBeenCalledWith({
       email: "counsel@example.test",
-      password: "strong-attorney-password",
-      email_confirm: true,
-      user_metadata: expect.objectContaining({
-        custody_folio_terms_version: "2026-08-10",
-        custody_folio_privacy_version: "2026-08-10",
-        custody_folio_legal_acceptance_source: "attorney_signup",
-      }),
-    }));
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo:
+          "https://custodyfolio.com/records?auth=attorney-invite",
+        data: expect.objectContaining({
+          custody_folio_legal_acceptance_source: "attorney_signup",
+        }),
+      },
+    });
+    expect(JSON.stringify(signInWithOtp.mock.calls[0][0])).not.toContain("attacker-chosen-password");
     await expect(response.json()).resolves.toMatchObject({
       ok: true,
-      message: expect.stringContaining("Continue with authenticator verification"),
+      message: expect.stringContaining("secure account link"),
     });
   });
 
-  it("directs an existing identity to sign in instead of sending a magic link", async () => {
-    createUser.mockResolvedValue({
-      data: { user: null },
-      error: new AuthApiError("User already registered", 422, "email_exists"),
+  it("uses the same non-enumerating mailbox flow for an existing identity", async () => {
+    const response = await POST(request());
+
+    expect(response.status).toBe(202);
+    expect(signInWithOtp).toHaveBeenCalledWith(
+      expect.objectContaining({ options: expect.objectContaining({ shouldCreateUser: true }) })
+    );
+  });
+
+  it("fails closed when the mailbox provider cannot send the authentication link", async () => {
+    signInWithOtp.mockResolvedValue({
+      data: { user: null, session: null },
+      error: new Error("mail provider unavailable"),
     });
 
     const response = await POST(request());
 
-    expect(response.status).toBe(409);
-    await expect(response.json()).resolves.toEqual({
-      error: "An account already uses that email. Choose Sign in to existing account instead.",
-    });
-  });
-
-  it("recovers only an unclaimed legacy invite created by the broken email flow", async () => {
-    createUser.mockResolvedValue({
-      data: { user: null },
-      error: new AuthApiError("User already registered", 422, "email_exists"),
-    });
-    listUsers.mockResolvedValue({
-      data: {
-        users: [{
-          id: "legacy-attorney-1",
-          email: "counsel@example.test",
-          invited_at: "2026-08-04T00:00:00.000Z",
-          last_sign_in_at: null,
-          email_confirmed_at: null,
-          confirmed_at: null,
-        }],
-      },
-      error: null,
-    });
-    updateUserById.mockResolvedValue({
-      data: { user: { id: "legacy-attorney-1", email: "counsel@example.test" } },
-      error: null,
-    });
-
-    const response = await POST(request());
-
-    expect(response.status).toBe(201);
-    expect(updateUserById).toHaveBeenCalledWith("legacy-attorney-1", expect.objectContaining({
-      password: "strong-attorney-password",
-      email_confirm: true,
-      user_metadata: expect.objectContaining({
-        custody_folio_terms_version: "2026-08-10",
-        custody_folio_privacy_version: "2026-08-10",
-        custody_folio_legal_acceptance_source: "attorney_signup",
-      }),
-    }));
-  });
-
-  it("never resets an existing confirmed or previously used account", async () => {
-    createUser.mockResolvedValue({
-      data: { user: null },
-      error: new AuthApiError("User already registered", 422, "email_exists"),
-    });
-    listUsers.mockResolvedValue({
-      data: {
-        users: [{
-          id: "existing-attorney-1",
-          email: "counsel@example.test",
-          invited_at: "2026-08-03T00:00:00.000Z",
-          last_sign_in_at: "2026-08-04T00:00:00.000Z",
-          email_confirmed_at: "2026-08-03T00:00:00.000Z",
-          confirmed_at: "2026-08-03T00:00:00.000Z",
-        }],
-      },
-      error: null,
-    });
-
-    const response = await POST(request());
-
-    expect(response.status).toBe(409);
-    expect(updateUserById).not.toHaveBeenCalled();
+    expect(response.status).toBe(503);
+    expect(response.headers.get("retry-after")).toBe("60");
   });
 
   it("rejects a missing, expired, revoked, or email-mismatched invitation", async () => {
@@ -184,23 +111,21 @@ describe("single-link invited attorney account creation", () => {
     const response = await POST(request({ email: "wrong@example.test" }));
 
     expect(response.status).toBe(404);
-    expect(createUser).not.toHaveBeenCalled();
+    expect(signInWithOtp).not.toHaveBeenCalled();
   });
 
-  it("requires adult confirmation and a strong password before creating an account", async () => {
-    const adultResponse = await POST(request({ adultConfirmed: false }));
-    const passwordResponse = await POST(request({ password: "too-short" }));
+  it("requires adult confirmation before sending mailbox authentication", async () => {
+    const response = await POST(request({ adultConfirmed: false }));
 
-    expect(adultResponse.status).toBe(400);
-    expect(passwordResponse.status).toBe(400);
-    expect(createUser).not.toHaveBeenCalled();
+    expect(response.status).toBe(400);
+    expect(signInWithOtp).not.toHaveBeenCalled();
   });
 
   it("requires separate acceptance of the Terms and Privacy Policy", async () => {
     const response = await POST(request({ legalAccepted: false }));
 
     expect(response.status).toBe(400);
-    expect(createUser).not.toHaveBeenCalled();
+    expect(signInWithOtp).not.toHaveBeenCalled();
   });
 
   it("keeps onboarding disabled when Attorney Access is disabled", async () => {
@@ -213,16 +138,6 @@ describe("single-link invited attorney account creation", () => {
 
     expect(response.status).toBe(403);
     expect(findPendingAttorneyInvitationForEmail).not.toHaveBeenCalled();
-    expect(createUser).not.toHaveBeenCalled();
-  });
-
-  it("fails closed when the breached-password check rejects the password", async () => {
-    isPwnedPasswordCheckEnabled.mockReturnValue(true);
-    checkPwnedPassword.mockResolvedValue({ status: "compromised", occurrenceCount: 20 });
-
-    const response = await POST(request());
-
-    expect(response.status).toBe(400);
-    expect(createUser).not.toHaveBeenCalled();
+    expect(signInWithOtp).not.toHaveBeenCalled();
   });
 });

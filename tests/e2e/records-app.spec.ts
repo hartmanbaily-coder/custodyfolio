@@ -979,7 +979,7 @@ test("attorney can switch and verify multiple client profiles", async ({ page })
   await expect(page.getByText("Case: Parenting plan review", { exact: true })).toBeVisible();
 });
 
-test("an attorney invitation opens direct account access without sending another email", async ({ page }) => {
+test("an attorney invitation starts mailbox-verified account access", async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem(
       "l2f.records.session.v1",
@@ -1004,7 +1004,7 @@ test("an attorney invitation opens direct account access without sending another
       contentType: "application/json",
       body: JSON.stringify({
         ok: true,
-        message: "Invitation verified. Create or sign in below. No second invitation email was sent.",
+        message: "Invitation verified. New accounts must open a secure link sent to the invited email; existing accounts may sign in below.",
       }),
     });
   });
@@ -1014,10 +1014,10 @@ test("an attorney invitation opens direct account access without sending another
   await expect(page.getByRole("heading", { name: "Before you begin" })).toBeVisible();
   await expect(page.getByText("Use the exact email address the client invited.", { exact: false })).toBeVisible();
   await expect(page.getByText("Have an authenticator app ready.", { exact: false })).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("No second invitation email was sent");
+  await expect(page.getByRole("status")).toContainText("secure link sent to the invited email");
   await expect(page.getByRole("button", { name: "Create account", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Create account and continue" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Email secure account link" })).toBeVisible();
   await expect(page).toHaveURL(/\/attorney\/accept$/);
   expect(await page.evaluate(() => window.sessionStorage.getItem("l2f.attorney.access")))
     .toBeNull();
@@ -1618,6 +1618,13 @@ test("records account recovery and deletion paths are reachable", async ({ page 
       headers: { "Set-Cookie": `l2f-records-csrf=${deletionCsrf}; Path=/; SameSite=Strict` },
       status: 200,
       body: JSON.stringify({ token: deletionCsrf }),
+    })
+  );
+  await page.route("**/api/records/billing/status", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      status: 200,
+      body: JSON.stringify({ subscription: null }),
     })
   );
   await page.route("**/api/records/account/deletion-request", async (route) => {

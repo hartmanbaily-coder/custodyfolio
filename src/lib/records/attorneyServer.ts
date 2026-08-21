@@ -181,6 +181,40 @@ export async function findPendingAttorneyInvitationForEmail(input: {
   return constantTimeEqualStrings(data.invited_email_hash, suppliedEmailHash) ? data : null;
 }
 
+export async function acceptPendingAttorneyInvitationForUser(input: {
+  token: string;
+  userId: string;
+  email: string;
+}) {
+  const invitation = await findPendingAttorneyInvitationForEmail({
+    token: input.token,
+    email: input.email,
+  });
+  if (!invitation || invitation.owner_user_id === input.userId) return null;
+
+  const supabase = createSupabaseAdminClient();
+  const accepted = await supabase.rpc("accept_records_attorney_invitation", {
+    p_token_hash: hashAttorneyInvitationToken(input.token),
+    p_attorney_user_id: input.userId,
+    p_invited_email_hash: attorneyEmailHash(input.email),
+  });
+  const row = Array.isArray(accepted.data)
+    ? accepted.data[0]
+    : accepted.data && typeof accepted.data === "object"
+      ? accepted.data
+      : null;
+  if (accepted.error || !row?.grant_id || row.owner_user_id === input.userId) {
+    return null;
+  }
+  return row as {
+    grant_id: string;
+    owner_user_id: string;
+    case_key: string;
+    case_id: string;
+    access_expires_at: string | null;
+  };
+}
+
 export async function findPendingAttorneyOnboardingForEmail(input: {
   token: string;
   email: string;
@@ -217,6 +251,13 @@ function attorneyGuestAuthError(message = "Open the secure attorney access link 
   );
 }
 
+function attorneyMfaRequiredError() {
+  return NextResponse.json(
+    { error: "Authenticator verification is required.", mfaRequired: true },
+    { status: 403, headers: { "Cache-Control": "no-store" } }
+  );
+}
+
 export async function getAttorneyGuestAuthContext(
   request: NextRequest
 ): Promise<RecordsAuthContext | { error: NextResponse }> {
@@ -235,12 +276,16 @@ export async function getAttorneyGuestAuthContext(
   if (accessToken) {
     const { data, error } = await supabase.auth.getUser(accessToken);
     if (!error && data.user?.id && data.user.email && data.user.email_confirmed_at) {
+      const assuranceLevel = getAccessTokenAal(accessToken);
+      if (assuranceLevel !== "aal2") {
+        return { error: attorneyMfaRequiredError() } as const;
+      }
       return {
         supabase,
         userId: data.user.id,
         email: data.user.email,
         emailConfirmedAt: data.user.email_confirmed_at,
-        assuranceLevel: getAccessTokenAal(accessToken),
+        assuranceLevel,
         caseId: defaultCaseIdForUser(data.user.id),
         sessionScope: "attorney_guest",
       };
@@ -262,12 +307,16 @@ export async function getAttorneyGuestAuthContext(
       user.email &&
       user.email_confirmed_at
     ) {
+      const assuranceLevel = getAccessTokenAal(refreshed.access_token);
+      if (assuranceLevel !== "aal2") {
+        return { error: attorneyMfaRequiredError() } as const;
+      }
       return {
         supabase,
         userId: user.id,
         email: user.email,
         emailConfirmedAt: user.email_confirmed_at,
-        assuranceLevel: getAccessTokenAal(refreshed.access_token),
+        assuranceLevel,
         caseId: defaultCaseIdForUser(user.id),
         sessionScope: "attorney_guest",
         refreshedSession: refreshed,
@@ -343,7 +392,9 @@ export async function ownerAttorneySharingProfile(input: {
   const matter = dataset.matters.find((record) => record.id === input.caseId);
   if (!owner || !matter) return null;
   const clientName = owner.displayName?.trim().slice(0, 120) || "";
-  const caseName = matter.caseName.trim().slice(0, 120);
+  const caseName = typeof matter.caseName === "string"
+    ? matter.caseName.trim().slice(0, 120)
+    : "";
   return {
     clientName,
     caseName,

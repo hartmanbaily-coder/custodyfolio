@@ -71,11 +71,28 @@ const sections: PolicySection[] = [
     ],
   },
   {
+    title: "Subscriptions, trial, and renewal — draft for counsel review",
+    body: [
+      "Billing-related language in this section is a pre-launch draft for qualified-counsel review. Production billing remains disabled until that review and the separate readiness gates are complete.",
+      "Custody Folio plans one complete subscription tier. Each eligible account receives one 30-day no-card trial managed by Custody Folio. Stripe and Apple will not add a second introductory trial under this design.",
+      "On the web, the planned prices are $5.99 each month or $59.99 each year. The annual total is charged at once and is 16.5% less than twelve monthly payments. App Store prices and any applicable taxes are shown by Apple in the user’s localized storefront before purchase.",
+      "Subscriptions automatically renew at the selected monthly or annual frequency until cancelled. Stripe-managed subscriptions are changed or cancelled through the Stripe Customer Portal. App Store subscriptions are changed or cancelled through Apple subscription settings.",
+      "Cancellation takes effect at the end of a paid period unless the provider or applicable law requires an earlier remedy. A payment grace period may temporarily preserve full access. After trial or paid access ends, the account becomes export-only: existing records remain viewable, downloadable, exportable, and deletable, and account deletion and attorney revocation remain available.",
+      "Stripe handles refunds for web purchases under the disclosed refund policy and applicable law. Apple handles App Store purchase and refund decisions. A refund, chargeback, or revocation may end paid entitlement sooner, but never blocks export of existing records.",
+      "Quoted prices may exclude taxes. Tax collection will remain disabled until registration and tax obligations have been reviewed and configured; the purchase screen will show the final charge before consent.",
+    ],
+  },
+  {
+    title: "Attorney access — draft for counsel review",
+    body: [
+      "Attorneys do not pay for client-granted read-only access. Their access remains governed by the client’s invitation and grant, not the client’s subscription state.",
+    ],
+  },
+  {
     title: "Availability and changes to the service",
     body: [
       "We work to keep the service available but do not promise uninterrupted or error-free operation. Maintenance, security work, network failures, legal requirements, or provider outages may interrupt access.",
       "Features may be added, changed, limited, or discontinued. When reasonably possible, we will provide advance notice before a material change that removes access to stored records and will preserve a reasonable export opportunity.",
-      "No payment is currently required under these Terms. Any future paid plan, subscription, renewal, cancellation, trial, or refund terms will be presented separately before a charge and will require any consent required by Apple or applicable law.",
     ],
   },
   {
@@ -83,6 +100,7 @@ const sections: PolicySection[] = [
     body: [
       "We may limit or suspend access when reasonably necessary to address misuse, a credible security risk, unlawful conduct, or a material breach of these Terms. We will use a proportionate response and provide notice when legally and practically permitted.",
       "You may export records and permanently delete your signed-in account using the self-service deletion page. Account deletion is irreversible and ends attorney access.",
+      "Before deleting an account, Custody Folio attempts to cancel active Stripe web subscriptions and stops deletion if cancellation cannot be confirmed. Apple controls App Store billing, so deleting the Custody Folio account does not cancel an App Store subscription; users may delete immediately and should separately cancel through Apple subscription settings.",
       "Provisions concerning ownership, downloaded copies, disclaimers, responsibility, disputes, and any lawful retention survive account closure to the extent needed to give them effect.",
     ],
   },

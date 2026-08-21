@@ -15,6 +15,54 @@ enum AppearancePreferencePolicy {
     }
 }
 
+enum NativeBillingAction: String {
+    case loadProducts
+    case purchase
+    case currentEntitlements
+    case restore
+    case manageSubscriptions
+}
+
+struct NativeBillingBridgeRequest: Equatable {
+    let action: NativeBillingAction
+    let requestId: UUID
+    let appAccountToken: UUID
+    let productId: String?
+}
+
+enum NativeBillingBridgePolicy {
+    static let monthlyProductId = "io.custodyfolio.subscription.monthly"
+    static let annualProductId = "io.custodyfolio.subscription.annual"
+    static let allowedProductIds = Set([monthlyProductId, annualProductId])
+
+    static func request(from payload: [String: Any]?) -> NativeBillingBridgeRequest? {
+        guard let payload,
+              let actionValue = payload["action"] as? String,
+              let action = NativeBillingAction(rawValue: actionValue),
+              let requestIdValue = payload["requestId"] as? String,
+              let requestId = UUID(uuidString: requestIdValue),
+              let tokenValue = payload["appAccountToken"] as? String,
+              let appAccountToken = UUID(uuidString: tokenValue)
+        else {
+            return nil
+        }
+
+        let productId = payload["productId"] as? String
+        if action == .purchase {
+            guard let productId, allowedProductIds.contains(productId) else { return nil }
+        } else if productId != nil {
+            return nil
+        }
+
+        return NativeBillingBridgeRequest(
+            action: action,
+            requestId: requestId,
+            appAccountToken: appAccountToken,
+            productId: productId
+        )
+    }
+}
+
 enum SessionCookiePolicy {
     static let allowedHosts = Set([
         "custodyfolio.com",

@@ -22,7 +22,24 @@ struct CustodyFolioApp: App {
 
     var body: some Scene {
         WindowGroup {
-            AppRootView()
+            Group {
+                #if DEBUG
+                if ProcessInfo.processInfo.arguments.contains("-CustodyFolioReviewPaywall") {
+                    StoreKitPaywallReviewView()
+                } else if ProcessInfo.processInfo.arguments.contains("-CustodyFolioStoreKitAcceptance") {
+                    StoreKitPaywallView(
+                        appAccountToken: UUID(uuidString: "A4D507B0-CC8A-4D17-AF9C-76F09B39DCE8")!,
+                        requestedProductID: nil,
+                        requestID: UUID(),
+                        onResult: { _ in }
+                    )
+                } else {
+                    AppRootView()
+                }
+                #else
+                AppRootView()
+                #endif
+            }
                 .preferredColorScheme(preferredColorScheme)
         }
     }

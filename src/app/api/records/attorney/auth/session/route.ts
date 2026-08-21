@@ -12,6 +12,7 @@ import {
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
+import { recordsMfaPolicyResponse } from "@/lib/records/mfaPolicyServer";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -84,6 +85,19 @@ export async function POST(request: NextRequest) {
       accessToken,
     });
     if (!authorized) return rejected();
+
+    const mfa = await recordsMfaPolicyResponse({
+      request,
+      authClient,
+      session: {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expires_in: Number.isFinite(expiresIn) ? expiresIn : 3600,
+      },
+      userId: user.id,
+      sessionScope: "attorney_mfa_pending",
+    });
+    if (mfa) return mfa;
 
     const response = NextResponse.json(
       { ok: true },

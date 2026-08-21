@@ -45,6 +45,10 @@ yarn-error.log*
 /ops/backup-restore-evidence.json
 /ops/*-restore-evidence.json
 !/ops/backup-restore-evidence.example.json
+/ops/production-approval-manifest.json
+/ops/privacy-rights-request.json
+/ops/privacy-rights-requests/
+!/ops/privacy-rights-request.example.json
 
 # vercel
 .vercel

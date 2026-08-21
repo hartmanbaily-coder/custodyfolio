@@ -14,14 +14,20 @@ import { recordsAccountBindingHeaderName } from "@/lib/records/accountBoundary";
 import { scanEvidenceFile } from "@/lib/records/malwareScanner";
 import {
   buildStoredEvidenceName,
+  maxEvidenceFileBytes,
   normalizeEvidenceFileType,
   validateEvidenceFileSignature,
 } from "@/lib/records/validation";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
+import { requestContentLengthExceeds } from "@/lib/security/requestBody";
+import { requireRecordsCapability } from "@/lib/billing/capabilities";
+import { recordsAccountDeletionInProgress } from "@/lib/records/accountDeletion";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+const maxEvidenceMultipartBytes = maxEvidenceFileBytes + 512 * 1024;
 
 function disabledResponse() {
   return NextResponse.json(
@@ -60,13 +66,18 @@ function datasetOwnsCase(
         "id" in matter &&
         "userId" in matter &&
         matter.id === caseId &&
-        matter.userId === userId
+        matter.userId === userId &&
+        !("deletionPendingAt" in matter && matter.deletionPendingAt)
     )
   );
 }
 
 export async function POST(request: NextRequest) {
   if (!isSupabaseRecordsMode()) return disabledResponse();
+
+  if (requestContentLengthExceeds(request, maxEvidenceMultipartBytes)) {
+    return NextResponse.json({ error: "Evidence upload is too large." }, { status: 413 });
+  }
 
   const rateLimit = checkRateLimit(request, {
     id: "records-evidence-upload",
@@ -93,6 +104,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const capability = await requireRecordsCapability(context, "evidence:upload");
+  if (!capability.ok) return capability.error;
+
   const readiness = evaluateEvidenceIntakeReadiness();
   if (!readiness.ready) {
     return attachRefreshedRecordsSession(
@@ -116,19 +130,36 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing evidence case or id." }, { status: 400 });
   }
 
-  const { data: snapshot, error: snapshotError } = await context.supabase
-    .from("records_case_snapshots")
-    .select("dataset")
-    .eq("user_id", context.userId)
-    .eq("case_key", "default")
-    .maybeSingle();
-  if (snapshotError) {
+  const loadCaseAvailability = async () => {
+    const [snapshot, accountDeletionPending] = await Promise.all([
+      context.supabase
+        .from("records_case_snapshots")
+        .select("dataset")
+        .eq("user_id", context.userId)
+        .eq("case_key", "default")
+        .maybeSingle(),
+      recordsAccountDeletionInProgress({
+        supabase: context.supabase,
+        userId: context.userId,
+      }),
+    ]);
+    return {
+      error: snapshot.error,
+      active:
+        !snapshot.error &&
+        !accountDeletionPending &&
+        datasetOwnsCase(snapshot.data?.dataset, context.userId, caseId),
+    };
+  };
+
+  const initialCase = await loadCaseAvailability();
+  if (initialCase.error) {
     return NextResponse.json(
       { error: "Unable to verify the selected case." },
       { status: 503 }
     );
   }
-  if (!datasetOwnsCase(snapshot?.dataset, context.userId, caseId)) {
+  if (!initialCase.active) {
     await recordSecurityEvent({
       type: "records_evidence_case_boundary_blocked",
       severity: "critical",
@@ -232,6 +263,17 @@ export async function POST(request: NextRequest) {
   const storedFileName = buildStoredEvidenceName({ id: evidenceId, originalFileName: file.name });
   const storageSha256 = createHash("sha256").update(buffer).digest("hex");
 
+  const beforeUploadCase = await loadCaseAvailability();
+  if (beforeUploadCase.error) {
+    return NextResponse.json({ error: "Unable to recheck the selected case." }, { status: 503 });
+  }
+  if (!beforeUploadCase.active) {
+    return NextResponse.json(
+      { error: "The selected case is being deleted. Reload before uploading a file." },
+      { status: 409, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
   const { error: uploadError } = await context.supabase.storage.from(storageBucket).upload(
     storagePath,
     buffer,
@@ -253,6 +295,39 @@ export async function POST(request: NextRequest) {
       status: 500,
     });
     return NextResponse.json({ error: "Unable to store evidence file." }, { status: 500 });
+  }
+
+  const afterUploadCase = await loadCaseAvailability();
+  if (afterUploadCase.error || !afterUploadCase.active) {
+    let cleanupFailed = true;
+    for (let attempt = 0; attempt < 3 && cleanupFailed; attempt += 1) {
+      try {
+        const { error } = await context.supabase.storage.from(storageBucket).remove([storagePath]);
+        cleanupFailed = Boolean(error);
+      } catch {
+        cleanupFailed = true;
+      }
+    }
+    if (cleanupFailed) {
+      await recordSecurityEvent({
+        type: "evidence_upload_orphan_cleanup_failed",
+        severity: "critical",
+        request,
+        userId: context.userId,
+        caseId,
+        evidenceId,
+        status: 503,
+        detail: "An upload raced with case deletion and immediate object cleanup failed.",
+      });
+    }
+    return NextResponse.json(
+      {
+        error: cleanupFailed
+          ? "Evidence upload could not be finalized safely. Support has been alerted."
+          : "The selected case was deleted while the file was uploading.",
+      },
+      { status: cleanupFailed ? 503 : 409, headers: { "Cache-Control": "no-store" } }
+    );
   }
 
   const response = NextResponse.json(

@@ -109,6 +109,7 @@ Use this deploy path for Custody Folio changes:
 1. Commit and push the Custody Folio change to the `main` branch of the configured GitHub repository.
 2. Confirm that the `Validate Custody Folio` workflow passes lint, typecheck, unit tests, secret scanning, production env template validation, dependency audit, and build.
 3. From a trusted administrator Mac with the pinned SSH host key at `~/.ssh/losttofound_known_hosts`, run `deploy/production/deploy-from-mac.sh <host> <validated-commit-sha>`.
+   If the release is explicitly for testing while approval-only readiness checks remain pending, set `ALLOW_LAUNCH_PENDING_DEPLOY=true` for that command. The default remains fail-closed, and the deployed state is recorded as `launch-approval-pending` rather than `customer-ready`.
 4. The remote deploy builds a release-tagged image, replaces the application container, reloads Caddy in place without disconnecting Cloudflare Tunnel, verifies readiness, verifies clean/EICAR malware scanning, verifies security headers, and rolls back to the prior image if validation fails.
 5. Verify production after deploy:
    - `https://custodyfolio.com/records` serves the expected bundle/UI.

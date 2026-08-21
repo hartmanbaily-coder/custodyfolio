@@ -1,4 +1,5 @@
 import { getEvidenceBucket } from "./evidenceStorage";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface StorageEntry {
   id?: string | null;
@@ -26,6 +27,62 @@ interface StorageClient {
 const deletionPageSize = 1000;
 const maximumDeletionEntries = 250_000;
 const maximumFolderDepth = 8;
+
+export async function beginRecordsAccountDeletion(input: {
+  supabase: SupabaseClient;
+  userId: string;
+}) {
+  const startedAt = new Date().toISOString();
+  const result = await input.supabase
+    .from("records_account_deletion_tombstones")
+    .upsert(
+      {
+        user_id: input.userId,
+        status: "active",
+        started_at: startedAt,
+        completed_at: null,
+      },
+      { onConflict: "user_id" }
+    );
+  if (result.error) throw new Error("Account deletion could not be locked.");
+  return startedAt;
+}
+
+export async function clearRecordsAccountDeletion(input: {
+  supabase: SupabaseClient;
+  userId: string;
+}) {
+  const result = await input.supabase
+    .from("records_account_deletion_tombstones")
+    .delete()
+    .eq("user_id", input.userId)
+    .eq("status", "active");
+  if (result.error) throw new Error("Account deletion lock could not be cleared.");
+}
+
+export async function completeRecordsAccountDeletion(input: {
+  supabase: SupabaseClient;
+  userId: string;
+}) {
+  const result = await input.supabase
+    .from("records_account_deletion_tombstones")
+    .update({ status: "completed", completed_at: new Date().toISOString() })
+    .eq("user_id", input.userId);
+  if (result.error) throw new Error("Account deletion completion could not be recorded.");
+}
+
+export async function recordsAccountDeletionInProgress(input: {
+  supabase: SupabaseClient;
+  userId: string;
+}) {
+  const result = await input.supabase
+    .from("records_account_deletion_tombstones")
+    .select("status")
+    .eq("user_id", input.userId)
+    .maybeSingle();
+  if (result.error) throw new Error("Account deletion state could not be verified.");
+  return Boolean(result.data);
+}
 
 function validPathSegment(value: string) {
   return Boolean(value && value !== "." && value !== ".." && !value.includes("/") && !value.includes("\\"));

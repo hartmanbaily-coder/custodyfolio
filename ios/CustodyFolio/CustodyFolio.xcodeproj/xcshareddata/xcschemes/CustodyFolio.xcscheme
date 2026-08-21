@@ -34,6 +34,9 @@
             default = "YES">
          </TestPlanReference>
       </TestPlans>
+      <StoreKitConfigurationFileReference
+         identifier = "../../CustodyFolio.storekit">
+      </StoreKitConfigurationFileReference>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
@@ -55,6 +58,9 @@
             ReferencedContainer = "container:CustodyFolio.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <StoreKitConfigurationFileReference
+         identifier = "../../CustodyFolio.storekit">
+      </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

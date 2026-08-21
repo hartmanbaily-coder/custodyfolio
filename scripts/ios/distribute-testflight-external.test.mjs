@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   createAppStoreConnectToken,
   extractTestFlightUrl,
+  selectAppStoreVersion,
   selectExternalVerificationBuild,
   selectUploadedBuild,
   selectSupersededGroupBuilds,
@@ -209,4 +210,16 @@ test("selects every public build except the exact release build for removal", ()
     ["build-55", "build-56"],
   );
   assert.deepEqual(selectSupersededGroupBuilds([builds[2]], "build-60"), []);
+});
+
+test("selects exactly one target App Store version", () => {
+  const selected = selectAppStoreVersion([
+    { id: "version-1", attributes: { versionString: "1.0.0" } },
+    { id: "version-2", attributes: { versionString: "1.1.0" } },
+  ]);
+  assert.equal(selected.id, "version-1");
+  assert.throws(
+    () => selectAppStoreVersion([], "1.0.0"),
+    /Expected exactly one iOS App Store version/,
+  );
 });

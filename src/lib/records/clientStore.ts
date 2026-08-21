@@ -14,6 +14,8 @@ import {
 } from "./accountBoundary";
 import { defaultRecordsTimezone, safeRecordsTimezone } from "./dateRanges";
 import type { AuditAction, RecordsDataset } from "./types";
+import { getRecordsCsrfToken } from "./attorneyClient";
+import { planExportOnlyDatasetMutation } from "./datasetMutation";
 
 const storageKey = "l2f.records.dataset.v1";
 const sessionKey = "l2f.records.session.v1";
@@ -52,6 +54,7 @@ export type RecordsAuthMessage = {
 };
 
 let remoteSessionStateRequest: Promise<RecordsSessionReadResult> | null = null;
+let remoteSnapshotUpdatedAt: string | null = null;
 
 export const recordsStorageMode: RecordsStorageMode =
   process.env.NEXT_PUBLIC_RECORDS_STORAGE_MODE === "supabase" ? "supabase" : "local";
@@ -203,12 +206,14 @@ async function readRemoteDataset(session: RecordsSession) {
 
   const body = (await response.json().catch(() => ({}))) as {
     dataset?: Partial<RecordsDataset> | null;
+    updatedAt?: string | null;
     error?: string;
   };
 
   if (!response.ok) {
     throw new Error(body.error || `Records dataset load failed with ${response.status}.`);
   }
+  remoteSnapshotUpdatedAt = body.updatedAt || null;
 
   const emptyDataset = createEmptyRecordsDatasetForUser(
     session.userId,
@@ -222,7 +227,11 @@ async function readRemoteDataset(session: RecordsSession) {
   return initial;
 }
 
-async function persistRemoteDataset(dataset: RecordsDataset, accountId: string) {
+async function persistRemoteDataset(
+  dataset: RecordsDataset,
+  accountId: string,
+  previousDataset?: RecordsDataset
+) {
   const response = await fetchRecordsStorage(
     `/api/records/dataset?caseId=${encodeURIComponent(remoteDatasetKey)}`,
     {
@@ -232,14 +241,69 @@ async function persistRemoteDataset(dataset: RecordsDataset, accountId: string) 
         "Content-Type": "application/json",
         [recordsAccountBindingHeaderName]: accountId,
       },
-      body: JSON.stringify({ dataset }),
+      body: JSON.stringify({
+        dataset,
+        expectedUpdatedAt: remoteSnapshotUpdatedAt,
+      }),
     }
   );
 
+  const responseBody = (await response.json().catch(() => ({}))) as {
+    error?: string;
+    code?: string;
+    updatedAt?: string;
+  };
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error || `Records dataset save failed with ${response.status}.`);
+    if (
+      response.status === 402 &&
+      responseBody.code === "billing_entitlement_required" &&
+      previousDataset
+    ) {
+      const plan = planExportOnlyDatasetMutation(previousDataset, dataset);
+      if (plan?.kind === "audit_only") return;
+      if (plan?.kind === "delete") {
+        const csrf = await getRecordsCsrfToken();
+        for (const deletion of plan.deletions) {
+          const deletionResponse = await fetchRecordsStorage(
+            `/api/records/dataset/delete?caseId=${encodeURIComponent(remoteDatasetKey)}`,
+            {
+              method: "POST",
+              credentials: "same-origin",
+              headers: {
+                "Content-Type": "application/json",
+                "X-L2F-CSRF": csrf,
+                [recordsAccountBindingHeaderName]: accountId,
+              },
+              body: JSON.stringify({
+                ...deletion,
+                expectedUpdatedAt: remoteSnapshotUpdatedAt,
+              }),
+            }
+          );
+          const deletionBody = (await deletionResponse
+            .json()
+            .catch(() => ({}))) as { error?: string; updatedAt?: string };
+          if (!deletionResponse.ok) {
+            throw new Error(
+              deletionBody.error || "Record deletion could not be completed."
+            );
+          }
+          if (!deletionBody.updatedAt) {
+            throw new Error("Record deletion response was missing its snapshot version.");
+          }
+          remoteSnapshotUpdatedAt = deletionBody.updatedAt;
+        }
+        return;
+      }
+    }
+    throw new Error(
+      responseBody.error || `Records dataset save failed with ${response.status}.`
+    );
   }
+  if (!responseBody.updatedAt) {
+    throw new Error("Records dataset save response was missing its snapshot version.");
+  }
+  remoteSnapshotUpdatedAt = responseBody.updatedAt;
 }
 
 export function useRecordsStore() {
@@ -259,7 +323,7 @@ export function useRecordsStore() {
     setDataset(next);
   }, []);
 
-  const persistDataset = useCallback((next: RecordsDataset) => {
+  const persistDataset = useCallback((next: RecordsDataset, previous?: RecordsDataset) => {
     if (typeof window === "undefined") return Promise.resolve();
 
     if (recordsStorageMode === "supabase") {
@@ -270,7 +334,7 @@ export function useRecordsStore() {
         return Promise.reject(error);
       }
       const write = remoteWriteChainRef.current.then(() =>
-        persistRemoteDataset(next, accountId)
+        persistRemoteDataset(next, accountId, previous)
       );
       remoteWriteChainRef.current = write.catch(() => undefined);
       return write
@@ -320,6 +384,7 @@ export function useRecordsStore() {
 
   const prepareForAccountBoundary = useCallback(() => {
     remoteWriteChainRef.current = Promise.resolve();
+    remoteSnapshotUpdatedAt = null;
     setCurrentDataset(createBlankRecordsDataset());
     setHydrated(false);
     setStorageError(null);
@@ -338,13 +403,14 @@ export function useRecordsStore() {
     const previous = datasetRef.current;
     const next = updater(cloneDataset(datasetRef.current));
     setCurrentDataset(next);
-    return persistDataset(next).catch((error: unknown) => {
+    return persistDataset(next, previous).catch((error: unknown) => {
       if (datasetRef.current === next) setCurrentDataset(previous);
       throw error;
     });
   }
 
   function resetDemoData() {
+    const previous = datasetRef.current;
     const currentProfile =
       dataset.users.find((user) => user.userId !== demoUserId) || dataset.users[0];
     const next =
@@ -356,11 +422,12 @@ export function useRecordsStore() {
           )
         : createRecordsSeed();
     setCurrentDataset(next);
-    void persistDataset(next)
+    void persistDataset(next, previous)
       .then(() => setStorageStatus(recordsStorageMode === "supabase" ? "Cloud records storage reset." : "Private drafting storage."))
-      .catch((error: unknown) =>
-        setStorageStatus(error instanceof Error ? error.message : "Cloud records storage reset failed.")
-      );
+      .catch((error: unknown) => {
+        if (datasetRef.current === next) setCurrentDataset(previous);
+        setStorageStatus(error instanceof Error ? error.message : "Cloud records storage reset failed.");
+      });
   }
 
   return {
@@ -471,7 +538,9 @@ export async function signUpRecordsAccount(
     credentials: "same-origin",
     headers,
     body: JSON.stringify(
-      { email, password, adultConfirmed, legalAccepted }
+      invitedAttorney
+        ? { email, adultConfirmed, legalAccepted }
+        : { email, password, adultConfirmed, legalAccepted }
     ),
   });
 
@@ -491,7 +560,7 @@ export async function signUpRecordsAccount(
     message:
       body.message ||
       (invitedAttorney
-        ? "Attorney account created from the private invitation. Sign in and complete authenticator verification to open the shared matter."
+        ? "Check the invited email and open the secure account link, then complete authenticator verification."
         : "Step 1 of 2: check your email to confirm that you own the address. After you sign in, you will separately set up an authenticator as the second security factor."),
   };
 }
@@ -500,7 +569,6 @@ export async function acceptAttorneyInviteSession(input: {
   accessToken: string;
   refreshToken: string;
   expiresIn?: string | number | null;
-  onboardingToken: string;
 }) {
   const csrfResponse = await fetch("/api/records/auth/csrf", {
     cache: "no-store",
@@ -530,7 +598,16 @@ export async function acceptAttorneyInviteSession(input: {
     accessHandle?: string;
     accessExpiresAt?: string | null;
     error?: string;
+    mfaRequired?: boolean;
+    mfaEnrollmentRequired?: boolean;
+    enrollment?: RecordsMfaEnrollment;
   };
+  if (response.status === 403 && body.mfaRequired) {
+    if (body.mfaEnrollmentRequired && body.enrollment?.factorId && body.enrollment.qrCode) {
+      return { status: "mfa_enrollment_required" as const, enrollment: body.enrollment };
+    }
+    return { status: "mfa_required" as const };
+  }
   if (
     !response.ok ||
     body.ok !== true ||
@@ -540,6 +617,7 @@ export async function acceptAttorneyInviteSession(input: {
     throw new Error(body.error || `Attorney account link failed with ${response.status}.`);
   }
   return {
+    status: "accepted" as const,
     accessHandle: body.accessHandle,
     accessExpiresAt: body.accessExpiresAt || null,
   };

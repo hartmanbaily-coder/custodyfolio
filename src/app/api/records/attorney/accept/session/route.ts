@@ -7,15 +7,14 @@ import {
   clearAttorneyAcceptanceCookie,
   clearAttorneyMailboxProofCookie,
   clearAttorneyPasswordSetupCookie,
+  acceptPendingAttorneyInvitationForUser,
+  attorneyAcceptanceCookieName,
   findPendingAttorneyInvitationForEmail,
 } from "@/lib/records/attorneyServer";
 import { checkAttorneyGuestEntitlement } from "@/lib/records/attorneyEntitlement";
 import {
-  attorneyEmailHash,
-  hashAttorneyInvitationToken,
   sealAttorneyHandle,
 } from "@/lib/records/attorneyCrypto";
-import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import {
   createServerSupabaseAuthClient,
   createServerSupabaseSessionClient,
@@ -24,12 +23,15 @@ import { defaultCaseIdForUser } from "@/lib/records/accountBoundary";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
+import { recordsMfaPolicyResponse } from "@/lib/records/mfaPolicyServer";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-function tokenValue(value: unknown) {
-  return typeof value === "string" && value.length > 20 && value.length < 8_000 ? value : "";
+function tokenValue(value: unknown, minimumLength = 20) {
+  return typeof value === "string" && value.length >= minimumLength && value.length < 8_000
+    ? value
+    : "";
 }
 
 function rejected() {
@@ -63,14 +65,16 @@ export async function POST(request: NextRequest) {
     accessToken?: unknown;
     refreshToken?: unknown;
     expiresIn?: unknown;
-    onboardingToken?: unknown;
   };
   const accessToken = tokenValue(body.accessToken);
-  const refreshToken = tokenValue(body.refreshToken);
-  const invitationToken = tokenValue(body.onboardingToken);
+  const refreshToken = tokenValue(body.refreshToken, 8);
+  const invitationToken = tokenValue(
+    request.cookies.get(attorneyAcceptanceCookieName)?.value
+  );
   const expiresIn = Number(body.expiresIn || 3600);
   if (!accessToken || !refreshToken || !invitationToken) return rejected();
 
+  let rejectionStage = "mailbox_claim_verification";
   try {
     const claimsClient = createServerSupabaseAuthClient();
     const verifiedClaims = await claimsClient.auth.getClaims(accessToken);
@@ -90,8 +94,11 @@ export async function POST(request: NextRequest) {
     }) === true;
     const sessionId = typeof claims?.session_id === "string" ? claims.session_id : "";
     const subject = typeof claims?.sub === "string" ? claims.sub : "";
-    if (verifiedClaims.error || !emailProof || !sessionId || !subject) return rejected();
+    if (verifiedClaims.error || !emailProof || !sessionId || !subject) {
+      throw new Error("Mailbox claim verification failed.");
+    }
 
+    rejectionStage = "mailbox_session_validation";
     const authClient = await createServerSupabaseSessionClient({ accessToken, refreshToken });
     const { data, error } = await authClient.auth.getUser();
     const user = data.user;
@@ -102,35 +109,53 @@ export async function POST(request: NextRequest) {
       !user.email ||
       !user.email_confirmed_at
     ) {
-      return rejected();
+      throw new Error("Mailbox session validation failed.");
     }
 
+    rejectionStage = "invitation_identity_binding";
     const invitation = await findPendingAttorneyInvitationForEmail({
       token: invitationToken,
       email: user.email,
     });
-    if (!invitation) return rejected();
+    if (!invitation) throw new Error("Invitation identity binding failed.");
 
-    const admin = createSupabaseAdminClient();
-    const accepted = await admin.rpc("accept_records_attorney_invitation", {
-      p_token_hash: hashAttorneyInvitationToken(invitationToken),
-      p_attorney_user_id: user.id,
-      p_invited_email_hash: attorneyEmailHash(user.email),
+    rejectionStage = "mfa_policy";
+    const mfa = await recordsMfaPolicyResponse({
+      request,
+      authClient,
+      session: {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expires_in: Number.isFinite(expiresIn) ? expiresIn : 3600,
+      },
+      userId: user.id,
+      sessionScope: "attorney_mfa_pending",
     });
-    const row = Array.isArray(accepted.data) ? accepted.data[0] : null;
-    if (accepted.error || !row?.grant_id || row.owner_user_id === user.id) {
-      throw accepted.error || new Error("Attorney invitation acceptance failed.");
+    if (mfa) {
+      clearAttorneyMailboxProofCookie(mfa);
+      clearAttorneyPasswordSetupCookie(mfa);
+      return mfa;
     }
 
+    rejectionStage = "invitation_acceptance_rpc";
+    const row = await acceptPendingAttorneyInvitationForUser({
+      token: invitationToken,
+      userId: user.id,
+      email: user.email,
+    });
+    if (!row) throw new Error("Attorney invitation acceptance failed.");
+
+    rejectionStage = "acceptance_security_event";
     await recordSecurityEvent({
       type: "auth_email_confirmed",
       severity: "info",
       request,
       userId: user.id,
       status: 200,
-      detail: "Mailbox-verified attorney invitation accepted into a scoped guest session.",
+      detail: "Mailbox and authenticator verified; attorney invitation accepted into a scoped guest session.",
     });
 
+    rejectionStage = "guest_session_response";
     const response = NextResponse.json(
       {
         ok: true,
@@ -164,7 +189,7 @@ export async function POST(request: NextRequest) {
       severity: "warning",
       request,
       status: 401,
-      detail: "Mailbox-verified attorney invitation acceptance was rejected.",
+      detail: `Mailbox-verified attorney invitation acceptance failed at ${rejectionStage}.`,
     });
     return rejected();
   }

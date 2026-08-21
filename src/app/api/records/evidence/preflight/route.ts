@@ -8,6 +8,7 @@ import {
   evaluateEvidenceIntakeReadiness,
   validateEvidencePreflight,
 } from "@/lib/records/evidenceSecurity";
+import { requireRecordsCapability } from "@/lib/billing/capabilities";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,8 @@ export async function POST(request: NextRequest) {
 
   const context = await getRecordsAuthContext(request);
   if ("error" in context) return context.error;
+  const capability = await requireRecordsCapability(context, "evidence:upload");
+  if (!capability.ok) return capability.error;
 
   let parsed: unknown;
   try {

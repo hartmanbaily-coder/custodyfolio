@@ -43,7 +43,10 @@ export function isRecordsDataset(input: unknown): input is RecordsDataset {
       (item) =>
         isObject(item) &&
         typeof item.id === "string" &&
-        typeof item.userId === "string"
+        typeof item.userId === "string" &&
+        typeof item.caseName === "string" &&
+        item.caseName.trim().length >= 2 &&
+        item.caseName.trim().length <= 120
     )
   ) {
     return false;

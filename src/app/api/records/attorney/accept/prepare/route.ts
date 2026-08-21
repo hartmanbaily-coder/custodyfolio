@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     {
       ok: true,
       message:
-        "Invitation verified. Create or sign in to the invited attorney account below. Custody Folio will not send another invitation email.",
+        "Invitation verified. New accounts must open a secure link sent to the invited email; existing accounts may sign in below.",
     },
     { headers: { "Cache-Control": "no-store" } }
   );

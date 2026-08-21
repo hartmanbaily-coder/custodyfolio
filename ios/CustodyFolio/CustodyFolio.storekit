@@ -1,0 +1,95 @@
+{
+  "identifier" : "9BA8EE21-1669-46B6-988D-C68BF463CF24",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : 0,
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 0,
+    "_locale" : "en_US",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ],
+    "_subscriptionBillingIssuesEnabled" : false,
+    "_subscriptionGracePeriodEnabled" : false,
+    "_subscriptionRenewalRate" : 0
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "5089EEA5-2549-467D-AD5A-8C62F8CF6D85",
+      "localizations" : [
+
+      ],
+      "name" : "Custody Folio Subscription",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "6.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "1383D539-C460-4B8A-B304-5A343A17F7F4",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "One complete Custody Folio tier, billed monthly.",
+              "displayName" : "Custody Folio Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "io.custodyfolio.subscription.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Custody Folio Monthly",
+          "subscriptionGroupID" : "5089EEA5-2549-467D-AD5A-8C62F8CF6D85",
+          "type" : "RecurringSubscription",
+          "winBackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "69.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "122C2C46-F2A4-40E5-9C55-177CB5D95A86",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "One complete Custody Folio tier, billed annually.",
+              "displayName" : "Custody Folio Annual",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "io.custodyfolio.subscription.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Custody Folio Annual",
+          "subscriptionGroupID" : "5089EEA5-2549-467D-AD5A-8C62F8CF6D85",
+          "type" : "RecurringSubscription",
+          "winBackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

@@ -28,6 +28,7 @@ import { recordsAppBaseUrl } from "@/lib/records/authServer";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
 import { consumerHealthSharingConsentVersion } from "@/lib/legal";
+import { requireRecordsCapability } from "@/lib/billing/capabilities";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -65,6 +66,8 @@ export async function GET(request: NextRequest) {
   if (rateLimit.limited) return rateLimitExceededResponse(rateLimit);
   const context = await getAttorneyAuthContext(request);
   if ("error" in context) return context.error;
+  const capability = await requireRecordsCapability(context, "attorney:read");
+  if (!capability.ok) return capability.error;
   if (!isAttorneyPortalCryptoReady()) {
     return NextResponse.json({ error: "Attorney access encryption is not configured." }, { status: 503 });
   }
@@ -174,6 +177,8 @@ export async function POST(request: NextRequest) {
   if (!verifyRecordsCsrf(request).ok) return recordsCsrfError();
   const context = await getAttorneyAuthContext(request);
   if ("error" in context) return context.error;
+  const capability = await requireRecordsCapability(context, "attorney:invite");
+  if (!capability.ok) return capability.error;
   const userLimit = checkRateLimit(request, {
     id: "records-attorney-invitation-create-user",
     key: context.userId,

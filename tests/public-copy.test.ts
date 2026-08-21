@@ -17,6 +17,7 @@ const customerFacingFiles = [
   "src/components/records/AttorneyAccessPanel.tsx",
   "src/components/records/AttorneyPortal.tsx",
   "src/components/records/ExhibitBuilder.tsx",
+  "src/components/billing/SubscriptionPanel.tsx",
   "ios/CustodyFolio/CustodyFolio/NativePolicyView.swift",
 ];
 
@@ -109,6 +110,31 @@ describe("customer facing copy", () => {
     expect(deletionControl).toContain("Permanently delete my account");
   });
 
+  it("uses accessible, nonjudgmental billing disclosures without blocking export", () => {
+    const subscription = readFileSync(
+      resolve(process.cwd(), "src/components/billing/SubscriptionPanel.tsx"),
+      "utf8"
+    );
+    const billingConfig = readFileSync(
+      resolve(process.cwd(), "src/lib/billing/config.ts"),
+      "utf8"
+    );
+    const billingPolicyCopy = [
+      subscription,
+      readFileSync(resolve(process.cwd(), "src/app/contact/page.tsx"), "utf8"),
+      readFileSync(resolve(process.cwd(), "src/app/terms/page.tsx"), "utf8"),
+      readFileSync(resolve(process.cwd(), "src/app/privacy/page.tsx"), "utf8"),
+    ].join("\n");
+    expect(subscription).toContain("Your no-card trial is active");
+    expect(subscription).toContain("Export-only access");
+    expect(subscription).toContain("Cancellation never prevents record export");
+    expect(billingPolicyCopy).not.toMatch(/hardship fee waiver|fee-waiver request/i);
+    expect(subscription).toContain('aria-label="Subscription prices"');
+    expect(subscription).toContain('aria-live="polite"');
+    expect(billingConfig).toContain('display: "$59.99/year"');
+    expect(subscription).toContain("16.5% less");
+  });
+
   it("distinguishes email ownership confirmation from authenticator MFA", () => {
     const recordsApp = readFileSync(
       resolve(process.cwd(), "src/components/records/RecordsApp.tsx"),
@@ -137,9 +163,9 @@ describe("customer facing copy", () => {
       resolve(process.cwd(), "src/components/records/AttorneyAccept.tsx"),
       "utf8"
     );
-    expect(attorneyAccept).toContain("This private link is the only attorney invitation");
-    expect(attorneyAccept).toContain("will not send a second");
-    expect(attorneyAccept).toContain("Create account and continue");
+    expect(attorneyAccept).toContain("This private invitation is bound to the attorney email");
+    expect(attorneyAccept).toContain("mailbox through a separate secure email");
+    expect(attorneyAccept).toContain("Email secure account link");
     expect(attorneyAccept).toContain("Before you begin");
     expect(attorneyAccept).toContain("Use the exact email address the client invited");
     expect(attorneyAccept).toContain("Set up your authenticator");

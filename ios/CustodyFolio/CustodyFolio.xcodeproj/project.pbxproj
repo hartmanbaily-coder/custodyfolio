@@ -15,9 +15,13 @@
 		0A1000010000000000000006 /* SecureSessionCookieStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A2000010000000000000006 /* SecureSessionCookieStore.swift */; };
 		0A1000010000000000000007 /* NativeSecurityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A2000010000000000000007 /* NativeSecurityPolicy.swift */; };
 		0A1000010000000000000008 /* SensitiveExportStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A2000010000000000000008 /* SensitiveExportStore.swift */; };
+		0A1000010000000000000009 /* StoreKitBillingManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A2000010000000000000009 /* StoreKitBillingManager.swift */; };
+		0A1000010000000000000010 /* StoreKitPaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A2000010000000000000010 /* StoreKitPaywallView.swift */; };
 		0A1000020000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0A2000020000000000000001 /* Assets.xcassets */; };
 		0A1000020000000000000002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 0A2000020000000000000002 /* PrivacyInfo.xcprivacy */; };
 		0B1000010000000000000001 /* NativeSecurityPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B2000010000000000000001 /* NativeSecurityPolicyTests.swift */; };
+		0B1000010000000000000002 /* StoreKitAcceptanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B2000010000000000000002 /* StoreKitAcceptanceTests.swift */; };
+		0B1000020000000000000001 /* CustodyFolio.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 0A2000040000000000000001 /* CustodyFolio.storekit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -39,13 +43,17 @@
 		0A2000010000000000000006 /* SecureSessionCookieStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureSessionCookieStore.swift; sourceTree = "<group>"; };
 		0A2000010000000000000007 /* NativeSecurityPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSecurityPolicy.swift; sourceTree = "<group>"; };
 		0A2000010000000000000008 /* SensitiveExportStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensitiveExportStore.swift; sourceTree = "<group>"; };
+		0A2000010000000000000009 /* StoreKitBillingManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitBillingManager.swift; sourceTree = "<group>"; };
+		0A2000010000000000000010 /* StoreKitPaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitPaywallView.swift; sourceTree = "<group>"; };
 		0A2000020000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0A2000020000000000000002 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		0A2000020000000000000003 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		0A2000030000000000000001 /* CustodyFolio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CustodyFolio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0B2000010000000000000001 /* NativeSecurityPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSecurityPolicyTests.swift; sourceTree = "<group>"; };
+		0B2000010000000000000002 /* StoreKitAcceptanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitAcceptanceTests.swift; sourceTree = "<group>"; };
 		0B2000030000000000000001 /* CustodyFolioTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CustodyFolioTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B791BF4E3005748200BCB2B9 /* CustodyFolio.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = CustodyFolio.xctestplan; sourceTree = "<group>"; };
+		0A2000040000000000000001 /* CustodyFolio.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = CustodyFolio.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -70,6 +78,7 @@
 			isa = PBXGroup;
 			children = (
 				B791BF4E3005748200BCB2B9 /* CustodyFolio.xctestplan */,
+				0A2000040000000000000001 /* CustodyFolio.storekit */,
 				0A4000010000000000000002 /* CustodyFolio */,
 				0B4000010000000000000001 /* CustodyFolioTests */,
 				0A4000010000000000000003 /* Products */,
@@ -87,6 +96,8 @@
 				0A2000010000000000000006 /* SecureSessionCookieStore.swift */,
 				0A2000010000000000000007 /* NativeSecurityPolicy.swift */,
 				0A2000010000000000000008 /* SensitiveExportStore.swift */,
+				0A2000010000000000000009 /* StoreKitBillingManager.swift */,
+				0A2000010000000000000010 /* StoreKitPaywallView.swift */,
 				0A2000020000000000000001 /* Assets.xcassets */,
 				0A2000020000000000000003 /* Info.plist */,
 				0A2000020000000000000002 /* PrivacyInfo.xcprivacy */,
@@ -107,6 +118,7 @@
 			isa = PBXGroup;
 			children = (
 				0B2000010000000000000001 /* NativeSecurityPolicyTests.swift */,
+				0B2000010000000000000002 /* StoreKitAcceptanceTests.swift */,
 			);
 			path = CustodyFolioTests;
 			sourceTree = "<group>";
@@ -201,6 +213,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0B1000020000000000000001 /* CustodyFolio.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -219,6 +232,8 @@
 				0A1000010000000000000006 /* SecureSessionCookieStore.swift in Sources */,
 				0A1000010000000000000007 /* NativeSecurityPolicy.swift in Sources */,
 				0A1000010000000000000008 /* SensitiveExportStore.swift in Sources */,
+				0A1000010000000000000009 /* StoreKitBillingManager.swift in Sources */,
+				0A1000010000000000000010 /* StoreKitPaywallView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -227,6 +242,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0B1000010000000000000001 /* NativeSecurityPolicyTests.swift in Sources */,
+				0B1000010000000000000002 /* StoreKitAcceptanceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

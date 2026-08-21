@@ -267,6 +267,10 @@ struct WorkspaceWebView: UIViewRepresentable {
             WeakScriptMessageHandler(delegate: context.coordinator),
             name: Coordinator.nativeAppearanceHandlerName
         )
+        configuration.userContentController.add(
+            WeakScriptMessageHandler(delegate: context.coordinator),
+            name: Coordinator.nativeBillingHandlerName
+        )
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.allowsBackForwardNavigationGestures = true
@@ -308,6 +312,9 @@ struct WorkspaceWebView: UIViewRepresentable {
         webView.configuration.userContentController.removeScriptMessageHandler(
             forName: Coordinator.nativeAppearanceHandlerName
         )
+        webView.configuration.userContentController.removeScriptMessageHandler(
+            forName: Coordinator.nativeBillingHandlerName
+        )
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
@@ -316,6 +323,7 @@ struct WorkspaceWebView: UIViewRepresentable {
         static let nativeSessionHandlerName = "lostToFoundSession"
         static let nativeNavigationHandlerName = "lostToFoundNavigation"
         static let nativeAppearanceHandlerName = "custodyFolioAppearance"
+        static let nativeBillingHandlerName = "custodyFolioBilling"
 
         private struct BinaryExportTransfer {
             let requestedFileName: String
@@ -326,9 +334,43 @@ struct WorkspaceWebView: UIViewRepresentable {
         private let maximumActiveBinaryTransfers = 2
         private let model: WebViewModel
         private var binaryExportTransfers: [String: BinaryExportTransfer] = [:]
+        private var storeKitObserver: NSObjectProtocol?
 
         init(model: WebViewModel) {
             self.model = model
+            super.init()
+            Task { @MainActor in
+                _ = StoreKitBillingManager.shared
+            }
+            storeKitObserver = NotificationCenter.default.addObserver(
+                forName: .custodyFolioStoreKitTransaction,
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                guard let signedTransactionInfo =
+                    notification.userInfo?["signedTransactionInfo"] as? String
+                else {
+                    return
+                }
+                Task { @MainActor [weak self] in
+                    guard let self, let webView = self.model.webView else { return }
+                    self.emitBillingResult(
+                        [
+                            "action": "transactionUpdate",
+                            "requestId": UUID().uuidString,
+                            "status": "success",
+                            "signedTransactionInfo": signedTransactionInfo,
+                        ],
+                        to: webView
+                    )
+                }
+            }
+        }
+
+        deinit {
+            if let storeKitObserver {
+                NotificationCenter.default.removeObserver(storeKitObserver)
+            }
         }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -378,6 +420,24 @@ struct WorkspaceWebView: UIViewRepresentable {
                     preference,
                     forKey: AppearancePreferencePolicy.storageKey
                 )
+                return
+            }
+
+            if message.name == Self.nativeBillingHandlerName {
+                guard let request = NativeBillingBridgePolicy.request(
+                    from: message.body as? [String: Any]
+                ), let webView = message.webView else {
+                    return
+                }
+                if request.action == .purchase {
+                    presentStoreKitPaywall(request, from: webView)
+                    return
+                }
+                Task { @MainActor [weak self, weak webView] in
+                    guard let self, let webView else { return }
+                    let result = await StoreKitBillingManager.shared.handle(request)
+                    self.emitBillingResult(result, to: webView)
+                }
                 return
             }
 
@@ -472,6 +532,60 @@ struct WorkspaceWebView: UIViewRepresentable {
             default:
                 return
             }
+        }
+
+        @MainActor
+        private func presentStoreKitPaywall(
+            _ request: NativeBillingBridgeRequest,
+            from webView: WKWebView
+        ) {
+            guard let root = webView.window?.rootViewController else {
+                emitBillingResult(
+                    [
+                        "action": "purchase",
+                        "requestId": request.requestId.uuidString,
+                        "status": "failed",
+                        "message": "The native subscription screen is unavailable.",
+                    ],
+                    to: webView
+                )
+                return
+            }
+            var presenter = root
+            while let presented = presenter.presentedViewController {
+                presenter = presented
+            }
+            let paywall = StoreKitPaywallView(
+                appAccountToken: request.appAccountToken,
+                requestedProductID: request.productId,
+                requestID: request.requestId
+            ) { [weak self, weak webView] result in
+                guard let self, let webView else { return }
+                self.emitBillingResult(result, to: webView)
+            }
+            let controller = UIHostingController(rootView: paywall)
+            controller.modalPresentationStyle = .pageSheet
+            if let sheet = controller.sheetPresentationController {
+                sheet.detents = [.medium(), .large()]
+                sheet.prefersGrabberVisible = true
+            }
+            presenter.present(controller, animated: true)
+        }
+
+        @MainActor
+        private func emitBillingResult(
+            _ result: [String: Any],
+            to webView: WKWebView
+        ) {
+            guard JSONSerialization.isValidJSONObject(result),
+                  let data = try? JSONSerialization.data(withJSONObject: result),
+                  let json = String(data: data, encoding: .utf8)
+            else {
+                return
+            }
+            webView.evaluateJavaScript(
+                "window.dispatchEvent(new CustomEvent('custodyfolio:billing', { detail: \(json) }));"
+            )
         }
 
         private func exportData(body: String, base64Encoded: Bool) -> Data? {

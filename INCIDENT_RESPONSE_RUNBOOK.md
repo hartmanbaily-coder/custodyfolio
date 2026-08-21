@@ -32,16 +32,19 @@ Examples:
 
 ## Roles
 
-Assign named owners before launch:
+Assign named owners before launch. The public repository defines roles only; names and channels belong in the ignored, access-restricted production approval manifest:
 
-- Incident commander
-- Engineering lead
+- primary incident commander
+- backup incident commander
+- engineering lead
 - Supabase/admin owner
-- Hosting/CDN/WAF owner
-- Communications owner
-- Legal/privacy counsel
-- Customer support owner
-- Forensics/vendor contact
+- hosting/CDN/WAF owner
+- communications/support owner
+- forensics/vendor contact
+- backup/restore owner
+- legal/privacy counsel
+
+Every role must have a named person or contracted service, a tested primary channel, and a tested independent backup channel. Validate every contact at least every 90 days and conduct a tabletop exercise at least every 180 days. A shared mailbox alone is not a named incident commander and does not satisfy the backup-channel requirement.
 
 ## First 15 Minutes
 
@@ -181,18 +184,19 @@ Complete within five business days:
 
 ## Critical Contacts
 
-Current operational contacts:
+Public routing information:
 
-- Incident commander: assigned on-call operator, reachable through `security@custodyfolio.com`
-- Engineering lead: assigned engineering operator
-- Supabase owner: assigned database operator
-- Hosting/CDN owner: assigned infrastructure operator (Hetzner and Cloudflare)
-- DNS/domain owner: assigned domain operator (Cloudflare)
+- Security intake: `security@custodyfolio.com`, hosted through the iCloud+ Custom Email Domain configured in Cloudflare DNS
+- Supabase service: production project owner and Supabase support route
+- Hosting/CDN/DNS: Hetzner and Cloudflare operator/support routes
 - Malware scanner: self-hosted ClamAV on the dedicated CustodyFolio host
 - Monitoring sources: Hetzner/Docker platform logs, Cloudflare, and the scheduled GitHub `live-monitor` workflow
-- Security contact email: `security@custodyfolio.com`, hosted through the iCloud+ Custom Email Domain configured in Cloudflare DNS
 
-Still required before legal approval:
+Protected contact evidence is required before approval:
 
-- Legal/privacy counsel: not yet recorded
-- Backup/restore escalation contact: not yet recorded
+- Run `npm run approval:prepare` to generate the ignored `ops/production-approval-manifest.json` template bound to exact policy digests.
+- Fill all required incident roles with real names and independent channels; do not commit that file.
+- Test every channel, run a tabletop, and record the real dates.
+- Run `npm run verify:approvals -- --incident` before producing the deployment secret.
+
+`INCIDENT_RESPONSE_PLAN_APPROVED=true` is valid only when the matching incident section in `PRODUCTION_APPROVAL_MANIFEST_BASE64` also passes. The readiness gate fails closed on missing roles, placeholder contacts, stale channel tests, stale tabletops, expired approval, or a changed runbook digest.

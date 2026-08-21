@@ -59,6 +59,22 @@ const sections: PolicySection[] = [
     ],
   },
   {
+    title: "Stripe — planned billing subprocessor",
+    body: [
+      "Will provide hosted web checkout, recurring subscriptions, invoices, payment-method management, refunds, disputes, and the Customer Portal when billing is approved and enabled.",
+      "May process account email, provider customer and subscription identifiers, payment details, billing address, transaction information, and fraud-prevention signals. Custody Folio does not receive or store full card numbers.",
+      "This entry is draft for qualified-counsel review, and live Stripe billing is not enabled by the committed configuration.",
+    ],
+  },
+  {
+    title: "Apple — planned App Store billing subprocessor",
+    body: [
+      "Will provide localized App Store subscription purchase, renewal, cancellation, refund, and subscription-management services for iOS users when billing is approved and enabled.",
+      "May process Apple account, device, storefront, purchase, subscription, refund, and payment information. Custody Folio receives signed transaction and status information tied to a random app-account token.",
+      "This entry is draft for qualified-counsel review. The App Store subscription products are configured for submission, but production billing remains disabled in Custody Folio until every approval and acceptance gate passes.",
+    ],
+  },
+  {
     title: "Security monitoring",
     body: [
       "Custody Folio uses its protected production hosting and logging environment to retain minimized application and security events. A separate SIEM or security-event webhook will be identified here before it receives production events.",

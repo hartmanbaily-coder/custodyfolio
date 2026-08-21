@@ -39,16 +39,20 @@ export type SecurityEventType =
   | "account_deletion_failed"
   | "account_deletion_storage_cleanup_failed"
   | "account_deletion_session_revocation_failed"
+  | "account_deletion_billing_cancellation_failed"
+  | "account_deletion_billing_redaction_failed"
   | "evidence_upload_scanner_blocked"
   | "evidence_upload_scanner_failed"
   | "evidence_storage_failed"
+  | "evidence_upload_orphan_cleanup_failed"
   | "records_evidence_account_binding_blocked"
   | "records_evidence_case_boundary_blocked"
   | "evidence_download_denied"
   | "evidence_delete_denied"
   | "records_dataset_account_binding_blocked"
   | "records_dataset_foreign_data_blocked"
-  | "records_dataset_foreign_data_removed";
+  | "records_dataset_foreign_data_removed"
+  | "case_evidence_cleanup_failed";
 
 export interface SecurityEventInput {
   type: SecurityEventType;

@@ -38,12 +38,14 @@ export async function uploadEvidenceFileToPrivateStorage(input: {
     parsed.evidence?.id &&
     parsed.evidence.userId &&
     parsed.evidence.caseId &&
+    parsed.evidence.originalFileName &&
     parsed.evidence.storagePath
       ? assertEvidenceItemAccess(
           {
             id: parsed.evidence.id,
             userId: parsed.evidence.userId,
             caseId: parsed.evidence.caseId,
+            originalFileName: parsed.evidence.originalFileName,
             storagePath: parsed.evidence.storagePath,
             malwareScanStatus: parsed.evidence.malwareScanStatus,
           },

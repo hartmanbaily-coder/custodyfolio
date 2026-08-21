@@ -5,31 +5,43 @@ import { resetRateLimitStore } from "@/lib/security/rateLimit";
 
 const getClaims = vi.hoisted(() => vi.fn());
 const getUser = vi.hoisted(() => vi.fn());
+const getAuthenticatorAssuranceLevel = vi.hoisted(() => vi.fn());
+const listFactors = vi.hoisted(() => vi.fn());
+const enroll = vi.hoisted(() => vi.fn());
+const unenroll = vi.hoisted(() => vi.fn());
 const findPendingAttorneyInvitationForEmail = vi.hoisted(() => vi.fn());
+const acceptPendingAttorneyInvitationForUser = vi.hoisted(() => vi.fn());
 const checkAttorneyGuestEntitlement = vi.hoisted(() => vi.fn());
 const setRecordsSessionCookies = vi.hoisted(() => vi.fn());
+const getAccessTokenAal = vi.hoisted(() => vi.fn());
 const clearAttorneyAcceptanceCookie = vi.hoisted(() => vi.fn((response) => response));
 const clearAttorneyMailboxProofCookie = vi.hoisted(() => vi.fn((response) => response));
 const clearAttorneyPasswordSetupCookie = vi.hoisted(() => vi.fn((response) => response));
-const rpc = vi.hoisted(() => vi.fn());
 const recordSecurityEvent = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/supabaseClient", () => ({
   createServerSupabaseAuthClient: () => ({ auth: { getClaims } }),
-  createServerSupabaseSessionClient: vi.fn(async () => ({ auth: { getUser } })),
+  createServerSupabaseSessionClient: vi.fn(async () => ({
+    auth: {
+      getUser,
+      mfa: { getAuthenticatorAssuranceLevel, listFactors, enroll, unenroll },
+    },
+  })),
 }));
 vi.mock("@/lib/records/authServer", () => ({
+  getAccessTokenAal,
   isSupabaseRecordsMode: () => true,
   setRecordsSessionCookies,
 }));
 vi.mock("@/lib/records/attorneyServer", () => ({
+  acceptPendingAttorneyInvitationForUser,
+  attorneyAcceptanceCookieName: "l2f-attorney-invite",
   clearAttorneyAcceptanceCookie,
   clearAttorneyMailboxProofCookie,
   clearAttorneyPasswordSetupCookie,
   findPendingAttorneyInvitationForEmail,
 }));
 vi.mock("@/lib/records/attorneyEntitlement", () => ({ checkAttorneyGuestEntitlement }));
-vi.mock("@/lib/supabaseAdmin", () => ({ createSupabaseAdminClient: () => ({ rpc }) }));
 vi.mock("@/lib/security/securityEvents", () => ({ recordSecurityEvent }));
 
 import { POST } from "@/app/api/records/attorney/accept/session/route";
@@ -41,13 +53,12 @@ function request(overrides: { token?: string; accessToken?: string; refreshToken
     headers: {
       "Content-Type": "application/json",
       Origin: "https://custodyfolio.com",
-      Cookie: `${recordsCsrfCookieName}=${csrf}`,
+      Cookie: `${recordsCsrfCookieName}=${csrf}; l2f-attorney-invite=${overrides.token ?? "original-invitation-token-long-enough"}`,
       "X-L2F-CSRF": csrf,
     },
     body: JSON.stringify({
       accessToken: overrides.accessToken ?? "mailbox-access-token-long-enough",
-      refreshToken: overrides.refreshToken ?? "mailbox-refresh-token-long-enough",
-      onboardingToken: overrides.token ?? "original-invitation-token-long-enough",
+      refreshToken: overrides.refreshToken ?? "refresh-1234",
       expiresIn: 3600,
     }),
   });
@@ -85,19 +96,22 @@ describe("mailbox-verified attorney session", () => {
       owner_user_id: "owner-1",
       case_id: "case-1",
     });
-    rpc.mockResolvedValue({
-      data: [{
-        grant_id: "grant-1",
-        owner_user_id: "owner-1",
-        case_key: "default",
-        case_id: "case-1",
-        access_expires_at: null,
-      }],
+    acceptPendingAttorneyInvitationForUser.mockResolvedValue({
+      grant_id: "grant-1",
+      owner_user_id: "owner-1",
+      case_key: "default",
+      case_id: "case-1",
+      access_expires_at: null,
+    });
+    getAuthenticatorAssuranceLevel.mockResolvedValue({
+      data: { currentLevel: "aal2", nextLevel: "aal2" },
       error: null,
     });
+    listFactors.mockResolvedValue({ data: { totp: [] }, error: null });
+    getAccessTokenAal.mockReturnValue("aal2");
   });
 
-  it("opens the scoped read only case immediately after fresh mailbox proof", async () => {
+  it("opens the scoped read only case after mailbox proof and AAL2", async () => {
     const response = await POST(request());
 
     expect(response.status).toBe(200);
@@ -111,15 +125,59 @@ describe("mailbox-verified attorney session", () => {
       token: "original-invitation-token-long-enough",
       email: "counsel@example.test",
     });
-    expect(rpc).toHaveBeenCalledWith("accept_records_attorney_invitation", {
-      p_token_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
-      p_attorney_user_id: "attorney-1",
-      p_invited_email_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    expect(acceptPendingAttorneyInvitationForUser).toHaveBeenCalledWith({
+      token: "original-invitation-token-long-enough",
+      userId: "attorney-1",
+      email: "counsel@example.test",
     });
     expect(setRecordsSessionCookies).toHaveBeenCalled();
     expect(clearAttorneyAcceptanceCookie).toHaveBeenCalledWith(response);
     expect(clearAttorneyMailboxProofCookie).toHaveBeenCalledWith(response);
     expect(clearAttorneyPasswordSetupCookie).toHaveBeenCalledWith(response);
+  });
+
+  it("accepts a single RPC row returned as an object", async () => {
+    acceptPendingAttorneyInvitationForUser.mockResolvedValue({
+      grant_id: "grant-1",
+      owner_user_id: "owner-1",
+      case_key: "default",
+      case_id: "case-1",
+      access_expires_at: null,
+    });
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      accepted: true,
+      accessHandle: expect.any(String),
+      accessExpiresAt: null,
+    });
+    expect(setRecordsSessionCookies).toHaveBeenCalled();
+  });
+
+  it("keeps an AAL1 mailbox session pending until authenticator verification", async () => {
+    getAccessTokenAal.mockReturnValue("aal1");
+    getAuthenticatorAssuranceLevel.mockResolvedValue({
+      data: { currentLevel: "aal1", nextLevel: "aal2" },
+      error: null,
+    });
+    listFactors.mockResolvedValue({
+      data: { totp: [{ id: "factor-1", status: "verified" }] },
+      error: null,
+    });
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({ mfaRequired: true });
+    expect(setRecordsSessionCookies).toHaveBeenCalledWith(
+      response,
+      expect.objectContaining({ access_token: "mailbox-access-token-long-enough" }),
+      expect.any(String),
+      "attorney_mfa_pending"
+    );
   });
 
   it("rejects a password session that lacks fresh mailbox proof", async () => {
@@ -138,7 +196,7 @@ describe("mailbox-verified attorney session", () => {
 
     expect(response.status).toBe(401);
     expect(findPendingAttorneyInvitationForEmail).not.toHaveBeenCalled();
-    expect(rpc).not.toHaveBeenCalled();
+    expect(acceptPendingAttorneyInvitationForUser).not.toHaveBeenCalled();
   });
 
   it("rejects valid mailbox proof when the invitation token or email does not match", async () => {
@@ -147,12 +205,12 @@ describe("mailbox-verified attorney session", () => {
     const response = await POST(request());
 
     expect(response.status).toBe(401);
-    expect(rpc).not.toHaveBeenCalled();
+    expect(acceptPendingAttorneyInvitationForUser).not.toHaveBeenCalled();
     expect(setRecordsSessionCookies).not.toHaveBeenCalled();
   });
 
   it("fails closed when the atomic invitation acceptance does not return a grant", async () => {
-    rpc.mockResolvedValue({ data: [], error: null });
+    acceptPendingAttorneyInvitationForUser.mockResolvedValue(null);
 
     const response = await POST(request());
 
@@ -161,14 +219,7 @@ describe("mailbox-verified attorney session", () => {
   });
 
   it("never grants a user access to their own invitation", async () => {
-    rpc.mockResolvedValue({
-      data: [{
-        grant_id: "grant-1",
-        owner_user_id: "attorney-1",
-        access_expires_at: null,
-      }],
-      error: null,
-    });
+    acceptPendingAttorneyInvitationForUser.mockResolvedValue(null);
 
     const response = await POST(request());
 

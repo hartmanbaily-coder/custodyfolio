@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "requestId": "REPLACE_WITH_OPAQUE_REQUEST_ID",
+  "requestType": "deletion",
+  "receivedAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
+  "authenticatedAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
+  "deadlineAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
+  "completedAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
+  "responseSentAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
+  "validatedBy": "REPLACE_WITH_PRIVACY_OPERATIONS_OWNER",
+  "scopeSummary": "Synthetic full-account deletion rehearsal; no customer record contents included.",
+  "inventoryReviewedAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
+  "inventoryVersion": "2026-08-12",
+  "subprocessorPolicySha256": "REPLACE_WITH_CURRENT_GENERATED_SUBPROCESSOR_DIGEST",
+  "activeSystems": [
+    {
+      "targetId": "records_database",
+      "applicable": true,
+      "status": "deleted",
+      "completedAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
+      "evidenceReference": "REPLACE_WITH_NON_SENSITIVE_TICKET_OR_LOG_REFERENCE"
+    },
+    {
+      "targetId": "private_evidence_storage",
+      "applicable": true,
+      "status": "deleted",
+      "completedAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
+      "evidenceReference": "REPLACE_WITH_NON_SENSITIVE_TICKET_OR_LOG_REFERENCE"
+    },
+    {
+      "targetId": "auth_identity",
+      "applicable": true,
+      "status": "deleted",
+      "completedAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
+      "evidenceReference": "REPLACE_WITH_NON_SENSITIVE_TICKET_OR_LOG_REFERENCE"
+    },
+    {
+      "targetId": "application_exports",
+      "applicable": false,
+      "status": "not_applicable",
+      "rationale": "No server-side export storage is enabled."
+    },
+    {
+      "targetId": "security_audit_records",
+      "applicable": true,
+      "status": "retained_exception",
+      "completedAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
+      "evidenceReference": "REPLACE_WITH_NON_SENSITIVE_TICKET_OR_LOG_REFERENCE",
+      "rationale": "Minimized deletion audit record retained under the published security retention period.",
+      "retentionExpiresAt": "YYYY-MM-DDTHH:mm:ss.sssZ"
+    }
+  ],
+  "downstreamTargets": [
+    {
+      "targetId": "supabase",
+      "relationship": "processor",
+      "applicable": true,
+      "status": "acknowledged",
+      "noticeSentAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
+      "acknowledgedAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
+      "evidenceReference": "REPLACE_WITH_NON_SENSITIVE_TICKET_OR_PROVIDER_REFERENCE"
+    },
+    {
+      "targetId": "hetzner",
+      "relationship": "processor",
+      "applicable": true,
+      "status": "acknowledged",
+      "noticeSentAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
+      "acknowledgedAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
+      "evidenceReference": "REPLACE_WITH_NON_SENSITIVE_TICKET_OR_PROVIDER_REFERENCE"
+    },
+    {
+      "targetId": "backblaze",
+      "relationship": "processor",
+      "applicable": true,
+      "status": "acknowledged",
+      "noticeSentAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
+      "acknowledgedAt": "YYYY-MM-DDTHH:mm:ss.sssZ",
+      "evidenceReference": "REPLACE_WITH_NON_SENSITIVE_TICKET_OR_PROVIDER_REFERENCE"
+    },
+    {
+      "targetId": "cloudflare",
+      "relationship": "processor",
+      "applicable": false,
+      "status": "not_applicable",
+      "rationale": "REPLACE_WITH_WHY_NO_REQUEST_DATA_REQUIRES_PROVIDER_ACTION"
+    },
+    {
+      "targetId": "apple_icloud_mail",
+      "relationship": "processor",
+      "applicable": false,
+      "status": "not_applicable",
+      "rationale": "REPLACE_WITH_WHY_NO_REQUEST_DATA_REQUIRES_PROVIDER_ACTION"
+    },
+    {
+      "targetId": "resend",
+      "relationship": "processor",
+      "applicable": false,
+      "status": "not_applicable",
+      "rationale": "REPLACE_WITH_WHY_NO_REQUEST_DATA_REQUIRES_PROVIDER_ACTION"
+    },
+    {
+      "targetId": "have_i_been_pwned",
+      "relationship": "processor",
+      "applicable": false,
+      "status": "not_applicable",
+      "rationale": "The service receives no account identifier or complete password hash."
+    },
+    {
+      "targetId": "security_monitoring",
+      "relationship": "processor",
+      "applicable": false,
+      "status": "not_applicable",
+      "rationale": "REPLACE_WITH_WHY_NO_REQUEST_DATA_REQUIRES_PROVIDER_ACTION"
+    },
+    {
+      "targetId": "attorney_recipient_copies",
+      "relationship": "user_controlled_copy",
+      "applicable": false,
+      "status": "not_applicable",
+      "rationale": "No attorney copy was created in this synthetic rehearsal."
+    },
+    {
+      "targetId": "other_recipients",
+      "relationship": "recipient",
+      "applicable": false,
+      "status": "not_applicable",
+      "rationale": "No other recipient received data in this synthetic rehearsal."
+    }
+  ],
+  "backupAging": {
+    "deletionReapplyRecorded": true,
+    "agesOutBy": "YYYY-MM-DDTHH:mm:ss.sssZ",
+    "evidenceReference": "REPLACE_WITH_NON_SENSITIVE_DELETION_LEDGER_REFERENCE"
+  },
+  "appealInstructionsIncluded": true
+}
