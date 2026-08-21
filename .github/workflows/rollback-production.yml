@@ -1,0 +1,64 @@
+name: Restore Validated Production Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Existing validated losttofound image tag, without the losttofound: prefix
+        required: true
+        type: string
+
+concurrency:
+  group: custodyfolio-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  rollback-production:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout rollback controls
+        uses: actions/checkout@v4
+
+      - name: Configure pinned production SSH identity
+        env:
+          PRODUCTION_SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+          PRODUCTION_KNOWN_HOSTS: ${{ secrets.PRODUCTION_KNOWN_HOSTS }}
+        run: |
+          test -n "$PRODUCTION_SSH_PRIVATE_KEY"
+          test -n "$PRODUCTION_KNOWN_HOSTS"
+          install -d -m 0700 "$HOME/.ssh"
+          printf '%s\n' "$PRODUCTION_SSH_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$PRODUCTION_KNOWN_HOSTS" > "$HOME/.ssh/custodyfolio_known_hosts"
+          chmod 0600 "$HOME/.ssh/id_ed25519" "$HOME/.ssh/custodyfolio_known_hosts"
+
+      - name: Restore validated image with smoke-test protection
+        env:
+          DEPLOY_PORT: ${{ secrets.PRODUCTION_SSH_PORT }}
+          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+          ROLLBACK_IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          test -n "$PRODUCTION_HOST"
+          test -n "$ROLLBACK_IMAGE_TAG"
+          [[ "$ROLLBACK_IMAGE_TAG" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]]
+          ssh -p "$DEPLOY_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/custodyfolio_known_hosts" \
+            "losttofound@$PRODUCTION_HOST" \
+            "bash -s -- '$ROLLBACK_IMAGE_TAG'" \
+            < deploy/production/rollback-to-image.sh
+
+      - name: Verify restored billing application
+        run: |
+          readiness_file="$RUNNER_TEMP/custodyfolio-readiness.json"
+          readiness_http="$(curl --silent --show-error \
+            --output "$readiness_file" \
+            --write-out '%{http_code}' \
+            https://custodyfolio.com/api/records/readiness)"
+          [[ "$readiness_http" == "200" || "$readiness_http" == "503" ]]
+          jq -e '
+            .billing.required == true and
+            (.billing.checks | type == "array") and
+            (.billing.checks | any(.id == "stripe-live-webhook" and .ready == true))
+          ' "$readiness_file" >/dev/null
