@@ -49,6 +49,9 @@ jobs:
           npm run verify:env-template
           npm run build
 
+      - name: Verify Supabase Auth readiness evidence configuration
+        run: bash deploy/production/test-configure-supabase-auth-readiness.sh
+
   deploy-production:
     needs: validate
     if: >-
@@ -85,6 +88,8 @@ jobs:
           DEPLOY_PORT: ${{ secrets.PRODUCTION_SSH_PORT }}
           DEPLOY_USER: losttofound
           PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+          SUPABASE_AUTH_REDIRECTS_VERIFIED_AT: "2026-08-21"
+          SUPABASE_AUTH_HARDENING_VERIFIED_AT: "2026-08-21"
         run: |
           test -n "$PRODUCTION_HOST"
           test -n "$OFFSITE_BACKUP_S3_ACCESS_KEY_ID"
@@ -105,4 +110,9 @@ jobs:
           chmod 0600 "$backup_env"
           export DEPLOY_KNOWN_HOSTS="$HOME/.ssh/custodyfolio_known_hosts"
           export LOSTTOFOUND_BACKUP_ENV_SOURCE="$backup_env"
+          ssh -p "$DEPLOY_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$DEPLOY_KNOWN_HOSTS" \
+            "$DEPLOY_USER@$PRODUCTION_HOST" \
+            "bash -s -- '$SUPABASE_AUTH_REDIRECTS_VERIFIED_AT' '$SUPABASE_AUTH_HARDENING_VERIFIED_AT'" \
+            < deploy/production/configure-supabase-auth-readiness.sh
           ./deploy/production/deploy-from-mac.sh "$PRODUCTION_HOST" "${GITHUB_SHA:0:12}"

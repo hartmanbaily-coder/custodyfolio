@@ -24,7 +24,26 @@ jobs:
             "data-retention-policy",
             "incident-response-plan",
             "legal-review",
+            "billing:billing-checkout-enabled",
+            "billing:production-readiness",
+            "billing:apple-notifications-v2",
+            "billing:billing-tests-recent",
+            "billing:billing-policy-versions",
+            "billing:billing-tax-review",
+            "billing:live-billing-approval",
           ]);
+
+          const requiredBillingServicingChecks = [
+            "billing-mode-live",
+            "stripe-live-key",
+            "stripe-live-webhook",
+            "stripe-price-allowlist",
+            "stripe-live-portal-configuration",
+            "stripe-portal-verified",
+            "billing-secrets",
+            "apple-identity",
+            "apple-server-api",
+          ];
 
           function fail(message) {
             console.error(message);
@@ -120,23 +139,38 @@ jobs:
 
           const blockers = Array.isArray(readiness.blockers) ? readiness.blockers : [];
           const checks = Array.isArray(readiness.checks) ? readiness.checks : [];
+          const billingChecks = Array.isArray(readiness.billing?.checks)
+            ? readiness.billing.checks
+            : [];
           const invalidBlockers = blockers.filter(
             (item) => typeof item?.id !== "string" || item.id.length === 0
           );
           const invalidChecks = checks.filter(
             (item) => typeof item?.id !== "string" || item.id.length === 0
           );
-          if (invalidBlockers.length > 0 || invalidChecks.length > 0) {
+          const invalidBillingChecks = billingChecks.filter(
+            (item) => typeof item?.id !== "string" || item.id.length === 0
+          );
+          if (
+            invalidBlockers.length > 0 ||
+            invalidChecks.length > 0 ||
+            invalidBillingChecks.length > 0
+          ) {
             fail("Readiness response includes malformed blocker or check identifiers.");
+          }
+
+          if (readiness.billing?.required === true && !Array.isArray(readiness.billing?.checks)) {
+            fail("Readiness response requires billing but omits the billing checks catalog.");
           }
 
           const blockerIds = blockers
             .map((item) => item.id)
             .filter((id) => typeof id === "string" && id.length > 0);
           const declaredCheckIds = new Set(
-            checks
-              .map((item) => item.id)
-              .filter((id) => typeof id === "string" && id.length > 0)
+            [
+              ...checks.map((item) => item.id),
+              ...billingChecks.map((item) => `billing:${item.id}`),
+            ].filter((id) => typeof id === "string" && id.length > 0)
           );
           const undeclared = blockerIds.filter((id) => !declaredCheckIds.has(id));
           if (undeclared.length > 0) {
@@ -166,6 +200,21 @@ jobs:
           );
           if (unexpectedBlockers.length > 0) {
             fail(`Unexpected production readiness blockers: ${unexpectedBlockers.join(", ")}`);
+          }
+
+          const billingCheckById = new Map(
+            billingChecks.map((item) => [item.id, item])
+          );
+          const pendingBillingBlockers = blockerIds.filter((id) => id.startsWith("billing:"));
+          if (pendingBillingBlockers.length > 0) {
+            const unhealthyServicingChecks = requiredBillingServicingChecks.filter(
+              (id) => billingCheckById.get(id)?.ready !== true
+            );
+            if (unhealthyServicingChecks.length > 0) {
+              fail(
+                `Live billing servicing checks are unhealthy: ${unhealthyServicingChecks.join(", ")}`
+              );
+            }
           }
 
           if (blockerIds.length > 0) {
