@@ -317,6 +317,16 @@ grep -q 'launch-approval-pending' "${script_dir}/deploy.sh"
 grep -q 'deployed successfully for testing' "${script_dir}/deploy.sh"
 grep -q 'install-storage-backup-timer.sh' "${script_dir}/deploy.sh"
 grep -q 'configure-storage-backup-readiness.sh' "${script_dir}/deploy-from-mac.sh"
+grep -q 'Run production rollback as the non-root losttofound user' \
+  "${script_dir}/rollback-to-image.sh"
+grep -Fq 'docker image inspect "${target_image}"' "${script_dir}/rollback-to-image.sh"
+grep -Fq 'Rollback validation failed; restoring ${current_image}' \
+  "${script_dir}/rollback-to-image.sh"
+grep -q 'smoke_status.*-ne 2' "${script_dir}/rollback-to-image.sh"
+grep -q 'billing.required == true' \
+  "${script_dir}/../../.github/workflows/rollback-production.yml"
+grep -q 'stripe-live-webhook' \
+  "${script_dir}/../../.github/workflows/rollback-production.yml"
 grep -q -- "--exclude '.mcp.json'" "${script_dir}/deploy-from-mac.sh"
 grep -q -- "--exclude '.codex/'" "${script_dir}/deploy-from-mac.sh"
 grep -q -- "--exclude '.agents/'" "${script_dir}/deploy-from-mac.sh"
