@@ -34,10 +34,10 @@ These gates are enforced by `src/lib/production/readiness.ts` and `scripts/check
 | Security monitoring | `SECURITY_MONITORING_ENABLED=true` and `SECURITY_EVENT_SINK` set to `platform`, `siem`, or `webhook` | Required |
 | Backup restore test | `BACKUP_RESTORE_TESTED_AT` within 180 days | Required |
 | Two-user isolation test | `TWO_USER_ISOLATION_TESTED_AT` within 30 days | Required |
-| Retention/deletion policy | `DATA_RETENTION_POLICY_APPROVED=true` | Required |
-| Incident response plan | `INCIDENT_RESPONSE_PLAN_APPROVED=true` | Required |
-| Privacy policy | HTTPS `PRIVACY_POLICY_URL` | Required |
-| Legal review | `LEGAL_REVIEW_APPROVED=true` for privacy, terms, retention, and incident response materials | Required |
+| Retention/deletion policy | `DATA_RETENTION_POLICY_APPROVED=true` plus current digest-bound retention approval and a privacy-rights rehearsal in `PRODUCTION_APPROVAL_MANIFEST_BASE64` | Required |
+| Incident response plan | `INCIDENT_RESPONSE_PLAN_APPROVED=true` plus current digest-bound approval, named tested contacts, and recent tabletop evidence | Required |
+| Privacy policy | Exact HTTPS `/privacy` URL on `NEXT_PUBLIC_APP_URL`, with no query or fragment | Required |
+| Legal review | `LEGAL_REVIEW_APPROVED=true` plus current qualified-counsel approval of the exact generated policy digests | Required |
 | Security contact | `SECURITY_CONTACT_EMAIL` monitored mailbox | Warning |
 | Vendor security review | `VENDOR_SECURITY_REVIEW_APPROVED=true` | Warning |
 | Audit review process | `AUDIT_LOG_REVIEW_ENABLED=true` | Warning |
@@ -55,13 +55,25 @@ These gates are enforced by `src/lib/production/readiness.ts` and `scripts/check
 
 - Backup and restore: document backup cadence, encryption, access, restore owner, restore test evidence, and backup aging after deletion.
 - Deletion and export: use `DATA_RETENTION_DELETION_RUNBOOK.md` to document how users request export/deletion, what is deleted immediately, what remains in backups, and how long backups age out.
+- Privacy rights operations: use `PRIVACY_RIGHTS_OPERATIONS.md` to account for active systems, processors, recipients, user-controlled copies, appeals, and backup aging. Verify every request artifact before reporting completion.
 - Incident response: use `INCIDENT_RESPONSE_RUNBOOK.md` for severity levels, containment steps, contact owner, user notification decision process, evidence preservation, and post-incident review.
 - Monitoring and alerting: use `MONITORING_ALERTING_RUNBOOK.md` for alert sources, thresholds, escalation channels, log minimization rules, and review cadence.
 - Access review: document who has Supabase, hosting, domain, deployment, monitoring, and malware-scanner access; review before launch and at least quarterly.
-- Vendor review: document Supabase, hosting/CDN, malware scanner, email provider, logging/monitoring, and DNS registrar security posture.
+- Vendor review: `VENDOR_SECURITY_REVIEW_2026-08-15.md` documents Supabase, hosting/CDN, malware scanner, email, backup, billing, logging/monitoring, and DNS security posture. Review it quarterly and after material provider or data-flow changes.
 - Edge security: use `EDGE_SECURITY_RULES.md` before setting the WAF and rate-limit readiness flags.
 - Supabase Auth: use `SUPABASE_AUTH_LAUNCH_CHECKLIST.md` before setting Auth readiness flags or enabling self-registration.
 - Legal review: use `LEGAL_REVIEW_PACKET.md` before setting `LEGAL_REVIEW_APPROVED=true`.
+
+## Version-Bound Approval Evidence
+
+The boolean approval flags are necessary but not sufficient. Readiness also validates an ignored manifest containing reviewer authority, scope, limitations, validity dates, required exercise dates, named incident contacts, and the SHA-256 of every covered document.
+
+```bash
+npm run approval:prepare
+npm run verify:approvals
+```
+
+Keep `ops/production-approval-manifest.json` and the emitted `PRODUCTION_APPROVAL_MANIFEST_BASE64` secret out of source control. Never replace missing counsel or responder assignments with placeholders. Any covered document change invalidates the deployed evidence until the appropriate reviewer approves the new digest.
 
 ## Two-User Isolation Test
 
@@ -97,5 +109,7 @@ npm run verify:isolation
 npm run verify:supabase-auth
 npm run verify:security-events
 npm run verify:backup-restore
+npm run verify:privacy-rights
+npm run verify:approvals
 npm run check:live
 ```

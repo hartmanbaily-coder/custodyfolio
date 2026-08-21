@@ -23,6 +23,22 @@ describe("records dataset account isolation", () => {
     expect(isRecordsDataset(malformed)).toBe(false);
   });
 
+  it("rejects a matter whose required case name is missing", () => {
+    const malformed = createEmptyRecordsDatasetForUser(
+      "11111111-1111-4111-8111-111111111111",
+      "blank@example.test",
+      "UTC"
+    );
+    malformed.matters = [
+      {
+        id: "case-1",
+        userId: malformed.users[0].userId,
+      } as never,
+    ];
+
+    expect(isRecordsDataset(malformed)).toBe(false);
+  });
+
   it("removes every profile, case, and record owned by another account", () => {
     const contaminated = createRecordsSeed();
     contaminated.timelineDesignations.push({

@@ -57,7 +57,22 @@ export default function AttorneySignIn() {
           headers: { "Content-Type": "application/json", "X-L2F-CSRF": csrf },
           body: JSON.stringify({ accessToken, refreshToken, expiresIn }),
         });
-        const body = (await response.json().catch(() => ({}))) as { error?: string };
+        const body = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          mfaRequired?: boolean;
+          mfaEnrollmentRequired?: boolean;
+          enrollment?: MfaEnrollment;
+        };
+        if (response.status === 403 && body.mfaRequired) {
+          setEnrollment(body.mfaEnrollmentRequired && body.enrollment ? body.enrollment : null);
+          setMode("mfa");
+          setMessage(
+            body.mfaEnrollmentRequired
+              ? "Email verified. Protect this attorney account with an authenticator app."
+              : "Email verified. Enter the current code from your authenticator app."
+          );
+          return;
+        }
         if (!response.ok) throw new Error(body.error || "Secure attorney sign-in failed.");
         window.location.replace("/attorney");
       })

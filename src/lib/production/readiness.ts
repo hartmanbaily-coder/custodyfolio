@@ -1,3 +1,5 @@
+import { evaluateProductionApprovalEvidence } from "@/lib/production/approvalEvidence.mjs";
+
 export type ProductionReadinessSeverity = "blocker" | "warning";
 
 export interface ProductionReadinessCheck {
@@ -84,6 +86,29 @@ function isHttpsUrl(value: string | undefined) {
   try {
     const url = new URL(value);
     return url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function isCanonicalPrivacyPolicyUrl(
+  policyValue: string | undefined,
+  appValue: string | undefined
+) {
+  if (!policyValue || !appValue) return false;
+  try {
+    const policy = new URL(policyValue);
+    const app = new URL(appValue);
+    return (
+      policy.protocol === "https:" &&
+      app.protocol === "https:" &&
+      policy.origin === app.origin &&
+      policy.pathname === "/privacy" &&
+      policy.search === "" &&
+      policy.hash === "" &&
+      policy.username === "" &&
+      policy.password === ""
+    );
   } catch {
     return false;
   }
@@ -216,6 +241,10 @@ export function evaluateProductionReadiness(
   const expectedSupabaseRef = (env.EXPECTED_SUPABASE_PROJECT_REF || "").trim();
   const recordsSignupsEnabled = isEnabled(env.RECORDS_SIGNUPS_ENABLED);
   const publicRecordsSignupsEnabled = isEnabled(env.NEXT_PUBLIC_RECORDS_SIGNUPS_ENABLED);
+  const approvalEvidence = evaluateProductionApprovalEvidence(
+    env.PRODUCTION_APPROVAL_MANIFEST_BASE64,
+    generatedAt
+  );
 
   const checks = [
     check(
@@ -494,30 +523,30 @@ export function evaluateProductionReadiness(
     check(
       "data-retention-policy",
       "Data retention and deletion policy is approved",
-      isEnabled(env.DATA_RETENTION_POLICY_APPROVED),
+      isEnabled(env.DATA_RETENTION_POLICY_APPROVED) && approvalEvidence.retention.ready,
       "blocker",
-      "Approve retention, deletion, export, and backup aging policy before real records are accepted."
+      "Approve the exact retention/deletion policy bundle, verify a recent privacy-rights rehearsal, and provide the validated approval manifest before real records are accepted."
     ),
     check(
       "incident-response-plan",
       "Incident response plan is approved",
-      isEnabled(env.INCIDENT_RESPONSE_PLAN_APPROVED),
+      isEnabled(env.INCIDENT_RESPONSE_PLAN_APPROVED) && approvalEvidence.incident.ready,
       "blocker",
-      "Approve an incident response and breach notification plan before real records are accepted."
+      "Approve the exact incident plan, validate named primary/backup contacts and a recent tabletop, and provide the validated approval manifest before real records are accepted."
     ),
     check(
       "privacy-policy",
-      "Production privacy policy URL is configured",
-      isHttpsUrl(env.PRIVACY_POLICY_URL),
+      "Production privacy policy URL is canonical",
+      isCanonicalPrivacyPolicyUrl(env.PRIVACY_POLICY_URL, env.NEXT_PUBLIC_APP_URL),
       "blocker",
-      "Set PRIVACY_POLICY_URL to the reviewed production privacy policy."
+      "Set PRIVACY_POLICY_URL to the exact /privacy page on NEXT_PUBLIC_APP_URL, without credentials, query parameters, or fragments."
     ),
     check(
       "legal-review",
       "Privacy, terms, and runbooks have counsel approval",
-      isEnabled(env.LEGAL_REVIEW_APPROVED),
+      isEnabled(env.LEGAL_REVIEW_APPROVED) && approvalEvidence.legal.ready,
       "blocker",
-      "Have qualified counsel review privacy, terms, deletion, retention, and incident response materials, then set LEGAL_REVIEW_APPROVED=true."
+      "Have qualified counsel approve the exact deployed policy digests and provide the validated approval manifest before setting LEGAL_REVIEW_APPROVED=true."
     ),
     check(
       "vendor-security-review",

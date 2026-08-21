@@ -17,10 +17,11 @@ export const DEFAULTS = Object.freeze({
   testerBuddyUrl:
     "https://testerbuddy.app/join/684809d42ab353d76fc2ad69a7ea70b653a4c0acc38def27",
   locale: "en-US",
+  appStoreVersion: "1.0.0",
   pollSeconds: 30,
   timeoutMinutes: 120,
   whatsNew:
-    "Please test sign-in, record creation and editing, evidence uploads, timeline and calendar views, report generation and exports, account deletion, and general stability. Use synthetic test data only.",
+    "Please test sign-in, the subscription indicator, native App Store monthly and annual purchase screens, restore and manage-subscription actions, record creation and editing, evidence uploads, exports, and account deletion. Use synthetic test data only.",
 });
 
 const API_BASE_URL = "https://api.appstoreconnect.apple.com";
@@ -496,6 +497,57 @@ async function ensureOnlyBuildInGroup(client, buildId) {
   );
 }
 
+export function selectAppStoreVersion(
+  versions,
+  versionString = DEFAULTS.appStoreVersion,
+) {
+  const matches = versions.filter(
+    (version) => version.attributes?.versionString === versionString,
+  );
+  if (matches.length !== 1) {
+    throw new Error(
+      `Expected exactly one iOS App Store version ${versionString}; found ${matches.length}.`,
+    );
+  }
+  return matches[0];
+}
+
+async function ensureAppStoreVersionBuild(client, build) {
+  const { payload: versions } = await client.request(
+    query(`/v1/apps/${DEFAULTS.appId}/appStoreVersions`, {
+      "filter[platform]": "IOS",
+      "fields[appStoreVersions]": "versionString,appStoreState",
+      limit: "50",
+    }),
+  );
+  const version = selectAppStoreVersion(versions.data);
+  await client.request(
+    `/v1/appStoreVersions/${version.id}/relationships/build`,
+    {
+      method: "PATCH",
+      body: { data: { type: "builds", id: build.id } },
+    },
+  );
+  const { payload: attached } = await client.request(
+    query(`/v1/appStoreVersions/${version.id}/build`, {
+      "fields[builds]": "version,processingState,expired",
+    }),
+  );
+  if (
+    attached.data?.id !== build.id ||
+    attached.data?.attributes?.version !== build.attributes.version ||
+    attached.data?.attributes?.processingState !== "VALID" ||
+    attached.data?.attributes?.expired
+  ) {
+    throw new Error(
+      `App Store version ${DEFAULTS.appStoreVersion} did not retain exact build ${build.attributes.version}.`,
+    );
+  }
+  console.log(
+    `Attached exact build ${build.attributes.version} to App Store version ${DEFAULTS.appStoreVersion}.`,
+  );
+}
+
 async function getReviewSubmission(client, buildId) {
   const { status, payload } = await client.request(
     query(`/v1/builds/${buildId}/betaAppReviewSubmission`, {
@@ -759,6 +811,9 @@ async function run(options) {
   await waitForExternalTesting(client, build, options, deadline);
   await verifyGroup(client, { expectedBuildId: build.id });
   await verifyPublicLinks();
+  if (!options.verifyOnly) {
+    await ensureAppStoreVersionBuild(client, build);
+  }
   console.log(
     `PUBLIC TESTFLIGHT RELEASE COMPLETE: build ${build.attributes.version} is Testing in ${DEFAULTS.betaGroupName}.`,
   );

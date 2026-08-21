@@ -6,6 +6,10 @@ import { recordsCsrfCookieName } from "@/lib/security/csrf";
 const signInWithOtp = vi.hoisted(() => vi.fn());
 const getClaims = vi.hoisted(() => vi.fn());
 const getUser = vi.hoisted(() => vi.fn());
+const getAuthenticatorAssuranceLevel = vi.hoisted(() => vi.fn());
+const listFactors = vi.hoisted(() => vi.fn());
+const enroll = vi.hoisted(() => vi.fn());
+const unenroll = vi.hoisted(() => vi.fn());
 const recordsAttorneyEmailHasActiveGrant = vi.hoisted(() => vi.fn());
 const recordsAttorneyProfileIsAuthorized = vi.hoisted(() => vi.fn());
 const setRecordsSessionCookies = vi.hoisted(() => vi.fn());
@@ -13,7 +17,12 @@ const recordSecurityEvent = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/supabaseClient", () => ({
   createServerSupabaseAuthClient: () => ({ auth: { getClaims, signInWithOtp } }),
-  createServerSupabaseSessionClient: async () => ({ auth: { getUser } }),
+  createServerSupabaseSessionClient: async () => ({
+    auth: {
+      getUser,
+      mfa: { getAuthenticatorAssuranceLevel, listFactors, enroll, unenroll },
+    },
+  }),
 }));
 
 vi.mock("@/lib/records/attorneyProfileServer", () => ({
@@ -93,6 +102,14 @@ describe("returning attorney authentication", () => {
       },
       error: null,
     });
+    getAuthenticatorAssuranceLevel.mockResolvedValue({
+      data: { currentLevel: "aal1", nextLevel: "aal2" },
+      error: null,
+    });
+    listFactors.mockResolvedValue({
+      data: { totp: [{ id: "factor-1", status: "verified" }] },
+      error: null,
+    });
   });
 
   it("sends a non-creating magic link only for an active attorney account", async () => {
@@ -124,10 +141,13 @@ describe("returning attorney authentication", () => {
     expect(providerBody).toEqual(inactiveBody);
   });
 
-  it("exchanges fresh mailbox proof for an attorney-only session", async () => {
+  it("treats fresh mailbox proof as the first factor and requires MFA", async () => {
     const response = await acceptReturnSession(sessionRequest());
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      mfaRequired: true,
+    });
     expect(recordsAttorneyProfileIsAuthorized).toHaveBeenCalledWith({
       userId: "attorney-1",
       email: "counsel@example.test",
@@ -139,6 +159,24 @@ describe("returning attorney authentication", () => {
         access_token: "return-access-token-long-enough",
         refresh_token: "return-refresh-token-long-enough",
       }),
+      expect.any(String),
+      "attorney_mfa_pending"
+    );
+  });
+
+  it("creates the attorney guest session when the mailbox session is already AAL2", async () => {
+    getAuthenticatorAssuranceLevel.mockResolvedValue({
+      data: { currentLevel: "aal2", nextLevel: "aal2" },
+      error: null,
+    });
+
+    const response = await acceptReturnSession(sessionRequest());
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(setRecordsSessionCookies).toHaveBeenCalledWith(
+      response,
+      expect.objectContaining({ access_token: "return-access-token-long-enough" }),
       expect.any(String),
       "attorney_guest"
     );

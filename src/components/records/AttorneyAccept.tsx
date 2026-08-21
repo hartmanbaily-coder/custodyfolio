@@ -11,7 +11,7 @@ import {
   type RecordsMfaEnrollment,
 } from "@/lib/records/clientStore";
 
-type AcceptanceState = "preparing" | "account" | "mfa" | "error";
+type AcceptanceState = "preparing" | "account" | "email_sent" | "mfa" | "error";
 type AccountMode = "create" | "sign_in";
 
 function qrCodeSrc(qrCode: string) {
@@ -86,20 +86,11 @@ export default function AttorneyAccept() {
     const form = new FormData(event.currentTarget);
     const email = String(form.get("email") || "").trim();
     const password = String(form.get("password") || "");
-    const confirmPassword = String(form.get("confirmPassword") || "");
     const adultConfirmed = form.get("adult") === "on";
     const legalAccepted = accountMode === "sign_in" || form.get("legal") === "on";
 
-    if (!email.includes("@") || !password || !adultConfirmed || !legalAccepted) {
-      setError("Enter the invited email and password, confirm adult use, and accept the current policies.");
-      return;
-    }
-    if (accountMode === "create" && password.length < 12) {
-      setError("Use a password with at least 12 characters.");
-      return;
-    }
-    if (accountMode === "create" && password !== confirmPassword) {
-      setError("Passwords do not match.");
+    if (!email.includes("@") || (accountMode === "sign_in" && !password) || !adultConfirmed || !legalAccepted) {
+      setError("Enter the invited email, confirm adult use, and accept the current policies.");
       return;
     }
 
@@ -107,12 +98,14 @@ export default function AttorneyAccept() {
     setError("");
     try {
       if (accountMode === "create") {
-        await attorneyMutation("/api/records/attorney/accept/signup", {
+        const result = await attorneyMutation("/api/records/attorney/accept/signup", {
           email,
-          password,
           adultConfirmed,
           legalAccepted,
-        });
+        }) as { message?: string };
+        setState("email_sent");
+        setMessage(result.message || "Check the invited email and open the secure account link.");
+        return;
       }
       await startAttorneySession(email, password);
     } catch (accountError) {
@@ -161,9 +154,8 @@ export default function AttorneyAccept() {
           </p>
           <h1 className="mt-2 text-2xl font-semibold">Open a read-only shared matter</h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            This private link is the only attorney invitation. Custody Folio will not send a second
-            invitation email. Sign in or create the free attorney account named by the client, then
-            complete authenticator verification.
+            This private invitation is bound to the attorney email named by the client. New accounts
+            verify that mailbox through a separate secure email before authenticator verification.
           </p>
 
           <section className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4" aria-labelledby="attorney-start-heading">
@@ -172,9 +164,9 @@ export default function AttorneyAccept() {
             </h2>
             <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-5 text-slate-700">
               <li><strong>Use the exact email address the client invited.</strong> A different email cannot open the matter.</li>
-              <li><strong>Choose Create account</strong> if this is your first Custody Folio invitation, or <strong>Sign in</strong> if you already have an attorney account.</li>
-              <li><strong>Have an authenticator app ready.</strong> After your password, you will scan a QR code or enter a setup key and submit the current code.</li>
-              <li><strong>Complete every step on this page.</strong> No second invitation email will arrive. Successful verification opens your read-only shared matters.</li>
+              <li><strong>Choose Create account</strong> to receive a secure verification link at the invited email, or <strong>Sign in</strong> if you already use a password.</li>
+              <li><strong>Have an authenticator app ready.</strong> After mailbox or password verification, you will submit its current security code.</li>
+              <li><strong>Complete every step.</strong> Mailbox and authenticator verification are both required before the read-only matter opens.</li>
             </ul>
           </section>
 
@@ -208,14 +200,10 @@ export default function AttorneyAccept() {
                   Invited attorney email
                   <input name="email" type="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" className="input" />
                 </label>
-                <label className="grid gap-1.5 text-sm font-medium text-slate-700">
-                  {accountMode === "create" ? "Create password" : "Password"}
-                  <input name="password" type="password" autoComplete={accountMode === "create" ? "new-password" : "current-password"} className="input" />
-                </label>
-                {accountMode === "create" ? (
+                {accountMode === "sign_in" ? (
                   <label className="grid gap-1.5 text-sm font-medium text-slate-700">
-                    Confirm password
-                    <input name="confirmPassword" type="password" autoComplete="new-password" className="input" />
+                    Password
+                    <input name="password" type="password" autoComplete="current-password" className="input" />
                   </label>
                 ) : null}
                 <label className="flex items-start gap-2 text-sm leading-5 text-slate-700">
@@ -245,7 +233,7 @@ export default function AttorneyAccept() {
                   </label>
                 ) : null}
                 <button type="submit" className="btn-primary w-full" disabled={busy}>
-                  {busy ? "Opening…" : accountMode === "create" ? "Create account and continue" : "Sign in and continue"}
+                  {busy ? "Opening…" : accountMode === "create" ? "Email secure account link" : "Sign in and continue"}
                 </button>
               </form>
             </>
@@ -303,7 +291,7 @@ export default function AttorneyAccept() {
           </p>
         </section>
       </div>
-      <PolicyFooter recordsNote="Private single-link attorney onboarding. No second invitation email is sent." />
+      <PolicyFooter recordsNote="Private attorney onboarding requires both mailbox and authenticator verification." />
     </main>
   );
 }

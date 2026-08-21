@@ -15,6 +15,7 @@ import { recordsAppBaseUrl } from "@/lib/records/authServer";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
 import { consumerHealthSharingConsentVersion } from "@/lib/legal";
+import { requireRecordsCapability } from "@/lib/billing/capabilities";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -42,6 +43,13 @@ export async function POST(request: NextRequest) {
   };
   const handleValue = typeof body.handle === "string" ? body.handle : "";
   const action = body.action === "resend" || body.action === "revoke" ? body.action : "";
+  if (action) {
+    const capability = await requireRecordsCapability(
+      context,
+      action === "revoke" ? "attorney:revoke" : "attorney:invite"
+    );
+    if (!capability.ok) return capability.error;
+  }
   const handle = openAttorneyHandle(handleValue, {
     kind: "invitation",
     subject: context.userId,

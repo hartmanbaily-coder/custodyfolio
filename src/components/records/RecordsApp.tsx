@@ -158,6 +158,11 @@ import {
   defaultCaseTerminology,
   resolveCaseTerminology,
 } from "@/lib/records/terminology";
+import SubscriptionPanel from "@/components/billing/SubscriptionPanel";
+import AccountSubscriptionIndicator from "@/components/billing/AccountSubscriptionIndicator";
+import { useBillingStatus } from "@/lib/billing/client";
+import type { BillingStatus } from "@/lib/billing/types";
+import { planExportOnlyDatasetMutation } from "@/lib/records/datasetMutation";
 
 const recordsPrivacyNote =
   "Records are private by default. Use labels such as Child 1 and Parent B instead of real names.";
@@ -175,6 +180,7 @@ const navItems = [
   "Expenses",
   "Reports",
   "Attorney Access",
+  "Subscription",
   "Settings",
 ] as const;
 
@@ -186,7 +192,7 @@ const navGroups: Array<{ label: string; items: ActiveView[] }> = [
   { label: "Review", items: ["Timeline", "Calendar", "Exchanges", "Notes", "Files"] },
   { label: "Financial", items: ["Expenses", "Child Support"] },
   { label: "Prepare & Share", items: ["Reports", "Screenshot PDFs", "Attorney Access"] },
-  { label: "Settings", items: ["Settings"] },
+  { label: "Settings", items: ["Subscription", "Settings"] },
 ];
 
 function activeViewLabel(view: ActiveView, terminology: CaseTerminology) {
@@ -203,6 +209,7 @@ function activeViewLabel(view: ActiveView, terminology: CaseTerminology) {
     Expenses: "Expenses",
     Reports: "Reports",
     "Attorney Access": "Attorney access",
+    Subscription: "Subscription",
     Settings: "Settings",
   };
   return labels[view];
@@ -449,6 +456,9 @@ export default function RecordsApp() {
   const [reportType, setReportType] = useState<ReportType>("full_profile");
   const [toast, setToast] = useState("");
   const toastTimeoutRef = useRef<number | null>(null);
+  const billing = useBillingStatus(
+    Boolean(session && recordsStorageMode === "supabase")
+  );
 
   const userId = session?.userId || demoUserId;
   const selectedCase =
@@ -701,6 +711,24 @@ export default function RecordsApp() {
     }, 2800);
   }
 
+  function workspaceUpdateDataset(
+    updater: Parameters<typeof updateDataset>[0]
+  ) {
+    if (billing.status?.entitlement.mode === "export_only") {
+      const proposed = updater(structuredClone(dataset));
+      if (!planExportOnlyDatasetMutation(dataset, proposed)) {
+        flash(
+          "This account is in export-only mode. Viewing, exporting, downloading, deleting, billing management, and attorney revocation remain available."
+        );
+        return Promise.reject(
+          new Error("Reactivate full access before adding or editing records.")
+        );
+      }
+      return updateDataset(() => proposed);
+    }
+    return updateDataset(updater);
+  }
+
   async function exportSectionPacket(
     packet: SectionExportPacket,
     format: SectionExportFormat
@@ -724,7 +752,7 @@ export default function RecordsApp() {
       }
     }
 
-    updateDataset((current) =>
+    workspaceUpdateDataset((current) =>
       withAudit(current, {
         userId,
         caseId: effectiveCaseId,
@@ -733,7 +761,7 @@ export default function RecordsApp() {
         entityId: `${packet.id}-${format}`,
         metadataSummary: `${packet.title} ${format.toUpperCase()} exported without raw row contents in audit metadata.`,
       })
-    );
+    ).catch(() => undefined);
     flash(`${packet.title} ${format.toUpperCase()} export ready.`);
   }
 
@@ -901,6 +929,24 @@ export default function RecordsApp() {
           />
 
           <div className="records-workspace-content space-y-5 px-4 py-5 lg:px-6">
+            {billing.status?.entitlement.mode === "export_only" &&
+            activeView !== "Subscription" ? (
+              <div
+                className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950"
+                role="status"
+              >
+                Export-only access is active. You can view, export, download,
+                delete, manage billing, and revoke attorney access.{" "}
+                <button
+                  type="button"
+                  className="font-semibold underline"
+                  onClick={() => openView("Subscription")}
+                >
+                  Reactivate full access
+                </button>{" "}
+                to add or edit records.
+              </div>
+            ) : null}
             {toast && (
               <div
                 role="status"
@@ -925,7 +971,7 @@ export default function RecordsApp() {
                 events={calendarViewEvents}
                 custodyDayAssignments={selected.custodyDayAssignments}
                 exchangeRules={selected.exchangeRules}
-                updateDataset={updateDataset}
+                updateDataset={workspaceUpdateDataset}
                 userId={userId}
                 caseId={effectiveCaseId}
                 mode={calendarMode}
@@ -944,7 +990,7 @@ export default function RecordsApp() {
             )}
             {activeView === "Import" && (
               <ImportView
-                updateDataset={updateDataset}
+                updateDataset={workspaceUpdateDataset}
                 userId={userId}
                 caseId={effectiveCaseId}
                 timezone={caseTimezone}
@@ -957,7 +1003,7 @@ export default function RecordsApp() {
               <TimelineView
                 events={timelineEvents}
                 range={range}
-                updateDataset={updateDataset}
+                updateDataset={workspaceUpdateDataset}
                 userId={userId}
                 caseId={effectiveCaseId}
                 flash={flash}
@@ -965,7 +1011,7 @@ export default function RecordsApp() {
             )}
             {activeView === "Exchanges" && (
               <ExchangesView
-                updateDataset={updateDataset}
+                updateDataset={workspaceUpdateDataset}
                 userId={userId}
                 caseId={effectiveCaseId}
                 selected={selected}
@@ -980,7 +1026,7 @@ export default function RecordsApp() {
             )}
             {activeView === "Notes" && (
               <NotesView
-                updateDataset={updateDataset}
+                updateDataset={workspaceUpdateDataset}
                 userId={userId}
                 caseId={effectiveCaseId}
                 timezone={caseTimezone}
@@ -992,7 +1038,7 @@ export default function RecordsApp() {
             {(activeView === "Files" || activeView === "Screenshot PDFs") && (
               <EvidenceView
                 mode={activeView === "Screenshot PDFs" ? "screenshots" : "files"}
-                updateDataset={updateDataset}
+                updateDataset={workspaceUpdateDataset}
                 reloadDataset={reloadDataset}
                 userId={userId}
                 caseId={effectiveCaseId}
@@ -1007,7 +1053,7 @@ export default function RecordsApp() {
             )}
             {activeView === "Child Support" && (
               <ChildSupportView
-                updateDataset={updateDataset}
+                updateDataset={workspaceUpdateDataset}
                 userId={userId}
                 caseId={effectiveCaseId}
                 timezone={caseTimezone}
@@ -1022,7 +1068,7 @@ export default function RecordsApp() {
             )}
             {activeView === "Expenses" && (
               <ExpensesView
-                updateDataset={updateDataset}
+                updateDataset={workspaceUpdateDataset}
                 userId={userId}
                 caseId={effectiveCaseId}
                 expenses={selected.expenseItems}
@@ -1045,7 +1091,7 @@ export default function RecordsApp() {
                 range={range}
                 terminology={terminology}
                 flash={flash}
-                updateDataset={updateDataset}
+                updateDataset={workspaceUpdateDataset}
               />
             )}
             {activeView === "Attorney Access" && (
@@ -1058,10 +1104,19 @@ export default function RecordsApp() {
                 onOpenProfileSetup={() => openView("Settings")}
               />
             )}
+            {activeView === "Subscription" && (
+              <SubscriptionPanel
+                status={billing.status}
+                loading={billing.loading}
+                error={billing.error}
+                refresh={billing.refresh}
+                cloudStorageEnabled={recordsStorageMode === "supabase"}
+              />
+            )}
             {activeView === "Settings" && (
               <SettingsView
                 dataset={dataset}
-                updateDataset={updateDataset}
+                updateDataset={workspaceUpdateDataset}
                 resetDemoData={resetDemoData}
                 selected={selected}
                 userId={userId}
@@ -1072,6 +1127,10 @@ export default function RecordsApp() {
                 storageStatus={storageStatus}
                 recordsStorageMode={recordsStorageMode}
                 onOpenAttorneyAccess={() => openView("Attorney Access")}
+                billingStatus={billing.status}
+                billingLoading={billing.loading}
+                billingError={billing.error}
+                onOpenSubscription={() => openView("Subscription")}
               />
             )}
           </div>
@@ -1211,7 +1270,6 @@ function LoginScreen({
 
     const params = new URLSearchParams(window.location.search);
     const authState = params.get("auth");
-    const attorneyOnboardingToken = params.get("attorney_token") || "";
     const fragment = parseRecordsAuthFragment(window.location.hash, authState);
     const preserveAttorneyInvite =
       params.get("next") === "/attorney/accept" && params.get("invite") === "1";
@@ -1228,7 +1286,7 @@ function LoginScreen({
       window.history.replaceState(
         null,
         "",
-        "/records?next=%2Fattorney%2Faccept&invite=1"
+        "/records?next=%2Fattorney&invite=1"
       );
       setRecoveryHydrating(true);
       setError("");
@@ -1238,9 +1296,22 @@ function LoginScreen({
         accessToken: fragment.accessToken,
         refreshToken: fragment.refreshToken,
         expiresIn: fragment.expiresIn,
-        onboardingToken: attorneyOnboardingToken,
       })
         .then((result) => {
+          if (result.status === "mfa_required") {
+            setMfaEnrollment(null);
+            setMode("login");
+            setMfaMode("verify");
+            setMessage("Invited email verified. Enter the current code from your authenticator app.");
+            return;
+          }
+          if (result.status === "mfa_enrollment_required") {
+            setMfaEnrollment(result.enrollment);
+            setMode("login");
+            setMfaMode("enroll");
+            setMessage("Invited email verified. Protect the attorney account with an authenticator app.");
+            return;
+          }
           window.sessionStorage.setItem("l2f.attorney.access", result.accessHandle);
           setMessage("Invited email verified. Opening the shared read only case…");
           window.location.replace("/attorney");
@@ -5699,6 +5770,9 @@ function EvidenceView({
           const body = (await response.json().catch(() => ({}))) as { error?: string };
           throw new Error(body.error || "File delete failed.");
         }
+        await reloadDataset();
+        flash("File and metadata deleted.");
+        return;
       } catch (error) {
         flash(error instanceof Error ? error.message : "File delete failed.");
         setBusyEvidenceId("");
@@ -7149,6 +7223,10 @@ function SettingsView({
   storageStatus,
   recordsStorageMode,
   onOpenAttorneyAccess,
+  billingStatus,
+  billingLoading,
+  billingError,
+  onOpenSubscription,
 }: {
   dataset: RecordsDataset;
   updateDataset: ReturnType<typeof useRecordsStore>["updateDataset"];
@@ -7162,6 +7240,10 @@ function SettingsView({
   storageStatus: string;
   recordsStorageMode: "local" | "supabase";
   onOpenAttorneyAccess: () => void;
+  billingStatus: BillingStatus | null;
+  billingLoading: boolean;
+  billingError: string | null;
+  onOpenSubscription: () => void;
 }) {
   const profile = dataset.users.find((user) => user.userId === userId);
   const selectedMatter = selected.matter;
@@ -7351,29 +7433,33 @@ function SettingsView({
     }
   }
 
-  function deleteCase() {
-    updateDataset((current) => ({
-      ...current,
-      matters: current.matters.filter((item) => item.id !== caseId || item.userId !== userId),
-      exchangeRules: current.exchangeRules.filter((item) => item.caseId !== caseId || item.userId !== userId),
-      scheduleExceptions: current.scheduleExceptions.filter((item) => item.caseId !== caseId || item.userId !== userId),
-      custodyDayAssignments: current.custodyDayAssignments.filter(
-        (item) => item.caseId !== caseId || item.userId !== userId
-      ),
-      exchangeLogs: current.exchangeLogs.filter((item) => item.caseId !== caseId || item.userId !== userId),
-      dateNotes: current.dateNotes.filter((item) => item.caseId !== caseId || item.userId !== userId),
-      evidenceItems: current.evidenceItems.filter((item) => item.caseId !== caseId || item.userId !== userId),
-      childSupportOrders: current.childSupportOrders.filter((item) => item.caseId !== caseId || item.userId !== userId),
-      childSupportPayments: current.childSupportPayments.filter((item) => item.caseId !== caseId || item.userId !== userId),
-      expenseItems: current.expenseItems.filter((item) => item.caseId !== caseId || item.userId !== userId),
-    }));
-    setSelectedCaseId(
-      selected.matters.find((matter) => matter.id !== caseId)?.id ||
-        (recordsStorageMode === "supabase"
-          ? defaultCaseIdForUser(userId)
-          : demoCaseId)
-    );
-    flash("Selected case deleted.");
+  async function deleteCase() {
+    try {
+      await updateDataset((current) => ({
+        ...current,
+        matters: current.matters.filter((item) => item.id !== caseId || item.userId !== userId),
+        exchangeRules: current.exchangeRules.filter((item) => item.caseId !== caseId || item.userId !== userId),
+        scheduleExceptions: current.scheduleExceptions.filter((item) => item.caseId !== caseId || item.userId !== userId),
+        custodyDayAssignments: current.custodyDayAssignments.filter(
+          (item) => item.caseId !== caseId || item.userId !== userId
+        ),
+        exchangeLogs: current.exchangeLogs.filter((item) => item.caseId !== caseId || item.userId !== userId),
+        dateNotes: current.dateNotes.filter((item) => item.caseId !== caseId || item.userId !== userId),
+        evidenceItems: current.evidenceItems.filter((item) => item.caseId !== caseId || item.userId !== userId),
+        childSupportOrders: current.childSupportOrders.filter((item) => item.caseId !== caseId || item.userId !== userId),
+        childSupportPayments: current.childSupportPayments.filter((item) => item.caseId !== caseId || item.userId !== userId),
+        expenseItems: current.expenseItems.filter((item) => item.caseId !== caseId || item.userId !== userId),
+      }));
+      setSelectedCaseId(
+        selected.matters.find((matter) => matter.id !== caseId)?.id ||
+          (recordsStorageMode === "supabase"
+            ? defaultCaseIdForUser(userId)
+            : demoCaseId)
+      );
+      flash("Selected case deleted.");
+    } catch (error) {
+      flash(error instanceof Error ? error.message : "Case deletion failed.");
+    }
   }
 
   function exportData() {
@@ -7465,14 +7551,24 @@ function SettingsView({
               <button className="btn-primary" type="submit">Save profile</button>
             </form>
           </Panel>
-          <Panel title="Attorney access" action="Read only">
-            <div className="space-y-4 text-sm leading-6 text-slate-600">
-              <p>Invite an attorney, review who can see this case, or revoke access at any time.</p>
-              <button type="button" className="btn-primary" onClick={onOpenAttorneyAccess}>
-                Manage attorney access
-              </button>
-            </div>
-          </Panel>
+          <div className="space-y-4">
+            {recordsStorageMode === "supabase" ? (
+              <AccountSubscriptionIndicator
+                status={billingStatus}
+                loading={billingLoading}
+                error={billingError}
+                onOpenSubscription={onOpenSubscription}
+              />
+            ) : null}
+            <Panel title="Attorney access" action="Read only">
+              <div className="space-y-4 text-sm leading-6 text-slate-600">
+                <p>Invite an attorney, review who can see this case, or revoke access at any time.</p>
+                <button type="button" className="btn-primary" onClick={onOpenAttorneyAccess}>
+                  Manage attorney access
+                </button>
+              </div>
+            </Panel>
+          </div>
         </div>
       ) : null}
 
@@ -7651,7 +7747,7 @@ function SettingsView({
               </div>
             </details>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <button type="button" onClick={deleteCase} className="btn-secondary">Delete selected case</button>
+              <button type="button" onClick={() => void deleteCase()} className="btn-secondary">Delete selected case</button>
               <button type="button" onClick={resetDemoData} className="btn-secondary">
                 {recordsStorageMode === "supabase" ? "Clear workspace data" : "Reset demo data"}
               </button>

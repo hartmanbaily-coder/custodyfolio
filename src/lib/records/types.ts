@@ -155,6 +155,7 @@ export interface CustodyMatter {
   timezone: string;
   terminology?: Partial<CaseTerminology>;
   notes?: string;
+  deletionPendingAt?: string;
   createdAt: string;
   updatedAt: string;
 }

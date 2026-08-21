@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteRecordsEvidenceForUser } from "@/lib/records/accountDeletion";
+import {
+  beginRecordsAccountDeletion,
+  clearRecordsAccountDeletion,
+  completeRecordsAccountDeletion,
+  deleteRecordsEvidenceForUser,
+} from "@/lib/records/accountDeletion";
 import {
   clearRecordsSessionCookies,
   getRecordsAuthContext,
@@ -9,6 +14,11 @@ import {
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
+import { requireRecordsCapability } from "@/lib/billing/capabilities";
+import {
+  prepareBillingForAccountDeletion,
+  redactBillingIdentityForAccountDeletion,
+} from "@/lib/billing/accountDeletion";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -53,6 +63,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
+  const capability = await requireRecordsCapability(context, "account:delete");
+  if (!capability.ok) return capability.error;
+
   const userRateLimit = checkRateLimit(request, {
     id: "records-account-delete-user",
     key: context.userId,
@@ -66,6 +79,39 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return deletionError(
       "Confirm permanent deletion before continuing.",
       400
+    );
+  }
+
+  try {
+    await beginRecordsAccountDeletion({
+      supabase: context.supabase,
+      userId: context.userId,
+    });
+  } catch {
+    return deletionError("Account deletion could not be locked safely. Try again shortly.");
+  }
+
+  let billingPreparation;
+  try {
+    billingPreparation = await prepareBillingForAccountDeletion({
+      supabase: context.supabase,
+      userId: context.userId,
+    });
+  } catch {
+    await clearRecordsAccountDeletion({
+      supabase: context.supabase,
+      userId: context.userId,
+    }).catch(() => undefined);
+    await recordSecurityEvent({
+      type: "account_deletion_billing_cancellation_failed",
+      severity: "critical",
+      request,
+      userId: context.userId,
+      status: 503,
+      detail: "Immediate account deletion stopped because Stripe cancellation or billing verification could not be confirmed.",
+    });
+    return deletionError(
+      "Your account was not deleted because active web billing could not be safely stopped. Try again or contact support."
     );
   }
 
@@ -112,6 +158,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
+  try {
+    await redactBillingIdentityForAccountDeletion({
+      supabase: context.supabase,
+      userId: context.userId,
+    });
+  } catch {
+    await recordSecurityEvent({
+      type: "account_deletion_billing_redaction_failed",
+      severity: "critical",
+      request,
+      userId: context.userId,
+      status: 503,
+      detail: "Evidence and sessions were removed, but billing identity minimization failed before Auth deletion.",
+    });
+    const response = deletionError(
+      "Your files and active sessions were removed, but the account could not be fully deleted. Contact support to complete deletion."
+    );
+    clearRecordsSessionCookies(response);
+    return response;
+  }
+
   const { error: deleteUserError } = await context.supabase.auth.admin.deleteUser(
     context.userId,
     false
@@ -133,6 +200,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return response;
   }
 
+
+  try {
+    await completeRecordsAccountDeletion({
+      supabase: context.supabase,
+      userId: context.userId,
+    });
+  } catch {
+    await recordSecurityEvent({
+      type: "account_deletion_failed",
+      severity: "critical",
+      request,
+      userId: context.userId,
+      status: 502,
+      detail: "The account was deleted, but its deletion tombstone could not be finalized.",
+    });
+    const response = deletionError(
+      "Your account and files were removed, but deletion confirmation could not be finalized. Contact support.",
+      502
+    );
+    clearRecordsSessionCookies(response);
+    return response;
+  }
+
   const deletedAt = new Date().toISOString();
   await recordSecurityEvent({
     type: "account_deletion_completed",
@@ -148,7 +238,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ok: true,
       deletedAt,
       clearLocalSession: true,
-      message: "Your account and active Custody Folio records were permanently deleted.",
+      message: billingPreparation.appleBillingMayContinue
+        ? "Your account and active Custody Folio records were permanently deleted. Apple may continue App Store billing until you cancel it in your Apple subscription settings."
+        : "Your account and active Custody Folio records were permanently deleted.",
+      billing: {
+        stripeSubscriptionsCanceled:
+          billingPreparation.canceledStripeSubscriptions,
+        appleBillingMayContinue: billingPreparation.appleBillingMayContinue,
+      },
     },
     { headers: { "Cache-Control": "no-store" } }
   );

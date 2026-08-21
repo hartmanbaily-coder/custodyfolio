@@ -22,6 +22,7 @@ const sections: PolicySection[] = [
     title: "Before you delete the account",
     body: [
       "Export any records and download any files you need before confirming deletion.",
+      "An active web subscription is cancelled before deletion. An App Store subscription is managed by Apple and may continue until you cancel it in Apple subscription settings; this does not delay account deletion.",
       "Account deletion cannot be undone.",
     ],
   },

@@ -11,6 +11,7 @@ import {
 } from "@/lib/records/evidenceStorage";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
+import { requireRecordsCapability } from "@/lib/billing/capabilities";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -30,6 +31,8 @@ export async function POST(request: NextRequest) {
 
   const context = await getRecordsAuthContext(request);
   if ("error" in context) return context.error;
+  const capability = await requireRecordsCapability(context, "evidence:delete");
+  if (!capability.ok) return capability.error;
 
   const body = (await request.json().catch(() => ({}))) as {
     caseId?: unknown;

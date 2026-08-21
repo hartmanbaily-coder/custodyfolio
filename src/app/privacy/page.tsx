@@ -56,8 +56,17 @@ const sections: PolicySection[] = [
     body: [
       "Supabase provides authentication, database, and private file storage; Backblaze provides encrypted off-site evidence backups; Hetzner hosts the application; Cloudflare provides network delivery, DNS, and security protection; and Resend delivers authentication email.",
       "Apple iCloud Mail processes support, privacy, and security messages. Have I Been Pwned processes password-hash prefixes only when compromised-password screening is enabled.",
+      "When subscription billing is enabled, Stripe processes web checkout, subscription, invoice, refund, dispute, and payment-method information; Apple processes App Store purchase and subscription information. Custody Folio does not store full card details.",
       "Providers process information only to provide contracted services and are required to protect it. The current provider list and processing descriptions appear on the Subprocessors page.",
       "We may disclose information in response to valid legal process, to protect people or the service, or as part of a business transfer where the recipient assumes these privacy obligations. We review requests and disclose only what we reasonably believe is required.",
+    ],
+  },
+  {
+    title: "Subscription information — draft for counsel review",
+    body: [
+      "Billing-related language is a pre-launch draft for qualified-counsel review. Production billing remains disabled until review and technical readiness gates are complete.",
+      "Custody Folio stores a pseudonymous billing-account identifier, provider customer or subscription identifiers, product and status information, payment-period dates, verified provider-event digests, trial dates, and privacy-safe billing audit records. Card details remain with Stripe or Apple.",
+      "Billing records needed for financial, fraud, dispute, tax, or legal obligations are separated from custody records. After account deletion, the user link is replaced with a keyed pseudonymous hash and trial and active-entitlement records are removed. Provider financial records may remain for the period legally required.",
     ],
   },
   {
@@ -84,6 +93,7 @@ const sections: PolicySection[] = [
       "Encrypted backups rotate and deleted customer content ages out no later than 180 days after a verified deletion. Restored backups must reapply valid deletion requests before serving production traffic.",
       "Raw request logs are retained for up to 180 days. Authentication, security, attorney-access, and deletion audit events may be retained for up to 365 days when reasonably necessary to protect accounts, prove actions, or comply with law.",
       "Closed support and privacy correspondence is normally retained for up to 24 months. A documented legal hold may extend a period only for information reasonably necessary to comply with law or establish, exercise, or defend a legal claim.",
+      "Billing-provider transaction and legally required accounting records may follow longer statutory retention periods. They are minimized and separated from deleted custody content, and the specific period requires qualified legal and tax review before launch.",
     ],
   },
   {

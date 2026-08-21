@@ -1,3 +1,5 @@
+import { evaluateProductionApprovalEvidence } from "../src/lib/production/approvalEvidence.mjs";
+
 const placeholderValues = new Set([
   "",
   "changeme",
@@ -25,6 +27,26 @@ function isHttpsUrl(value) {
   if (!value) return false;
   try {
     return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function isCanonicalPrivacyPolicyUrl(policyValue, appValue) {
+  if (!policyValue || !appValue) return false;
+  try {
+    const policy = new URL(policyValue);
+    const app = new URL(appValue);
+    return (
+      policy.protocol === "https:" &&
+      app.protocol === "https:" &&
+      policy.origin === app.origin &&
+      policy.pathname === "/privacy" &&
+      policy.search === "" &&
+      policy.hash === "" &&
+      policy.username === "" &&
+      policy.password === ""
+    );
   } catch {
     return false;
   }
@@ -139,6 +161,9 @@ const expectedSupabaseRef = (process.env.EXPECTED_SUPABASE_PROJECT_REF || "").tr
 const aiImportEnabled = isEnabled(process.env.RECORDS_AI_IMPORT_ENABLED);
 const recordsSignupsEnabled = isEnabled(process.env.RECORDS_SIGNUPS_ENABLED);
 const publicRecordsSignupsEnabled = isEnabled(process.env.NEXT_PUBLIC_RECORDS_SIGNUPS_ENABLED);
+const approvalEvidence = evaluateProductionApprovalEvidence(
+  process.env.PRODUCTION_APPROVAL_MANIFEST_BASE64
+);
 
 const checks = [
   ["NEXT_PUBLIC_APP_URL", isHttpsUrl(process.env.NEXT_PUBLIC_APP_URL), "must be an https:// URL"],
@@ -303,10 +328,26 @@ const checks = [
     isRecentDate(process.env.TWO_USER_ISOLATION_TESTED_AT, 30),
     "must be an ISO date within the last 30 days",
   ],
-  ["DATA_RETENTION_POLICY_APPROVED", isEnabled(process.env.DATA_RETENTION_POLICY_APPROVED), "must be true"],
-  ["INCIDENT_RESPONSE_PLAN_APPROVED", isEnabled(process.env.INCIDENT_RESPONSE_PLAN_APPROVED), "must be true"],
-  ["LEGAL_REVIEW_APPROVED", isEnabled(process.env.LEGAL_REVIEW_APPROVED), "must be true"],
-  ["PRIVACY_POLICY_URL", isHttpsUrl(process.env.PRIVACY_POLICY_URL), "must be an https:// URL"],
+  [
+    "DATA_RETENTION_POLICY_APPROVED",
+    isEnabled(process.env.DATA_RETENTION_POLICY_APPROVED) && approvalEvidence.retention.ready,
+    "must be true with a current, digest-bound retention approval and privacy-rights rehearsal in PRODUCTION_APPROVAL_MANIFEST_BASE64",
+  ],
+  [
+    "INCIDENT_RESPONSE_PLAN_APPROVED",
+    isEnabled(process.env.INCIDENT_RESPONSE_PLAN_APPROVED) && approvalEvidence.incident.ready,
+    "must be true with current digest-bound approval, named tested contacts, and a recent tabletop in PRODUCTION_APPROVAL_MANIFEST_BASE64",
+  ],
+  [
+    "LEGAL_REVIEW_APPROVED",
+    isEnabled(process.env.LEGAL_REVIEW_APPROVED) && approvalEvidence.legal.ready,
+    "must be true with qualified-counsel approval of the exact policy digests in PRODUCTION_APPROVAL_MANIFEST_BASE64",
+  ],
+  [
+    "PRIVACY_POLICY_URL",
+    isCanonicalPrivacyPolicyUrl(process.env.PRIVACY_POLICY_URL, process.env.NEXT_PUBLIC_APP_URL),
+    "must be the exact https /privacy URL on NEXT_PUBLIC_APP_URL without query parameters or fragments",
+  ],
   [
     "SECURITY_CONTACT_EMAIL",
     hasValue(process.env.SECURITY_CONTACT_EMAIL) && process.env.SECURITY_CONTACT_EMAIL.includes("@"),

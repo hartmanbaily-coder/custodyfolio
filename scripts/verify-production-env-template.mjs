@@ -34,6 +34,50 @@ const requiredKeys = [
   "OPENAI_IMPORT_MODEL",
   "AUTH_SECRET",
   "AUTH_TRUST_HOST",
+  "BILLING_MODE",
+  "BILLING_CHECKOUT_ENABLED",
+  "LIVE_BILLING_APPROVED",
+  "BILLING_LIVE_ACTIVATION_AUTHORIZED",
+  "BILLING_LIVE_CANARY_AUTHORIZED",
+  "BILLING_LIVE_CANARY_USER_ID",
+  "BILLING_LIVE_CANARY_EXPIRES_AT",
+  "BILLING_RETURN_STATE_SECRET",
+  "BILLING_DELETION_HASH_SECRET",
+  "BILLING_GRACE_PERIOD_DAYS",
+  "BILLING_STALE_TOLERANCE_HOURS",
+  "STRIPE_TEST_SECRET_KEY",
+  "STRIPE_TEST_WEBHOOK_SECRET",
+  "STRIPE_TEST_MONTHLY_PRICE_ID",
+  "STRIPE_TEST_ANNUAL_PRICE_ID",
+  "STRIPE_TEST_PORTAL_CONFIGURATION_ID",
+  "STRIPE_LIVE_RESTRICTED_KEY",
+  "STRIPE_LIVE_WEBHOOK_SECRET",
+  "STRIPE_LIVE_MONTHLY_PRICE_ID",
+  "STRIPE_LIVE_ANNUAL_PRICE_ID",
+  "STRIPE_LIVE_PORTAL_CONFIGURATION_ID",
+  "STRIPE_CUSTOMER_PORTAL_VERIFIED_AT",
+  "APPLE_BILLING_ENVIRONMENT",
+  "APPLE_BUNDLE_ID",
+  "APPLE_APP_ID",
+  "APPLE_MONTHLY_PRODUCT_ID",
+  "APPLE_ANNUAL_PRODUCT_ID",
+  "APPLE_ROOT_CA_CERTIFICATES_BASE64",
+  "APPLE_APP_STORE_SERVER_PRIVATE_KEY_BASE64",
+  "APPLE_APP_STORE_SERVER_KEY_ID",
+  "APPLE_APP_STORE_SERVER_ISSUER_ID",
+  "APPLE_NOTIFICATIONS_V2_URL",
+  "APPLE_NOTIFICATIONS_V2_VERIFIED_AT",
+  "APPLE_SMALL_BUSINESS_PROGRAM_STATUS",
+  "BILLING_PROVIDER_TESTED_AT",
+  "BILLING_RECONCILIATION_TESTED_AT",
+  "BILLING_MIGRATION_VERIFIED_AT",
+  "BILLING_TERMS_VERSION",
+  "BILLING_PRIVACY_VERSION",
+  "BILLING_SUBPROCESSOR_VERSION",
+  "BILLING_DISCLOSURE_VERSION",
+  "BILLING_POLICY_COUNSEL_REVIEWED",
+  "BILLING_POLICY_VERSIONS_VERIFIED_AT",
+  "BILLING_TAX_REVIEW_APPROVED",
   "ATTORNEY_GUEST_FEATURE_ENABLED",
   "ATTORNEY_PORTAL_SECRET",
   "ATTORNEY_INVITE_OWNER_SHARE_ENABLED",
@@ -68,6 +112,7 @@ const requiredKeys = [
   "DATA_RETENTION_POLICY_APPROVED",
   "INCIDENT_RESPONSE_PLAN_APPROVED",
   "LEGAL_REVIEW_APPROVED",
+  "PRODUCTION_APPROVAL_MANIFEST_BASE64",
   "VENDOR_SECURITY_REVIEW_APPROVED",
   "RECORDS_APP_BASE_URL",
   "RECORDS_ISOLATION_EMAIL_DOMAIN",
@@ -122,6 +167,52 @@ if (entries.get("STARTER_RESOURCE_PROFILE") !== "true") {
   findings.push("STARTER_RESOURCE_PROFILE must remain true in the 4 GiB starter template.");
 }
 
+if (entries.get("BILLING_MODE") !== "disabled") {
+  findings.push("BILLING_MODE must remain disabled in the production template.");
+}
+
+if (entries.get("BILLING_CHECKOUT_ENABLED") !== "false") {
+  findings.push("BILLING_CHECKOUT_ENABLED must remain false in the production template.");
+}
+
+if (entries.get("LIVE_BILLING_APPROVED") !== "false") {
+  findings.push("LIVE_BILLING_APPROVED must remain false in the production template.");
+}
+
+if (entries.get("BILLING_LIVE_ACTIVATION_AUTHORIZED") !== "false") {
+  findings.push("BILLING_LIVE_ACTIVATION_AUTHORIZED must remain false in the production template.");
+}
+
+if (entries.get("BILLING_LIVE_CANARY_AUTHORIZED") !== "false") {
+  findings.push("BILLING_LIVE_CANARY_AUTHORIZED must remain false in the production template.");
+}
+
+if (entries.get("BILLING_LIVE_CANARY_USER_ID") !== "") {
+  findings.push("BILLING_LIVE_CANARY_USER_ID must remain empty in the production template.");
+}
+
+if (entries.get("BILLING_LIVE_CANARY_EXPIRES_AT") !== "") {
+  findings.push("BILLING_LIVE_CANARY_EXPIRES_AT must remain empty in the production template.");
+}
+
+if (entries.get("BILLING_POLICY_COUNSEL_REVIEWED") !== "false") {
+  findings.push("BILLING_POLICY_COUNSEL_REVIEWED must remain false while policy copy is draft.");
+}
+
+if (entries.get("BILLING_TAX_REVIEW_APPROVED") !== "false") {
+  findings.push("BILLING_TAX_REVIEW_APPROVED must remain false pending tax review.");
+}
+
+for (const key of [
+  "STRIPE_TEST_SECRET_KEY",
+  "STRIPE_TEST_WEBHOOK_SECRET",
+  "STRIPE_TEST_MONTHLY_PRICE_ID",
+  "STRIPE_TEST_ANNUAL_PRICE_ID",
+  "STRIPE_TEST_PORTAL_CONFIGURATION_ID",
+]) {
+  if (entries.get(key) !== "") findings.push(`${key} must remain empty in the production template.`);
+}
+
 if (entries.get("OFFSITE_STORAGE_BACKUP_ENABLED") !== "true") {
   findings.push("OFFSITE_STORAGE_BACKUP_ENABLED must be true in the production template.");
 }
@@ -151,6 +242,28 @@ if (authSecretValue && !/^REPLACE_WITH_|^PLACEHOLDER/i.test(authSecretValue)) {
 const attorneySecretValue = String(entries.get("ATTORNEY_PORTAL_SECRET") || "").trim();
 if (attorneySecretValue && !/^REPLACE_WITH_|^PLACEHOLDER/i.test(attorneySecretValue)) {
   findings.push("ATTORNEY_PORTAL_SECRET must remain a placeholder in .env.production.example.");
+}
+
+for (const key of [
+  "BILLING_RETURN_STATE_SECRET",
+  "BILLING_DELETION_HASH_SECRET",
+  "STRIPE_LIVE_RESTRICTED_KEY",
+  "STRIPE_LIVE_WEBHOOK_SECRET",
+  "APPLE_ROOT_CA_CERTIFICATES_BASE64",
+  "APPLE_APP_STORE_SERVER_PRIVATE_KEY_BASE64",
+  "APPLE_APP_STORE_SERVER_KEY_ID",
+  "APPLE_APP_STORE_SERVER_ISSUER_ID",
+  "MALWARE_SCAN_API_KEY",
+  "SECURITY_EVENT_WEBHOOK_TOKEN",
+]) {
+  const value = String(entries.get(key) || "").trim();
+  if (value && !/^REPLACE_WITH_|^PLACEHOLDER/i.test(value)) {
+    findings.push(`${key} must remain empty or a placeholder in .env.production.example.`);
+  }
+}
+
+if (String(entries.get("PRODUCTION_APPROVAL_MANIFEST_BASE64") || "").trim()) {
+  findings.push("PRODUCTION_APPROVAL_MANIFEST_BASE64 must remain empty in .env.production.example.");
 }
 
 if (entries.get("ATTORNEY_GUEST_FEATURE_ENABLED") !== "false") {

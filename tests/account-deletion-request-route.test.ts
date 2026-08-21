@@ -11,6 +11,9 @@ const revokeSessions = vi.hoisted(() => vi.fn());
 const deleteUser = vi.hoisted(() => vi.fn());
 const clearRecordsSessionCookies = vi.hoisted(() => vi.fn());
 const deleteRecordsEvidenceForUser = vi.hoisted(() => vi.fn());
+const beginRecordsAccountDeletion = vi.hoisted(() => vi.fn());
+const clearRecordsAccountDeletion = vi.hoisted(() => vi.fn());
+const completeRecordsAccountDeletion = vi.hoisted(() => vi.fn());
 const csrf = "account-deletion-csrf-token";
 
 vi.mock("@/lib/records/authServer", () => ({
@@ -25,6 +28,9 @@ vi.mock("@/lib/security/securityEvents", () => ({
 }));
 
 vi.mock("@/lib/records/accountDeletion", () => ({
+  beginRecordsAccountDeletion,
+  clearRecordsAccountDeletion,
+  completeRecordsAccountDeletion,
   deleteRecordsEvidenceForUser,
 }));
 
@@ -49,6 +55,9 @@ describe("records immediate account deletion route", () => {
     vi.clearAllMocks();
     resetRateLimitStore();
     deleteRecordsEvidenceForUser.mockResolvedValue({ ok: true, deletedObjects: 2 });
+    beginRecordsAccountDeletion.mockResolvedValue("2026-08-21T00:00:00.000Z");
+    clearRecordsAccountDeletion.mockResolvedValue(undefined);
+    completeRecordsAccountDeletion.mockResolvedValue(undefined);
     revokeSessions.mockResolvedValue({ error: null });
     deleteUser.mockResolvedValue({ error: null });
     getRecordsAuthContext.mockResolvedValue({
@@ -82,6 +91,12 @@ describe("records immediate account deletion route", () => {
     );
     expect(revokeSessions).toHaveBeenCalledWith("test-access-token", "global");
     expect(deleteUser).toHaveBeenCalledWith(userId, false);
+    expect(beginRecordsAccountDeletion).toHaveBeenCalledWith(
+      expect.objectContaining({ userId })
+    );
+    expect(completeRecordsAccountDeletion).toHaveBeenCalledWith(
+      expect.objectContaining({ userId })
+    );
     expect(recordSecurityEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         severity: "info",

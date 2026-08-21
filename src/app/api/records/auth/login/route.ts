@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAuthApiError, type Session } from "@supabase/supabase-js";
+import { isAuthApiError } from "@supabase/supabase-js";
 import { createServerSupabaseAuthClient } from "@/lib/supabaseClient";
-import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import {
-  getAccessTokenAal,
   isRecordsMfaRequired,
   isRecordsSignupEnabled,
   isSupabaseRecordsMode,
@@ -14,23 +12,22 @@ import { recordsProfileIsAuthorized, upsertRecordsProfile } from "@/lib/records/
 import { recordsAttorneyProfileIsAuthorized } from "@/lib/records/attorneyProfileServer";
 import {
   attorneyAcceptanceCookieName,
+  acceptPendingAttorneyInvitationForUser,
   clearAttorneyAcceptanceCookie,
   findPendingAttorneyInvitationForEmail,
 } from "@/lib/records/attorneyServer";
-import {
-  attorneyEmailHash,
-  hashAttorneyInvitationToken,
-} from "@/lib/records/attorneyCrypto";
 import { recordsCsrfError, verifyRecordsTrustedJsonRequest } from "@/lib/security/csrf";
 import { checkRateLimit, rateLimitClientAddress, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
 import { privacyVersion, termsVersion } from "@/lib/legal";
+import { recordsMfaPolicyResponse } from "@/lib/records/mfaPolicyServer";
+import { BoundedTtlStore } from "@/lib/security/boundedTtlStore";
 
 export const dynamic = "force-dynamic";
 
 const failedLoginWindowMs = 5 * 60 * 1000;
 const maxFailedLogins = 8;
-const failedLogins = new Map<string, { count: number; resetAt: number }>();
+const failedLogins = new BoundedTtlStore<{ count: number }>(10_000);
 
 function disabledResponse() {
   return NextResponse.json(
@@ -49,21 +46,16 @@ function clientKey(request: NextRequest, email: string) {
 
 function isLimited(key: string) {
   const current = failedLogins.get(key);
-  if (!current) return false;
-  if (current.resetAt <= Date.now()) {
-    failedLogins.delete(key);
-    return false;
-  }
-  return current.count >= maxFailedLogins;
+  return Boolean(current && current.count >= maxFailedLogins);
 }
 
 function recordFailedLogin(key: string) {
   const current = failedLogins.get(key);
-  const resetAt = Date.now() + failedLoginWindowMs;
-  failedLogins.set(key, {
-    count: current && current.resetAt > Date.now() ? current.count + 1 : 1,
-    resetAt,
-  });
+  failedLogins.set(
+    key,
+    { count: current ? current.count + 1 : 1 },
+    Date.now() + failedLoginWindowMs
+  );
 }
 
 function loginFailure(error: unknown) {
@@ -110,146 +102,6 @@ function sessionBody(input: { userId: string; email: string }) {
   };
 }
 
-async function acceptPasswordAuthenticatedAttorneyInvitation(input: {
-  token: string;
-  userId: string;
-  email: string;
-}) {
-  const invitation = await findPendingAttorneyInvitationForEmail({
-    token: input.token,
-    email: input.email,
-  });
-  if (!invitation) return false;
-
-  const admin = createSupabaseAdminClient();
-  const accepted = await admin.rpc("accept_records_attorney_invitation", {
-    p_token_hash: hashAttorneyInvitationToken(input.token),
-    p_attorney_user_id: input.userId,
-    p_invited_email_hash: attorneyEmailHash(input.email),
-  });
-  const row = Array.isArray(accepted.data) ? accepted.data[0] : null;
-  return !accepted.error && Boolean(row?.grant_id) && row.owner_user_id !== input.userId;
-}
-
-async function mfaResponse(input: {
-  request: NextRequest;
-  authClient: ReturnType<typeof createServerSupabaseAuthClient>;
-  session: Session;
-  sessionScope: "records" | "attorney_mfa_pending";
-}) {
-  const assurance = await input.authClient.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (assurance.error) {
-    await recordSecurityEvent({
-      type: "auth_mfa_policy_denied",
-      severity: "high",
-      request: input.request,
-      status: 403,
-      detail: "Unable to read MFA assurance level.",
-    });
-    return NextResponse.json({ error: "Unable to verify MFA status." }, { status: 403 });
-  }
-
-  if (assurance.data.currentLevel === "aal2" || getAccessTokenAal(input.session.access_token) === "aal2") {
-    return null;
-  }
-
-  const factors = await input.authClient.auth.mfa.listFactors();
-  if (factors.error) {
-    await recordSecurityEvent({
-      type: "auth_mfa_policy_denied",
-      severity: "high",
-      request: input.request,
-      status: 403,
-      detail: "Unable to list MFA factors.",
-    });
-    return NextResponse.json({ error: "Unable to verify MFA factors." }, { status: 403 });
-  }
-
-  const totpFactors = factors.data.totp;
-  const hasVerifiedTotp = totpFactors.some((factor) => factor.status === "verified");
-  const hasUnknownStatusTotp = totpFactors.some((factor) => !("status" in factor));
-  if (hasVerifiedTotp || (hasUnknownStatusTotp && assurance.data.nextLevel === "aal2")) {
-    const response = NextResponse.json(
-      {
-        error: "Multi factor verification required.",
-        mfaRequired: true,
-      },
-      { status: 403, headers: { "Cache-Control": "no-store" } }
-    );
-    setRecordsSessionCookies(
-      response,
-      input.session,
-      defaultCaseIdForUser(input.session.user.id),
-      input.sessionScope
-    );
-    await recordSecurityEvent({
-      type: "auth_mfa_required",
-      severity: "info",
-      request: input.request,
-      status: 403,
-    });
-    return response;
-  }
-
-  const unfinishedTotpFactors = totpFactors.filter((factor) => factor.status !== "verified");
-  for (const factor of unfinishedTotpFactors) {
-    const unenrollment = await input.authClient.auth.mfa.unenroll({ factorId: factor.id });
-    if (unenrollment.error) {
-      await recordSecurityEvent({
-        type: "auth_mfa_enrollment_failed",
-        severity: "high",
-        request: input.request,
-        status: 403,
-        detail: "Unable to reset unfinished MFA enrollment.",
-      });
-      return NextResponse.json({ error: "Unable to reset unfinished MFA enrollment." }, { status: 403 });
-    }
-  }
-
-  const enrollment = await input.authClient.auth.mfa.enroll({
-    factorType: "totp",
-    issuer: "Custody Folio",
-  });
-
-  if (enrollment.error) {
-    await recordSecurityEvent({
-      type: "auth_mfa_enrollment_failed",
-      severity: "high",
-      request: input.request,
-      status: 403,
-      detail: "Unable to start MFA enrollment.",
-    });
-    return NextResponse.json({ error: "Unable to start MFA enrollment." }, { status: 403 });
-  }
-
-  const response = NextResponse.json(
-    {
-      error: "Authenticator app enrollment required.",
-      mfaRequired: true,
-      mfaEnrollmentRequired: true,
-      enrollment: {
-        factorId: enrollment.data.id,
-        qrCode: enrollment.data.totp.qr_code,
-        secret: enrollment.data.totp.secret,
-      },
-    },
-    { status: 403, headers: { "Cache-Control": "no-store" } }
-  );
-  setRecordsSessionCookies(
-    response,
-    input.session,
-    defaultCaseIdForUser(input.session.user.id),
-    input.sessionScope
-  );
-  await recordSecurityEvent({
-    type: "auth_mfa_enrollment_started",
-    severity: "info",
-    request: input.request,
-    status: 403,
-  });
-  return response;
-}
-
 async function handleLoginPost(request: NextRequest) {
   if (!isSupabaseRecordsMode()) return disabledResponse();
   if (!verifyRecordsTrustedJsonRequest(request).ok) return recordsCsrfError();
@@ -279,7 +131,7 @@ async function handleLoginPost(request: NextRequest) {
   const adultConfirmed = body.adultConfirmed === true;
   const attorneyWorkspace = body.workspace === "attorney";
 
-  if (!adultConfirmed || !email.includes("@") || password.length < 8) {
+  if (!adultConfirmed || !email.includes("@") || email.length > 254 || password.length < 8) {
     return NextResponse.json({ error: "Check your email, password, and adult use confirmation." }, { status: 400 });
   }
 
@@ -312,14 +164,13 @@ async function handleLoginPost(request: NextRequest) {
   const attorneyInvitationToken = attorneyWorkspace
     ? request.cookies.get(attorneyAcceptanceCookieName)?.value || ""
     : "";
-  let acceptedAttorneyInvitation = false;
+  let pendingAttorneyInvitation = null;
   if (attorneyInvitationToken) {
-    acceptedAttorneyInvitation = await acceptPasswordAuthenticatedAttorneyInvitation({
+    pendingAttorneyInvitation = await findPendingAttorneyInvitationForEmail({
       token: attorneyInvitationToken,
-      userId: data.user.id,
       email: data.user.email || email,
     });
-    if (!acceptedAttorneyInvitation) {
+    if (!pendingAttorneyInvitation || pendingAttorneyInvitation.owner_user_id === data.user.id) {
       await supabase.auth.signOut({ scope: "local" });
       await recordSecurityEvent({
         type: "auth_login_unregistered_identity_blocked",
@@ -337,11 +188,12 @@ async function handleLoginPost(request: NextRequest) {
   }
 
   const identityAuthorized = attorneyWorkspace
-    ? await recordsAttorneyProfileIsAuthorized({
-        userId: data.user.id,
-        email: data.user.email || email,
-        accessToken: data.session.access_token,
-      })
+    ? Boolean(pendingAttorneyInvitation) ||
+      await recordsAttorneyProfileIsAuthorized({
+          userId: data.user.id,
+          email: data.user.email || email,
+          accessToken: data.session.access_token,
+        })
     : isRecordsSignupEnabled() ||
       await recordsProfileIsAuthorized(data.user.id, data.session.access_token);
   if (!identityAuthorized) {
@@ -371,15 +223,34 @@ async function handleLoginPost(request: NextRequest) {
     refresh_token: data.session.refresh_token,
   });
 
-  if (isRecordsMfaRequired()) {
-    const mfa = await mfaResponse({
+  if (isRecordsMfaRequired() || attorneyWorkspace) {
+    const mfa = await recordsMfaPolicyResponse({
       request,
       authClient: supabase,
       session: data.session,
+      userId: data.user.id,
       sessionScope: attorneyWorkspace ? "attorney_mfa_pending" : "records",
     });
     if (mfa) {
-      return acceptedAttorneyInvitation ? clearAttorneyAcceptanceCookie(mfa) : mfa;
+      return mfa;
+    }
+  }
+
+  let acceptedAttorneyInvitation = false;
+  if (attorneyInvitationToken) {
+    acceptedAttorneyInvitation = Boolean(
+      await acceptPendingAttorneyInvitationForUser({
+        token: attorneyInvitationToken,
+        userId: data.user.id,
+        email: data.user.email || email,
+      })
+    );
+    if (!acceptedAttorneyInvitation) {
+      await supabase.auth.signOut({ scope: "local" });
+      return NextResponse.json(
+        { error: "This invitation changed before authenticator verification. Ask the client for a new link." },
+        { status: 409, headers: { "Cache-Control": "no-store" } }
+      );
     }
   }
 

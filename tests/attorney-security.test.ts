@@ -215,6 +215,34 @@ describe("attorney migration controls", () => {
     expect(permanentAccountsMigration).toContain("insert into public.records_attorney_profiles");
     expect(permanentAccountsMigration).not.toContain("user_metadata");
 
+    const profileRepairMigration = await readFile(
+      new URL(
+        "../supabase/migrations/20260813023941_restore_attorney_profile_upsert.sql",
+        import.meta.url
+      ),
+      "utf8"
+    );
+    expect(profileRepairMigration).toContain(
+      "create or replace function public.accept_records_attorney_invitation"
+    );
+    expect(profileRepairMigration).toContain("for update");
+    expect(profileRepairMigration).toContain("invitation.status <> 'pending'");
+    expect(profileRepairMigration).toContain("invitation.expires_at <= now()");
+    expect(profileRepairMigration).toContain(
+      "invitation.invited_email_hash <> p_invited_email_hash"
+    );
+    expect(profileRepairMigration).toContain(
+      "invitation.owner_user_id = p_attorney_user_id"
+    );
+    expect(profileRepairMigration).toMatch(/'read_only',\s+now\(\),\s+null/);
+    expect(profileRepairMigration).toContain(
+      "insert into public.records_attorney_profiles"
+    );
+    expect(profileRepairMigration).toContain("on conflict (user_id) do update");
+    expect(profileRepairMigration).toContain("set search_path = pg_catalog");
+    expect(profileRepairMigration).toContain("from public, anon, authenticated");
+    expect(profileRepairMigration).toContain("to service_role");
+
     const productionSchema = await readFile(
       new URL("../database/supabase/production_schema.sql", import.meta.url),
       "utf8"

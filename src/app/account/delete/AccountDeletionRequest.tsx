@@ -20,6 +20,7 @@ export function AccountDeletionRequest() {
   const [email, setEmail] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [requestState, setRequestState] = useState<RequestState>({ status: "idle" });
+  const [billingSource, setBillingSource] = useState<"stripe" | "apple" | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +38,16 @@ export function AccountDeletionRequest() {
           const body = (await response.json()) as { session?: { email?: string } };
           setEmail(body.session?.email || "");
           setSessionStatus("authenticated");
+          const billingResponse = await fetch("/api/records/billing/status", {
+            cache: "no-store",
+            credentials: "same-origin",
+          });
+          if (billingResponse.ok) {
+            const billing = (await billingResponse.json()) as {
+              subscription?: { provider?: "stripe" | "apple" } | null;
+            };
+            setBillingSource(billing.subscription?.provider || null);
+          }
           return;
         }
 
@@ -126,6 +137,16 @@ export function AccountDeletionRequest() {
         This is self-service deletion, not a request for approval. After you confirm, your account,
         active records, and private evidence files will be deleted immediately and you will be signed out.
       </p>
+
+      {billingSource === "stripe" ? (
+        <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-950">
+          Any active web subscription will be cancelled before account deletion. If Stripe cannot confirm cancellation, deletion stops and your records remain available.
+        </div>
+      ) : billingSource === "apple" ? (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-950">
+          Deleting your Custody Folio account does not cancel an App Store subscription. Apple may continue billing until you cancel in Apple subscription settings. Account deletion remains available immediately.
+        </div>
+      ) : null}
 
       <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
         {sessionStatus === "checking" && <p>Checking records sign-in status...</p>}

@@ -70,13 +70,17 @@ Approve or revise these positions before `LEGAL_REVIEW_APPROVED=true` is set:
 
 ## Launch Approval Evidence
 
-Before setting `LEGAL_REVIEW_APPROVED=true`, record:
+Before setting `LEGAL_REVIEW_APPROVED=true`, generate the protected manifest with `npm run approval:prepare` and record:
 
-- reviewer name or role
+- qualified counsel's name and organization
+- counsel license jurisdiction(s)
 - date reviewed
-- document versions or commit hash reviewed
+- exact generated SHA-256 digests for every required document
+- approval expiration/review date
 - required changes
 - approval decision
 - any jurisdiction or product limitations
 
-Do not store privileged legal advice in public issue trackers, logs, analytics, or user-visible audit records.
+After counsel approves the exact bundle, run `npm run verify:approvals -- --legal --output-env-file /path/to/protected/approval.env` and install that mode-0600 file through the protected deployment workflow. The verifier never prints the reversible approval value to terminal or CI logs. Changing any covered policy or runbook changes the bundle digest and blocks readiness until it is reviewed again. An internal product-owner review cannot satisfy the `qualified_counsel` role.
+
+Do not commit the manifest or store privileged legal advice in public issue trackers, logs, analytics, or user-visible audit records. Keep detailed advice outside the manifest; record only the non-privileged evidence needed to substantiate the gate.

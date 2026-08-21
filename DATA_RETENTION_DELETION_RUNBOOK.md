@@ -49,10 +49,15 @@ Required behavior:
 
 1. User requests deletion for a case.
 2. App confirms the case label and warns that deletion removes records and private evidence files.
-3. App deletes private evidence objects first.
-4. App deletes or overwrites case dataset/snapshots.
-5. App records a minimal deletion audit event without sensitive content.
-6. App confirms deletion completion.
+3. Server marks the case deletion-pending in the authoritative snapshot so new uploads are blocked.
+4. App revokes active attorney access for the case.
+5. Server recursively enumerates the authenticated account/case Storage prefix and deletes every object through the Storage API in batches of at most 1,000. It does not trust mutable evidence metadata to discover objects.
+6. Server re-lists the prefix and requires it to be empty.
+7. Only after Storage confirms deletion, app deletes or overwrites the case dataset/snapshot.
+8. App records a minimal deletion audit event without sensitive content.
+9. App confirms deletion completion only after the server operation succeeds.
+
+The deletion endpoint is fail-closed: an invalid object name, listing failure, removal failure, verification failure, or unsafe batch size returns an error and leaves the case in deletion-pending state rather than persisting a snapshot that hides a still-existing object. The browser keeps or restores the case and shows the failure when the server cannot confirm cleanup. The upload route checks case state immediately before and after upload; if deletion wins the race, it removes the just-uploaded object instead of returning usable evidence metadata. Metadata-only legacy evidence entries do not block deletion because Storage prefix enumeration remains authoritative.
 
 If deletion is queued:
 
@@ -84,6 +89,25 @@ Evidence deletion must:
 - not expose raw storage paths to the browser URL or logs
 - record a minimal audit event
 - fail closed if storage deletion fails
+
+## Privacy Requests and Downstream Recipients
+
+Use `PRIVACY_RIGHTS_OPERATIONS.md` for every access, deletion, correction, consent-withdrawal, or appeal request. The operator must review all active systems and every listed processor, contractor, or recipient; an applicable controlled target cannot remain pending when completion is reported.
+
+For deletion and consent withdrawal:
+
+- notify each applicable controlled processor, contractor, or recipient
+- retain a non-sensitive notice and acknowledgement reference
+- distinguish a user- or attorney-controlled downloaded copy from a provider copy without claiming the downloaded copy was deleted
+- record deletion for replay after any backup restore
+- set a backup aging deadline no later than 180 days after active deletion
+- do not send a completion notice while active cleanup or a controlled downstream action is pending or failed
+
+Verify each request-specific operational artifact with:
+
+```bash
+PRIVACY_RIGHTS_REQUEST_FILE=ops/privacy-rights-requests/REQUEST_ID.json npm run verify:privacy-rights
+```
 
 ## Backup Aging
 
@@ -151,6 +175,8 @@ For each deletion request, verify:
 - user sessions are revoked when account deletion occurs
 - readiness/monitoring did not report deletion failures
 - backup-aging disclosure applies until backup retention expires
+- every applicable processor, contractor, and recipient has acknowledged its controlled action
+- the request-specific operational evidence passes `npm run verify:privacy-rights`
 
 ## Change Control
 

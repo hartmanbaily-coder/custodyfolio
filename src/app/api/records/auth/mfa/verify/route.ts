@@ -15,6 +15,11 @@ import {
 } from "@/lib/records/mfaServer";
 import { recordsProfileIsAuthorized, upsertRecordsProfile } from "@/lib/records/profileServer";
 import { recordsAttorneyProfileIsAuthorized } from "@/lib/records/attorneyProfileServer";
+import {
+  acceptPendingAttorneyInvitationForUser,
+  attorneyAcceptanceCookieName,
+  clearAttorneyAcceptanceCookie,
+} from "@/lib/records/attorneyServer";
 import { defaultCaseIdForUser } from "@/lib/records/accountBoundary";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
@@ -85,12 +90,23 @@ export async function POST(request: NextRequest) {
   const originatingAccessToken = request.cookies.get(recordsAccessCookieName)?.value || "";
   const attorneyWorkspace =
     request.cookies.get(recordsSessionScopeCookieName)?.value === "attorney_mfa_pending";
-  const identityAuthorized = attorneyWorkspace
-    ? await recordsAttorneyProfileIsAuthorized({
+  const invitationToken = attorneyWorkspace
+    ? request.cookies.get(attorneyAcceptanceCookieName)?.value || ""
+    : "";
+  const acceptedInvitation = invitationToken
+    ? await acceptPendingAttorneyInvitationForUser({
+        token: invitationToken,
         userId: session.userId,
         email: session.email,
-        accessToken: originatingAccessToken,
       })
+    : null;
+  const identityAuthorized = attorneyWorkspace
+    ? Boolean(acceptedInvitation) ||
+      await recordsAttorneyProfileIsAuthorized({
+          userId: session.userId,
+          email: session.email,
+          accessToken: originatingAccessToken,
+        })
     : isRecordsSignupEnabled() ||
       await recordsProfileIsAuthorized(session.userId, originatingAccessToken);
   if (!identityAuthorized) {
@@ -132,5 +148,5 @@ export async function POST(request: NextRequest) {
     defaultCaseIdForUser(session.userId),
     attorneyWorkspace ? "attorney_guest" : "records"
   );
-  return response;
+  return acceptedInvitation ? clearAttorneyAcceptanceCookie(response) : response;
 }

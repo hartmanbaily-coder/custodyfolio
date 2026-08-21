@@ -11,6 +11,11 @@ if [[ ! ${release_tag} =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$ ]]; then
   echo "Release tag contains unsupported characters." >&2
   exit 1
 fi
+allow_launch_pending="${ALLOW_LAUNCH_PENDING_DEPLOY:-false}"
+if [[ ${allow_launch_pending} != "true" && ${allow_launch_pending} != "false" ]]; then
+  echo "ALLOW_LAUNCH_PENDING_DEPLOY must be true or false." >&2
+  exit 1
+fi
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 app_root="$(cd "${script_dir}/../.." && pwd)"
@@ -31,6 +36,23 @@ env_owner_uid="$(stat -c '%u' "${env_file}")"
 if [[ ${env_mode} != "600" || ${env_owner_uid} != "$(id -u)" ]]; then
   echo "Production environment file must be owned by the deployment user with mode 0600." >&2
   exit 1
+fi
+
+env_value() {
+  local key="$1"
+  awk -F= -v key="${key}" '$1 == key { value = substr($0, index($0, "=") + 1); count += 1 } END { if (count != 1) exit 42; print value }' "${env_file}"
+}
+
+if [[ ${allow_launch_pending} == "true" ]]; then
+  for disabled_flag in \
+    RECORDS_SIGNUPS_ENABLED \
+    NEXT_PUBLIC_RECORDS_SIGNUPS_ENABLED \
+    BILLING_CHECKOUT_ENABLED; do
+    if [[ $(env_value "${disabled_flag}") != "false" ]]; then
+      echo "Launch-pending deployment requires ${disabled_flag}=false." >&2
+      exit 1
+    fi
+  done
 fi
 
 runtime_uid="$(id -u)"
@@ -105,6 +127,11 @@ else
   smoke_status=1
 fi
 set -e
+
+if [[ ${smoke_status} -eq 2 && ${allow_launch_pending} != "true" ]]; then
+  echo "Deployment readiness blockers are present; refusing to publish this release." >&2
+  smoke_status=1
+fi
 
 if [[ ${smoke_status} -ne 0 && ${smoke_status} -ne 2 ]]; then
   echo "Deployment validation failed." >&2

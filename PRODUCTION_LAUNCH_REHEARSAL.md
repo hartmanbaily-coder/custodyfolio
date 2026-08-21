@@ -111,8 +111,10 @@ Still blocked before real user data:
 - Configure provider-level WAF, bot controls, and rate limits for auth, dataset, evidence, exports, and writes.
 - Configure security monitoring sink and alert routing.
 - Run and document a backup restore drill.
-- Complete vendor/security review.
+- Deploy the completed `VENDOR_SECURITY_REVIEW_2026-08-15.md` evidence and set `VENDOR_SECURITY_REVIEW_APPROVED=true`; repeat the review quarterly and after material provider or data-flow changes.
 - Complete legal review of privacy, terms, retention/deletion, incident response, and court-report wording.
+- Fill the protected production approval manifest with real reviewer evidence and named, independently reachable incident responders; run `npm run verify:approvals`.
+- Run a synthetic privacy-rights request through every active-system and downstream target and verify its artifact with `npm run verify:privacy-rights`.
 - Run `npm run check:live` against the deployed production URL after all env gates are set.
 
 ## Recommended Next Action
@@ -135,4 +137,5 @@ Do not point real users or real custody records at production until:
 - `/api/records/readiness` returns `ready` in production.
 - `npm run check:live` passes.
 - `TWO_USER_ISOLATION_TESTED_AT`, `MALWARE_SCANNER_TESTED_AT`, and `BACKUP_RESTORE_TESTED_AT` are set from real verification.
-- `LEGAL_REVIEW_APPROVED=true` is backed by actual review, not just an environment flag.
+- `LEGAL_REVIEW_APPROVED=true` is backed by a current qualified-counsel manifest matching the exact deployed document digests.
+- `DATA_RETENTION_POLICY_APPROVED=true` and `INCIDENT_RESPONSE_PLAN_APPROVED=true` are backed by their current manifest sections, recent exercises, and tested incident contacts.

@@ -61,7 +61,7 @@ describe("single-link attorney invitation preparation", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
       ok: true,
-      message: expect.stringContaining("will not send another invitation email"),
+      message: expect.stringContaining("secure link sent to the invited email"),
     });
     expect(setAttorneyAcceptanceCookie).toHaveBeenCalledWith(response, token);
   });

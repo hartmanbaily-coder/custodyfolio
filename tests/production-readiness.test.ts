@@ -4,6 +4,67 @@ import {
   summarizeReadinessPhases,
   supabaseFinalCheckIds,
 } from "@/lib/production/readiness";
+import {
+  encodeProductionApprovalManifest,
+  requiredIncidentContactRoles,
+} from "@/lib/production/approvalEvidence.mjs";
+import {
+  productionPolicyBundleSha256,
+  productionPolicyDocumentDigests,
+} from "@/generated/productionPolicyBundle.mjs";
+
+function validApprovalManifest() {
+  const common = {
+    decision: "approved",
+    approvedAt: "2026-06-01T00:00:00.000Z",
+    reviewValidUntil: "2027-06-15T00:00:00.000Z",
+    limitations: [],
+    documents: { ...productionPolicyDocumentDigests },
+  };
+
+  return {
+    schemaVersion: 1,
+    policyBundleSha256: productionPolicyBundleSha256,
+    approvals: {
+      retention: {
+        ...common,
+        approvedBy: "Privacy operations lead",
+        approverRole: "privacy_operations_owner",
+        scope: "Retention, deletion, processor notification, and backup aging operations.",
+        rightsRequestWorkflowTestedAt: "2026-06-01T00:00:00.000Z",
+      },
+      incident: {
+        ...common,
+        approvedBy: "Incident response lead",
+        approverRole: "incident_response_owner",
+        scope: "Security and privacy incident response, recovery, and notification analysis.",
+        tabletopTestedAt: "2026-06-01T00:00:00.000Z",
+        contactsValidatedAt: "2026-06-01T00:00:00.000Z",
+        contacts: requiredIncidentContactRoles.map((role) => ({
+          role,
+          name: `Named responder ${role}`,
+          primaryChannel: {
+            type: "email",
+            value: `primary-${role}@custodyfolio.com`,
+          },
+          backupChannel: {
+            type: "phone",
+            value: `backup-${role}-phone`,
+          },
+          testedAt: "2026-06-01T00:00:00.000Z",
+        })),
+      },
+      legal: {
+        ...common,
+        approvedBy: "Independent privacy counsel",
+        approverRole: "qualified_counsel",
+        reviewerOrganization: "North Counsel PLLC",
+        licenseJurisdictions: ["Alaska"],
+        scope: "Privacy, terms, retention, incident response, and launch jurisdiction.",
+      },
+    },
+  };
+}
 
 const readyEnv = {
   STARTER_RESOURCE_PROFILE: "false",
@@ -55,6 +116,7 @@ const readyEnv = {
   DATA_RETENTION_POLICY_APPROVED: "true",
   INCIDENT_RESPONSE_PLAN_APPROVED: "true",
   LEGAL_REVIEW_APPROVED: "true",
+  PRODUCTION_APPROVAL_MANIFEST_BASE64: encodeProductionApprovalManifest(validApprovalManifest()),
   VENDOR_SECURITY_REVIEW_APPROVED: "true",
 };
 
@@ -83,6 +145,76 @@ describe("production readiness", () => {
 
     expect(report.ready).toBe(true);
     expect(report.blockers).toHaveLength(0);
+  });
+
+  it("does not accept approval booleans without structured evidence", () => {
+    const report = evaluateProductionReadiness(
+      { ...readyEnv, PRODUCTION_APPROVAL_MANIFEST_BASE64: "" },
+      "2026-06-15T00:00:00.000Z"
+    );
+
+    expect(report.blockers.map((item) => item.id)).toEqual(
+      expect.arrayContaining(["data-retention-policy", "incident-response-plan", "legal-review"])
+    );
+  });
+
+  it("invalidates approval evidence when an approved document digest changes", () => {
+    const manifest = validApprovalManifest();
+    manifest.approvals.retention.documents.privacy = "sha256:stale";
+
+    const report = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        PRODUCTION_APPROVAL_MANIFEST_BASE64: encodeProductionApprovalManifest(manifest),
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+
+    expect(report.blockers.map((item) => item.id)).toContain("data-retention-policy");
+  });
+
+  it("requires qualified counsel for legal approval", () => {
+    const manifest = validApprovalManifest();
+    manifest.approvals.legal.approverRole = "product_owner";
+
+    const report = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        PRODUCTION_APPROVAL_MANIFEST_BASE64: encodeProductionApprovalManifest(manifest),
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+
+    expect(report.blockers.map((item) => item.id)).toContain("legal-review");
+  });
+
+  it("requires every named incident responder and independent tested channels", () => {
+    const manifest = validApprovalManifest();
+    manifest.approvals.incident.contacts = manifest.approvals.incident.contacts.slice(1);
+
+    const report = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        PRODUCTION_APPROVAL_MANIFEST_BASE64: encodeProductionApprovalManifest(manifest),
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+
+    expect(report.blockers.map((item) => item.id)).toContain("incident-response-plan");
+  });
+
+  it("requires the exact same-origin privacy route without query or fragment", () => {
+    for (const invalidUrl of [
+      "https://other.example/privacy",
+      "https://custodyfolio.com/privacy?draft=true",
+      "https://custodyfolio.com/privacy#old",
+    ]) {
+      const report = evaluateProductionReadiness(
+        { ...readyEnv, PRIVACY_POLICY_URL: invalidUrl },
+        "2026-06-15T00:00:00.000Z"
+      );
+      expect(report.blockers.map((item) => item.id)).toContain("privacy-policy");
+    }
   });
 
   it("requires a distinct cryptographic secret when attorney invitations are enabled", () => {

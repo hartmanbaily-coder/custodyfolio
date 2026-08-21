@@ -13,12 +13,29 @@ import {
   sanitizeRecordsDatasetForUser,
 } from "@/lib/records/datasetIsolation";
 import { invalidateAttorneyAccessForCases } from "@/lib/records/attorneyAccess";
+import { deleteEvidenceForCases } from "@/lib/records/evidenceStorage";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
+import {
+  readTextBodyWithLimit,
+  RequestBodyTooLargeError,
+} from "@/lib/security/requestBody";
+import { requireRecordsCapability } from "@/lib/billing/capabilities";
+import {
+  compareAndSetRecordsSnapshot,
+  nextRecordsSnapshotTimestamp,
+} from "@/lib/records/snapshotStore";
 
 export const dynamic = "force-dynamic";
 
-const maxDatasetBytes = Number(process.env.RECORDS_DATASET_MAX_BYTES || 2_000_000);
+function configuredMaxDatasetBytes() {
+  const configured = Number(process.env.RECORDS_DATASET_MAX_BYTES || 2_000_000);
+  return Number.isSafeInteger(configured) && configured >= 1 && configured <= 10_000_000
+    ? configured
+    : 2_000_000;
+}
+
+const maxDatasetBytes = configuredMaxDatasetBytes();
 
 function disabledResponse() {
   return NextResponse.json(
@@ -66,6 +83,8 @@ export async function GET(request: NextRequest) {
   const { supabase, userId } = context;
   const bindingError = await verifyAccountBinding(request, userId);
   if (bindingError) return bindingError;
+  const capability = await requireRecordsCapability(context, "records:read");
+  if (!capability.ok) return capability.error;
   const caseKey = getRecordsCaseKey(request);
   const { data, error } = await supabase
     .from("records_case_snapshots")
@@ -122,10 +141,17 @@ export async function PUT(request: NextRequest) {
 
   const bindingError = await verifyAccountBinding(request, context.userId);
   if (bindingError) return bindingError;
+  const capability = await requireRecordsCapability(context, "records:write");
+  if (!capability.ok) return capability.error;
 
-  const rawBody = await request.text();
-  if (new TextEncoder().encode(rawBody).length > maxDatasetBytes) {
-    return NextResponse.json({ error: "Records dataset is too large." }, { status: 413 });
+  let rawBody: string;
+  try {
+    rawBody = await readTextBodyWithLimit(request, maxDatasetBytes);
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json({ error: "Records dataset is too large." }, { status: 413 });
+    }
+    throw error;
   }
 
   let parsed: unknown;
@@ -135,10 +161,22 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const body = parsed as { dataset?: unknown };
+  const body = parsed as { dataset?: unknown; expectedUpdatedAt?: unknown };
   if (!isRecordsDataset(body.dataset)) {
     return NextResponse.json({ error: "Invalid records dataset shape." }, { status: 400 });
   }
+  if (
+    !("expectedUpdatedAt" in body) ||
+    (body.expectedUpdatedAt !== null &&
+      (typeof body.expectedUpdatedAt !== "string" ||
+        !Number.isFinite(Date.parse(body.expectedUpdatedAt))))
+  ) {
+    return NextResponse.json(
+      { error: "Reload the latest records dataset before saving." },
+      { status: 409, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+  const expectedUpdatedAt = body.expectedUpdatedAt as string | null;
 
   const { supabase, userId } = context;
   if (datasetContainsForeignRecords(body.dataset, userId)) {
@@ -160,20 +198,78 @@ export async function PUT(request: NextRequest) {
   const caseKey = getRecordsCaseKey(request);
   const { data: currentRow, error: currentError } = await supabase
     .from("records_case_snapshots")
-    .select("dataset")
+    .select("dataset,updated_at")
     .eq("user_id", userId)
     .eq("case_key", caseKey)
     .maybeSingle();
   if (currentError) {
     return NextResponse.json({ error: "Unable to verify current records dataset." }, { status: 500 });
   }
-  const currentDataset = currentRow?.dataset as Partial<RecordsDataset> | undefined;
+  if (currentRow?.dataset && !isRecordsDataset(currentRow.dataset)) {
+    return NextResponse.json({ error: "Stored records dataset is invalid." }, { status: 500 });
+  }
+  const currentDataset = currentRow?.dataset as RecordsDataset | undefined;
+  if (currentDataset && datasetContainsForeignRecords(currentDataset, userId)) {
+    return NextResponse.json({ error: "Stored records dataset is invalid." }, { status: 500 });
+  }
+  const currentUpdatedAt = (currentRow?.updated_at as string | undefined) || null;
+  if (currentUpdatedAt !== expectedUpdatedAt) {
+    return NextResponse.json(
+      { error: "These records changed in another session. Reload before saving." },
+      { status: 409, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+  const pendingCaseIds = new Set(
+    (currentDataset?.matters || [])
+      .filter((matter) => Boolean(matter.deletionPendingAt))
+      .map((matter) => matter.id)
+  );
+  if (
+    ownedDataset.matters.some((matter) => pendingCaseIds.has(matter.id))
+  ) {
+    return NextResponse.json(
+      { error: "Case deletion is already in progress. Reload before saving." },
+      { status: 409, headers: { "Cache-Control": "no-store" } }
+    );
+  }
   const nextCaseIds = new Set(
     ownedDataset.matters.map((matter) => matter.id)
   );
   const removedCaseIds = (currentDataset?.matters || [])
     .filter((matter) => matter.userId === userId && !nextCaseIds.has(matter.id))
     .map((matter) => matter.id);
+  let writeExpectedAt = currentUpdatedAt;
+  if (currentDataset && removedCaseIds.length > 0) {
+    const deletionPendingAt = nextRecordsSnapshotTimestamp(currentUpdatedAt);
+    const pendingDataset: RecordsDataset = {
+      ...currentDataset,
+      matters: currentDataset.matters.map((matter) =>
+        removedCaseIds.includes(matter.id)
+          ? { ...matter, deletionPendingAt, updatedAt: deletionPendingAt }
+          : matter
+      ),
+    };
+    const pending = await compareAndSetRecordsSnapshot({
+      supabase,
+      userId,
+      caseKey,
+      expectedUpdatedAt: currentUpdatedAt,
+      dataset: pendingDataset,
+      updatedAt: deletionPendingAt,
+    });
+    if (!pending.ok) {
+      return NextResponse.json(
+        {
+          error:
+            pending.reason === "conflict"
+              ? "These records changed in another session. Reload before deleting."
+              : "Case deletion was stopped because uploads could not be paused safely.",
+        },
+        { status: pending.reason === "conflict" ? 409 : 503 }
+      );
+    }
+    writeExpectedAt = pending.updatedAt;
+  }
   const invalidation = await invalidateAttorneyAccessForCases({
     supabase,
     ownerUserId: userId,
@@ -186,21 +282,50 @@ export async function PUT(request: NextRequest) {
       { status: 503 }
     );
   }
-  const { error } = await supabase.from("records_case_snapshots").upsert(
-    {
-      user_id: userId,
-      case_key: caseKey,
-      dataset: ownedDataset,
-      schema_version: 1,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id,case_key" }
-  );
+  const evidenceCleanup = await deleteEvidenceForCases({
+    supabase,
+    userId,
+    caseIds: removedCaseIds,
+  });
+  if (!evidenceCleanup.ok) {
+    await recordSecurityEvent({
+      type: "case_evidence_cleanup_failed",
+      severity: "high",
+      request,
+      userId,
+      status: 503,
+      detail: "Case deletion stopped because private evidence cleanup could not be confirmed.",
+    });
+    return NextResponse.json(
+      { error: "Case deletion was stopped because private evidence cleanup could not be confirmed." },
+      { status: 503 }
+    );
+  }
+  const savedAt = nextRecordsSnapshotTimestamp(writeExpectedAt);
+  const saved = await compareAndSetRecordsSnapshot({
+    supabase,
+    userId,
+    caseKey,
+    expectedUpdatedAt: writeExpectedAt,
+    dataset: ownedDataset,
+    updatedAt: savedAt,
+  });
 
-  if (error) {
-    return NextResponse.json({ error: "Unable to save records dataset." }, { status: 500 });
+  if (!saved.ok) {
+    return NextResponse.json(
+      {
+        error:
+          saved.reason === "conflict"
+            ? "These records changed in another session. Reload before saving."
+            : "Unable to save records dataset.",
+      },
+      { status: saved.reason === "conflict" ? 409 : 500 }
+    );
   }
 
-  const response = NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+  const response = NextResponse.json(
+    { ok: true, updatedAt: saved.updatedAt },
+    { headers: { "Cache-Control": "no-store" } }
+  );
   return attachRefreshedRecordsSession(request, response, context);
 }
