@@ -356,8 +356,13 @@ chmod 0600 "${approval_env_file}" "${approval_manifest_file}"
 LOSTTOFOUND_ENV_FILE="${approval_env_file}" \
   "${script_dir}/configure-approval-evidence.sh" "${approval_manifest_file}"
 test "$(grep -c '^PRODUCTION_APPROVAL_MANIFEST_BASE64=' "${approval_env_file}")" -eq 1
-expected_approval_evidence="$(base64 <"${approval_manifest_file}" | tr -d '\r\n')"
+expected_approval_evidence="$(base64 <"${approval_manifest_file}" | tr -d '\r\n=' | tr '+/' '-_')"
 grep -Fqx "PRODUCTION_APPROVAL_MANIFEST_BASE64=${expected_approval_evidence}" "${approval_env_file}"
+approval_encoded_value="$(sed -n 's/^PRODUCTION_APPROVAL_MANIFEST_BASE64=//p' "${approval_env_file}")"
+if [[ -z ${approval_encoded_value} || ! ${approval_encoded_value} =~ ^[A-Za-z0-9_-]+$ ]]; then
+  echo "Approval evidence must use canonical unpadded base64url encoding." >&2
+  exit 1
+fi
 
 approval_failure="${tmp_dir}/approval-failure.log"
 if LOSTTOFOUND_ENV_FILE="${approval_env_file}" PRODUCTION_APPROVAL_SCOPES=unknown \

@@ -92,8 +92,8 @@ if [[ -z ${expected_digest} || ${manifest_digest} != "${expected_digest}" ]]; th
   exit 1
 fi
 
-encoded_manifest="$(base64 <"${manifest_file}" | tr -d '\r\n')"
-if [[ -z ${encoded_manifest} || ${encoded_manifest} == *$'\n'* || ${encoded_manifest} == *$'\r'* ]]; then
+encoded_manifest="$(base64 <"${manifest_file}" | tr -d '\r\n=' | tr '+/' '-_')"
+if [[ -z ${encoded_manifest} || ! ${encoded_manifest} =~ ^[A-Za-z0-9_-]+$ ]]; then
   echo "Approval manifest encoding failed." >&2
   exit 1
 fi
