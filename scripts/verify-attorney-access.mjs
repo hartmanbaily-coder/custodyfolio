@@ -292,7 +292,7 @@ async function syntheticMailboxSession(invitationToken) {
   );
   const verified = await mailboxClient.auth.verifyOtp({
     token_hash: generated.data.properties.hashed_token,
-    type: "magiclink",
+    type: "email",
   });
   if (verified.error || !verified.data.session?.access_token || !verified.data.session.refresh_token) {
     throw new Error(`Synthetic mailbox link verification failed: ${verified.error?.message || "missing session"}`);
