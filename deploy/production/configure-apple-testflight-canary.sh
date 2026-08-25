@@ -58,11 +58,11 @@ install_defaults() {
     exit 1
   fi
 
-  local next_env key count
+  local next_env key count value
   next_env="$(mktemp "${app_env_file}.next.XXXXXX")"
   trap 'rm -f "${next_env}"' RETURN
-  cp "${app_env_file}" "${next_env}"
   for key in \
+    APPLE_PURCHASE_ENABLED \
     APPLE_TESTFLIGHT_CANARY_AUTHORIZED \
     APPLE_TESTFLIGHT_CANARY_USER_ID \
     APPLE_TESTFLIGHT_CANARY_EXPIRES_AT; do
@@ -71,8 +71,31 @@ install_defaults() {
       echo "${key} appears more than once in the protected environment." >&2
       exit 1
     fi
-    if [[ ${count} -eq 0 ]]; then
+    if [[ ${count} -eq 1 && ( ${key} == "APPLE_PURCHASE_ENABLED" || ${key} == "APPLE_TESTFLIGHT_CANARY_AUTHORIZED" ) ]]; then
+      value="$(env_value "${key}")"
+      if [[ -n ${value} && ${value} != "false" ]]; then
+        echo "Refusing to install closed canary defaults while ${key}=${value}." >&2
+        exit 1
+      fi
+    fi
+  done
+  awk '
+    /^APPLE_PURCHASE_ENABLED=$/ { print "APPLE_PURCHASE_ENABLED=false"; next }
+    /^APPLE_TESTFLIGHT_CANARY_AUTHORIZED=$/ { print "APPLE_TESTFLIGHT_CANARY_AUTHORIZED=false"; next }
+    /^APPLE_TESTFLIGHT_CANARY_USER_ID=/ { print "APPLE_TESTFLIGHT_CANARY_USER_ID="; next }
+    /^APPLE_TESTFLIGHT_CANARY_EXPIRES_AT=/ { print "APPLE_TESTFLIGHT_CANARY_EXPIRES_AT="; next }
+    { print }
+  ' "${app_env_file}" >"${next_env}"
+  for key in \
+    APPLE_PURCHASE_ENABLED \
+    APPLE_TESTFLIGHT_CANARY_AUTHORIZED \
+    APPLE_TESTFLIGHT_CANARY_USER_ID \
+    APPLE_TESTFLIGHT_CANARY_EXPIRES_AT; do
+    if [[ $(env_count "${key}") -eq 0 ]]; then
       case "${key}" in
+        APPLE_PURCHASE_ENABLED)
+          printf '%s\n' 'APPLE_PURCHASE_ENABLED=false' >>"${next_env}"
+          ;;
         APPLE_TESTFLIGHT_CANARY_AUTHORIZED)
           printf '%s\n' 'APPLE_TESTFLIGHT_CANARY_AUTHORIZED=false' >>"${next_env}"
           ;;

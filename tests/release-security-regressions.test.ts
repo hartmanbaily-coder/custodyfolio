@@ -74,7 +74,7 @@ describe("release security regressions", () => {
         "BILLING_MODE=live",
         "BILLING_CHECKOUT_ENABLED=false",
         "BILLING_LIVE_CANARY_AUTHORIZED=false",
-        "APPLE_PURCHASE_ENABLED=false",
+        "APPLE_PURCHASE_ENABLED=",
         "APPLE_BILLING_ENVIRONMENT=production",
         "",
       ].join("\n"),
@@ -87,6 +87,7 @@ describe("release security regressions", () => {
     };
     await execFileAsync("bash", [helper, "install"], { env: commandEnv });
     const installed = await readFile(envFile, "utf8");
+    expect(installed).toContain("APPLE_PURCHASE_ENABLED=false");
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000)
       .toISOString()
       .replace(/\.\d{3}Z$/, "Z");
