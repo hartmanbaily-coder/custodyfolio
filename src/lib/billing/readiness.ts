@@ -91,6 +91,11 @@ export function evaluateLiveBillingReadiness(
     generatedAt
   )
 ): BillingReadinessReport {
+  const applePurchasesEnabled = enabled(env.APPLE_PURCHASE_ENABLED);
+  const taxMode = String(env.STRIPE_TAX_MODE || "").trim().toLowerCase();
+  const policyApprovalBasis = String(
+    env.BILLING_POLICY_APPROVAL_BASIS || ""
+  ).trim().toLowerCase();
   const appleProducts = [
     env.APPLE_MONTHLY_PRODUCT_ID,
     env.APPLE_ANNUAL_PRODUCT_ID,
@@ -105,9 +110,10 @@ export function evaluateLiveBillingReadiness(
     check(
       "billing-mode-live",
       "Billing mode is explicitly live",
-      env.BILLING_MODE === "live" && env.APPLE_BILLING_ENVIRONMENT === "production",
+      env.BILLING_MODE === "live" &&
+        (!applePurchasesEnabled || env.APPLE_BILLING_ENVIRONMENT === "production"),
       "blocker",
-      "Set live mode only during an explicitly approved activation window; sandbox and live state may not be mixed."
+      "Set Stripe live mode only during an approved activation window. Apple production mode is required only when new App Store purchases are enabled."
     ),
     check(
       "billing-checkout-enabled",
@@ -177,31 +183,34 @@ export function evaluateLiveBillingReadiness(
     check(
       "apple-identity",
       "Apple bundle and Custody Folio product identifiers are explicit",
-      hasValue(env.APPLE_BUNDLE_ID) &&
+      !applePurchasesEnabled ||
+        (hasValue(env.APPLE_BUNDLE_ID) &&
         appleProducts.every(
           (value) => hasValue(value) && String(value).startsWith("io.custodyfolio.subscription.")
         ) &&
-        appleProducts[0] !== appleProducts[1],
+        appleProducts[0] !== appleProducts[1]),
       "blocker",
       "Verify the existing App Store bundle identity and the two products in one Custody Folio subscription group."
     ),
     check(
       "apple-notifications-v2",
       "App Store Server Notifications V2 endpoint is verified",
-      exactNotificationUrl(env.APPLE_NOTIFICATIONS_V2_URL) &&
-        recentDate(env.APPLE_NOTIFICATIONS_V2_VERIFIED_AT, generatedAt),
+      !applePurchasesEnabled ||
+        (exactNotificationUrl(env.APPLE_NOTIFICATIONS_V2_URL) &&
+          recentDate(env.APPLE_NOTIFICATIONS_V2_VERIFIED_AT, generatedAt)),
       "blocker",
       "Configure the exact HTTPS V2 notification endpoint and record a recent verified test-notification date."
     ),
     check(
       "apple-server-api",
       "App Store Server API credentials and trust roots are present",
-      hasValue(env.APPLE_APP_ID) &&
+      !applePurchasesEnabled ||
+        (hasValue(env.APPLE_APP_ID) &&
         /^\d+$/.test(env.APPLE_APP_ID || "") &&
         hasValue(env.APPLE_APP_STORE_SERVER_KEY_ID) &&
         hasValue(env.APPLE_APP_STORE_SERVER_ISSUER_ID) &&
         hasValue(env.APPLE_APP_STORE_SERVER_PRIVATE_KEY_BASE64) &&
-        hasValue(env.APPLE_ROOT_CA_CERTIFICATES_BASE64),
+        hasValue(env.APPLE_ROOT_CA_CERTIFICATES_BASE64)),
       "blocker",
       "Configure the server-only Apple API key, issuer, App ID, and pinned Apple root certificates."
     ),
@@ -212,25 +221,34 @@ export function evaluateLiveBillingReadiness(
         recentDate(env.BILLING_RECONCILIATION_TESTED_AT, generatedAt) &&
         recentDate(env.BILLING_MIGRATION_VERIFIED_AT, generatedAt),
       "blocker",
-      "Run Stripe test-mode, Apple sandbox/StoreKit, reconciliation, and migration verification within 30 days."
+      "Run Stripe test-mode, reconciliation, and migration verification within 30 days. Apple sandbox/StoreKit is required only when new App Store purchases are enabled."
     ),
     check(
       "billing-policy-versions",
-      "Billing policy and disclosure versions have counsel review",
+      "Billing policy and disclosure versions are adopted",
       policyVersions.every(
         (value) => hasValue(value) && !String(value).toLowerCase().includes("draft")
       ) &&
-        enabled(env.BILLING_POLICY_COUNSEL_REVIEWED) &&
+        enabled(env.BILLING_POLICY_APPROVED) &&
+        ["operator_self_review", "qualified_counsel"].includes(policyApprovalBasis) &&
         recentDate(env.BILLING_POLICY_VERSIONS_VERIFIED_AT, generatedAt),
       "blocker",
-      "Record reviewed Terms, Privacy, subprocessor, and subscription-disclosure versions. Draft text cannot open live billing."
+      "Record the exact operative Terms, Privacy, subprocessor, and subscription-disclosure versions and whether adoption was operator self-review or qualified-counsel review. Operator self-review is not a compliance claim."
     ),
     check(
       "billing-tax-review",
-      "Tax and registration obligations were reviewed",
-      enabled(env.BILLING_TAX_REVIEW_APPROVED),
+      "Tax decision and Stripe configuration were reviewed",
+      enabled(env.BILLING_TAX_REVIEW_APPROVED) &&
+        recentDate(env.BILLING_TAX_REVIEWED_AT, generatedAt, 365) &&
+        (taxMode === "not_collecting" ||
+          (taxMode === "automatic" &&
+            recentDate(env.STRIPE_TAX_REGISTRATIONS_VERIFIED_AT, generatedAt) &&
+            recentDate(
+              env.STRIPE_TAX_PRODUCT_CONFIGURATION_VERIFIED_AT,
+              generatedAt
+            ))),
       "blocker",
-      "Have a qualified tax professional review obligations. Stripe automatic tax remains disabled until registrations are confirmed."
+      "Choose automatic only after active registrations and the Stripe product tax configuration are verified. Choose not_collecting only after the operator documents why the launch footprint does not require collection; consider tax advice."
     ),
     check(
       "live-billing-approval",
@@ -243,7 +261,7 @@ export function evaluateLiveBillingReadiness(
     check(
       "apple-small-business-program",
       "Apple Small Business Program status is recorded",
-      ["enrolled", "not_enrolled", "not_eligible"].includes(
+      !applePurchasesEnabled || ["enrolled", "not_enrolled", "not_eligible"].includes(
         env.APPLE_SMALL_BUSINESS_PROGRAM_STATUS || ""
       ),
       "warning",

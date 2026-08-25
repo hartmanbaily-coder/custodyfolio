@@ -124,7 +124,7 @@ describe("billing route trust boundaries", () => {
     if (!response) throw new Error("Checkout route returned no response.");
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
-      code: "native_storekit_required",
+      code: "native_purchase_unavailable",
     });
     expect(getRecordsAuthContext).not.toHaveBeenCalled();
   });

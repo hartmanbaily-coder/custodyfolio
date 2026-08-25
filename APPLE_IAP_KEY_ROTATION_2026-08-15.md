@@ -20,7 +20,7 @@ Status: **revocation verified; encrypted off-device recovery for the protected p
 ## Evidence to complete
 
 - Revoked at: `2026-08-15` (App Store Connect recorded date)
-- Revoked by: `Baily Hartman`, through the authenticated App Store Connect account and an explicitly approved Codex browser action
+- Revoked by: the authorized Account Holder through the authenticated App Store Connect account and an explicitly approved action
 - Revocation verified at: `2026-08-15T21:32:45Z`; Apple sandbox authentication returned HTTP 401
 - Replacement created: `No`; the separate protected production key remains active and local sandbox credentials are intentionally blank
 - Encrypted off-device vault location: `PENDING`

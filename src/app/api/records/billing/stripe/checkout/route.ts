@@ -4,6 +4,7 @@ import { requireRecordsCapability } from "@/lib/billing/capabilities";
 import {
   assertBillingCheckoutModeForUser,
   isNativeIosUserAgent,
+  stripeAutomaticTaxEnabled,
 } from "@/lib/billing/config";
 import { createBillingReturnState } from "@/lib/billing/returnState";
 import {
@@ -41,8 +42,8 @@ export async function POST(request: NextRequest) {
   if (isNativeIosUserAgent(request.headers.get("user-agent"))) {
     return NextResponse.json(
       {
-        error: "Use the App Store purchase options in the Custody Folio iOS app.",
-        code: "native_storekit_required",
+        error: "New subscription purchases are not available in this iOS release.",
+        code: "native_purchase_unavailable",
       },
       { status: 400, headers: { "Cache-Control": "no-store" } }
     );
@@ -124,7 +125,7 @@ export async function POST(request: NextRequest) {
         client_reference_id: account.id,
         line_items: [{ price: price.id, quantity: 1 }],
         integration_identifier: stripeCheckoutIntegrationIdentifier(),
-        automatic_tax: { enabled: false },
+        automatic_tax: { enabled: stripeAutomaticTaxEnabled() },
         metadata: {
           custody_folio_billing_account: account.id,
           custody_folio_plan: parsed.data.plan,

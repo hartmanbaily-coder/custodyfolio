@@ -145,6 +145,7 @@ describe("billing capability policy", () => {
         {
           BILLING_MODE: "live",
           BILLING_CHECKOUT_ENABLED: "false",
+          APPLE_PURCHASE_ENABLED: "true",
         },
         canaryNow
       )
@@ -153,7 +154,30 @@ describe("billing capability policy", () => {
       billingPurchaseEnabledForUser(
         canaryUserId,
         { nativeIos: true },
+        { BILLING_MODE: "live", APPLE_PURCHASE_ENABLED: "false" },
+        canaryNow
+      )
+    ).toBe(false);
+    expect(
+      billingPurchaseEnabledForUser(
+        canaryUserId,
+        { nativeIos: true },
         { BILLING_MODE: "disabled" },
+        canaryNow
+      )
+    ).toBe(false);
+    expect(
+      billingCheckoutEnabled({
+        NODE_ENV: "production",
+        BILLING_MODE: "live",
+        BILLING_CHECKOUT_ENABLED: "true",
+      })
+    ).toBe(false);
+    expect(
+      billingPurchaseEnabledForUser(
+        canaryUserId,
+        { nativeIos: true },
+        { NODE_ENV: "production", BILLING_MODE: "live" },
         canaryNow
       )
     ).toBe(false);
@@ -540,7 +564,6 @@ describe("live billing fail-closed report", () => {
         "stripe-live-key",
         "stripe-live-webhook",
         "stripe-live-portal-configuration",
-        "apple-server-api",
         "billing-tax-review",
         "live-billing-approval",
       ])
@@ -553,6 +576,7 @@ describe("live billing fail-closed report", () => {
       {
         BILLING_MODE: "live",
         BILLING_CHECKOUT_ENABLED: "true",
+        APPLE_PURCHASE_ENABLED: "false",
         APPLE_BILLING_ENVIRONMENT: "production",
         AUTH_SECRET: "auth-secret-123456789012345678901234",
         STRIPE_LIVE_RESTRICTED_KEY: "rk_live_test_fixture",
@@ -581,9 +605,12 @@ describe("live billing fail-closed report", () => {
         BILLING_PRIVACY_VERSION: "2026-08-13-reviewed",
         BILLING_SUBPROCESSOR_VERSION: "2026-08-13-reviewed",
         BILLING_DISCLOSURE_VERSION: "2026-08-13-reviewed",
-        BILLING_POLICY_COUNSEL_REVIEWED: "true",
+        BILLING_POLICY_APPROVED: "true",
+        BILLING_POLICY_APPROVAL_BASIS: "operator_self_review",
         BILLING_POLICY_VERSIONS_VERIFIED_AT: now,
+        STRIPE_TAX_MODE: "not_collecting",
         BILLING_TAX_REVIEW_APPROVED: "true",
+        BILLING_TAX_REVIEWED_AT: now,
         LIVE_BILLING_APPROVED: "true",
         BILLING_LIVE_ACTIVATION_AUTHORIZED: "true",
         APPLE_SMALL_BUSINESS_PROGRAM_STATUS: "not_enrolled",

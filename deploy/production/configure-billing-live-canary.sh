@@ -74,7 +74,7 @@ require_safe_starting_state() {
   for approval_flag in \
     LIVE_BILLING_APPROVED \
     BILLING_LIVE_ACTIVATION_AUTHORIZED \
-    BILLING_POLICY_COUNSEL_REVIEWED \
+    BILLING_POLICY_APPROVED \
     BILLING_TAX_REVIEW_APPROVED; do
     [[ $(env_value "${approval_flag}") == "true" ]] || {
       echo "Refusing to open the live canary until ${approval_flag}=true." >&2

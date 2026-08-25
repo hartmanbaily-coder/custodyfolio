@@ -9,14 +9,13 @@ export const legalDisclaimer =
 export const supportEmail = "support@custodyfolio.com";
 export const privacyEmail = "privacy@custodyfolio.com";
 export const securityEmail = "security@custodyfolio.com";
-export const legalOperatorName = "Slantwire Studios";
-export const legalOperatorLocation = "Alaska, United States";
+export const legalOperatorName = "Slantwire Studios, LLC";
 export const supportMailto = `mailto:${supportEmail}`;
 export const privacyMailto = `mailto:${privacyEmail}`;
 export const securityMailto = `mailto:${securityEmail}`;
 export const accountDeletionPath = "/account/delete";
 export const accountDeletionMailto = `mailto:${supportEmail}?subject=Custody%20Folio%20account%20deletion%20request`;
-export const policyLastUpdated = "August 10, 2026";
+export const policyLastUpdated = "August 23, 2026";
 
 export const publicPolicyLinks = [
   { href: "/privacy", label: "Privacy" },

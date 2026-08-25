@@ -1,6 +1,6 @@
-export const termsVersion = "2026-08-10";
-export const privacyVersion = "2026-08-10";
-export const consumerHealthSharingConsentVersion = "2026-08-10";
+export const termsVersion = "2026-08-23.1";
+export const privacyVersion = "2026-08-23.1";
+export const consumerHealthSharingConsentVersion = "2026-08-23.1";
 
 export const legalAcceptanceMetadataKeys = {
   termsVersion: "custody_folio_terms_version",

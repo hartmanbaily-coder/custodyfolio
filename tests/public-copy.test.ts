@@ -59,6 +59,37 @@ describe("customer facing copy", () => {
     expect(site).toContain('securityEmail = "security@custodyfolio.com"');
   });
 
+  it("publishes the exact operator and no public location", () => {
+    const site = readFileSync(resolve(process.cwd(), "src/lib/site.ts"), "utf8");
+    expect(site).toContain('legalOperatorName = "Slantwire Studios, LLC"');
+    expect(site).not.toContain("legalOperatorLocation");
+
+    for (const file of customerFacingFiles) {
+      const source = readFileSync(resolve(process.cwd(), file), "utf8");
+      expect(source, `${file} exposes an Alaska location`).not.toMatch(/Alaska/i);
+    }
+  });
+
+  it("contains the proposed dual-provider billing and attorney clauses", () => {
+    const terms = readFileSync(resolve(process.cwd(), "src/app/terms/page.tsx"), "utf8");
+    const privacy = readFileSync(resolve(process.cwd(), "src/app/privacy/page.tsx"), "utf8");
+
+    expect(terms).not.toContain("draft for counsel review");
+    expect(privacy).not.toContain("draft for counsel review");
+    expect(terms).toContain("Stripe Customer Portal");
+    expect(terms).toContain("Apple subscription settings");
+    expect(terms).toContain("separately authorizing sharing");
+  });
+
+  it("declares the native UserDefaults required-reason API", () => {
+    const manifest = readFileSync(
+      resolve(process.cwd(), "ios/CustodyFolio/CustodyFolio/PrivacyInfo.xcprivacy"),
+      "utf8"
+    );
+    expect(manifest).toContain("NSPrivacyAccessedAPICategoryUserDefaults");
+    expect(manifest).toContain("CA92.1");
+  });
+
   it("links the complete public policy set", () => {
     const site = readFileSync(resolve(process.cwd(), "src/lib/site.ts"), "utf8");
     for (const path of [

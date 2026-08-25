@@ -37,7 +37,8 @@ These gates are enforced by `src/lib/production/readiness.ts` and `scripts/check
 | Retention/deletion policy | `DATA_RETENTION_POLICY_APPROVED=true` plus current digest-bound retention approval and a privacy-rights rehearsal in `PRODUCTION_APPROVAL_MANIFEST_BASE64` | Required |
 | Incident response plan | `INCIDENT_RESPONSE_PLAN_APPROVED=true` plus current digest-bound approval, named tested contacts, and recent tabletop evidence | Required |
 | Privacy policy | Exact HTTPS `/privacy` URL on `NEXT_PUBLIC_APP_URL`, with no query or fragment | Required |
-| Legal review | `LEGAL_REVIEW_APPROVED=true` plus current qualified-counsel approval of the exact generated policy digests | Required |
+| Legal/policy adoption | `LEGAL_REVIEW_APPROVED=true` plus a protected manifest recording either qualified-counsel review or disclosed operator self-review of the exact generated policy digests | Required |
+| Operative public clauses | Stripe billing clauses must be `operative`; attorney clauses may remain pending only while `ATTORNEY_GUEST_FEATURE_ENABLED=false` | Required |
 | Security contact | `SECURITY_CONTACT_EMAIL` monitored mailbox | Warning |
 | Vendor security review | `VENDOR_SECURITY_REVIEW_APPROVED=true` | Warning |
 | Audit review process | `AUDIT_LOG_REVIEW_ENABLED=true` | Warning |
@@ -50,6 +51,7 @@ These gates are enforced by `src/lib/production/readiness.ts` and `scripts/check
 - Avoid collecting Social Security numbers, full bank account numbers, card numbers, unrelated third-party information, and unnecessary medical detail.
 - Evidence files stay private, are scanned before storage, and are downloaded only through authenticated server routes.
 - Reports must not include raw storage paths, hashes, service URLs, or internal identifiers that are not needed by the user.
+- Until current protected readiness evidence exists, permit informational public pages and synthetic/internal testing only; do not accept real custody, child, court, financial, school, communication, or health-related records.
 
 ## Operational Runbooks Required Before Launch
 
@@ -73,7 +75,7 @@ npm run approval:prepare
 npm run verify:approvals
 ```
 
-Keep `ops/production-approval-manifest.json` and the emitted `PRODUCTION_APPROVAL_MANIFEST_BASE64` secret out of source control. Never replace missing counsel or responder assignments with placeholders. Any covered document change invalidates the deployed evidence until the appropriate reviewer approves the new digest.
+Keep `ops/production-approval-manifest.json` and the emitted `PRODUCTION_APPROVAL_MANIFEST_BASE64` secret out of source control. Never replace a missing reviewer or responder assignment with a placeholder. Operator self-review must be disclosed as `operator_self_review` with counsel status `not_obtained`; it is not a claim that counsel approved or that the product complies with every law. Any covered document change invalidates the deployed evidence until the appropriate reviewer approves the new digest.
 
 ## Two-User Isolation Test
 

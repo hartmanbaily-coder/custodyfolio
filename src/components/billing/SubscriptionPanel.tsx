@@ -299,7 +299,15 @@ export default function SubscriptionPanel({
         ) : null}
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2" aria-label="Subscription prices">
+      {status.nativeIos && !status.checkoutEnabled ? (
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-950">In-app purchases are temporarily unavailable</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            No charge can be created in this build. Existing subscriptions remain available through the provider that manages them, and you can still restore or manage an App Store subscription below.
+          </p>
+        </section>
+      ) : (
+        <section className="grid gap-4 lg:grid-cols-2" aria-label="Subscription prices">
         <PlanCard
           title="Monthly"
           price={status.nativeIos ? appleMonthly?.displayPrice || "App Store price" : status.pricing.web.monthly}
@@ -325,7 +333,8 @@ export default function SubscriptionPanel({
             else void beginCheckout("annual");
           }}
         />
-      </section>
+        </section>
+      )}
 
       <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-950">Manage or restore</h2>

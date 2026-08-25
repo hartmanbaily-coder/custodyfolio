@@ -104,6 +104,12 @@ final class NativeSecurityPolicyTests: XCTestCase {
             host: "www.custodyfolio.com",
             expiresAt: now.addingTimeInterval(600)
         )
+        let validScope = try makeCookie(
+            name: "__Host-l2f-records-scope",
+            value: "attorney_guest",
+            host: "custodyfolio.com",
+            expiresAt: now.addingTimeInterval(3_600)
+        )
         let expired = try makeCookie(
             name: "__Host-l2f-records-refresh",
             value: "expired",
@@ -124,15 +130,18 @@ final class NativeSecurityPolicyTests: XCTestCase {
         )
 
         let relevant = SessionCookiePolicy.relevantCookies(
-            [validRefresh, validAccess, expired, foreignHost, unrelated],
+            [validRefresh, validAccess, validScope, expired, foreignHost, unrelated],
             now: now
         )
         let managed = SessionCookiePolicy.managedCookies(
-            [validRefresh, validAccess, expired, foreignHost, unrelated]
+            [validRefresh, validAccess, validScope, expired, foreignHost, unrelated]
         )
 
-        XCTAssertEqual(Set(relevant.map(\.name)), Set([validRefresh.name, validAccess.name]))
-        XCTAssertEqual(managed.count, 3)
+        XCTAssertEqual(
+            Set(relevant.map(\.name)),
+            Set([validRefresh.name, validAccess.name, validScope.name])
+        )
+        XCTAssertEqual(managed.count, 4)
         XCTAssertTrue(SessionCookiePolicy.hasRefreshCookie(relevant, now: now))
         XCTAssertFalse(SessionCookiePolicy.hasRefreshCookie([expired, foreignHost], now: now))
     }

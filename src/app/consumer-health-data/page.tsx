@@ -3,7 +3,6 @@ import Link from "next/link";
 import { PolicyPage, type PolicySection } from "@/components/PolicyPage";
 import {
   accountDeletionPath,
-  legalOperatorLocation,
   legalOperatorName,
   pageMetadata,
   privacyEmail,
@@ -20,7 +19,7 @@ const sections: PolicySection[] = [
   {
     title: "Scope and operator",
     body: [
-      `${legalOperatorName}, located in ${legalOperatorLocation}, operates Custody Folio. This policy supplements the general Privacy Policy for Washington residents and people whose consumer health data is collected in Washington.`,
+      `${legalOperatorName} operates Custody Folio. This policy supplements the general Privacy Policy for Washington residents and people whose consumer health data is collected in Washington.`,
       "Custody Folio is a general custody-recordkeeping service, not a medical provider. Users can nevertheless choose to enter records that reveal physical or mental health information.",
     ],
   },

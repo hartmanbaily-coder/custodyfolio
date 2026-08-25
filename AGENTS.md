@@ -27,3 +27,22 @@ The release command must automate steps 2–7 through the App Store Connect API.
 App Store Connect API credentials belong only in the ignored `.env.testflight` file and an external `.p8` key path. If credentials or API authorization are missing, do not upload a new build and do not silently fall back to manual completion.
 
 Do not print, copy into documentation, or commit App Store Connect credentials, review-account passwords, API private keys, or other secrets.
+
+## Bounded audit and scan policy
+
+For liability, legal, privacy, accessibility, compliance, or security-review work:
+
+- Use one targeted, read-only pass over relevant tracked source, configuration, and documentation.
+- Exclude dependency, build, cache, generated, upload, and vendor directories unless a specific finding requires one of them.
+- A liability-coverage pass is not authorization to start a Codex Security deep scan, attack-path analysis, background job, subagent, or multi-agent run.
+- Start a security scan only when the current user explicitly requests that scan. Before any deep or potentially credit-intensive scan, state its scope and obtain the user's explicit approval.
+- Do not automatically continue, resume, or replace a failed, interrupted, or timed-out scan.
+- Poll an asynchronous tool at most three times. If its status is unchanged after three checks or ten minutes, whichever comes first, stop polling and return the available partial result with the unresolved limitation.
+- Retry a failed tool call at most once, and only when the failure is clearly transient. Never restart an entire audit as a retry.
+- End a standard liability or review pass after 15 minutes of agent runtime. Report completed evidence and remaining work instead of extending the run.
+- Do not repeat equivalent progress messages while waiting. One initial update and one timeout/failure update are sufficient.
+- Do not spawn subagents for these reviews unless the current user explicitly requests delegation.
+
+Success for a bounded review means a concise evidence-backed risk list, affected files or pages,
+safe corrections completed within scope, and clearly identified unresolved items. It does not require
+an exhaustive security scan.

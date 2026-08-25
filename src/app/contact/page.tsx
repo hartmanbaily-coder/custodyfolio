@@ -3,7 +3,6 @@ import Link from "next/link";
 import { PolicyPage, type PolicySection } from "@/components/PolicyPage";
 import {
   accountDeletionPath,
-  legalOperatorLocation,
   legalOperatorName,
   pageMetadata,
   privacyEmail,
@@ -24,7 +23,7 @@ const sections: PolicySection[] = [
   {
     title: "Operator",
     body: [
-      `${legalOperatorName}, located in ${legalOperatorLocation}, operates Custody Folio.`,
+      `${legalOperatorName} operates Custody Folio.`,
       "Use the monitored addresses below for written support, privacy, accessibility, security, and legal notices. Do not send sensitive case records unless we provide a protected method and ask for them.",
     ],
   },

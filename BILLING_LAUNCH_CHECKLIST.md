@@ -1,14 +1,14 @@
 # Custody Folio Billing Launch Checklist
 
-Status: not approved. The committed production template keeps billing disabled. Checkboxes require actual evidence; this file is not itself approval.
+Status: dual-provider release prepared but not activated. The iOS app uses Apple in-app purchase; the web app uses Stripe Checkout. The committed production template remains fail closed until the documented activation window. Checkboxes require actual evidence; this file is not itself approval.
 
 ## Product and policy
 
-- [ ] Qualified counsel approved the exact Terms, Privacy, subprocessor, subscription disclosure, refund, grace, account-deletion, and billing-retention text.
-- [ ] A qualified tax professional reviewed sales-tax/VAT/GST obligations and confirmed registrations. `TAX_VAT_GST_REVIEW_PACKET.md` was prepared on 2026-08-15; independent review is still required. Stripe automatic tax remains off unless active registrations are independently verified.
+- [ ] The operator adopted the exact operative Terms, Privacy, subprocessor, subscription disclosure, refund, grace, account-deletion, and billing-retention text and recorded whether review was `operator_self_review` or `qualified_counsel`. Operator self-review is not a legal-compliance claim.
+- [ ] The operator documented the sales-tax/VAT/GST decision and launch footprint. Set `STRIPE_TAX_MODE=automatic` only after active registrations and the product tax configuration are verified; use `not_collecting` only after documenting why collection is not required for the launch footprint.
 - [x] Monthly web charge is exactly $5.99 and annual charge is exactly $59.99; annual total and 16.5% savings are displayed. Verified in the live Stripe catalog on 2026-08-14.
 - [x] One universal 30-day no-card trial is confirmed in the database entitlement policy and customer copy; Stripe Checkout does not add a provider trial, and both App Store subscription products have no introductory offer. Reverified 2026-08-15.
-- [ ] Export-only, attorney access, cancellation, refunds, and Apple-managed billing are acceptance-tested.
+- [ ] Export-only, Stripe and Apple cancellation/refund consequences, account-deletion billing handling, and the production attorney flow are acceptance-tested against the release candidate.
 
 ## Stripe Dashboard — separate checklist
 
@@ -23,7 +23,7 @@ Status: not approved. The committed production template keeps billing disabled. 
 - [x] Automatic tax remains disabled; it must not be enabled unless registrations and the correct tax code/tax behavior are reviewed and configured.
 - [x] Test Checkout, Portal, success return state, reconciliation, end-of-period cancellation, entitlement removal, full refund, provider-originated payment failure, and dispute create/close passed end-to-end on 2026-08-15 using dedicated sandbox webhook `we_1U4c1SIcPfzDuv3FJ9EXGEbO`. The dispute-created run exposed an ordering defect that is fixed in deployed release `custodyfolio-stripe-restriction-20260815-0820`. Test dispute `du_1U4kOMIcPfzDuv3F3irdehNz` was then accepted/lost in Dashboard; after a controlled test-only servicing window, the exact signed `charge.dispute.closed` retry returned `200 OK`, event `evt_1U4r0vIcPfzDuv3FukArj31f` was recorded `processed`, the subscription projected `revoked`, and the entitlement returned to `export_only`. Production was immediately restored healthy with billing disabled, checkout false, and the live canary off.
 
-## App Store Connect — separate checklist
+## App Store Connect — submission checklist
 
 - [x] Existing bundle identity `io.lendori.losttofound` is confirmed as the production app identity.
 - [x] One Custody Folio subscription group contains `io.custodyfolio.subscription.monthly` and `io.custodyfolio.subscription.annual`; both products are `READY_TO_SUBMIT`, have the correct monthly/annual durations, and are at subscription-group level 1. Reverified through the App Store Connect API on 2026-08-15.
@@ -34,8 +34,9 @@ Status: not approved. The committed production template keeps billing disabled. 
 - [ ] Copy the Apple IAP key into the encrypted iCloud Drive + Passwords recovery vault documented in `APPLE_IAP_OFF_DEVICE_VAULT.md`, verify same-device and second-device recovery, then explicitly retain or destroy the local recovery copy. The Passwords-backed AES-256-GCM archive and same-device recovery passed on 2026-08-15: the Passwords-retrieved secret decrypted the archive to a mode-`0600` key that matched the protected original byte-for-byte and by SHA-256, after which the clipboard and all temporary secret-bearing files were cleared or removed. The checkbox remains open only for recovery from a second trusted device and the explicit local-copy retention/destruction decision.
 - [x] The older non-production IAP key exposed from the ignored local environment was revoked on 2026-08-15. Apple rejected the revoked key with HTTP 401, and its local key ID, issuer ID, and private-key values were scrubbed. `APPLE_IAP_KEY_ROTATION_2026-08-15.md` records the response; the protected production key remains separate and active.
 - [ ] StoreKit purchase, pending, cancellation, verified/unverified transaction, restore, current entitlements, manage subscription, grace, retry, refund, revoke, expiration, and reconciliation flows passed. The native iPhone 17 Pro / iOS 26.5 suite was rerun on 2026-08-15 and again passed 15 tests with zero failures and one StoreKit lifecycle test skipped because Xcode 26.6 returned `notEntitled`. The DEBUG-only acceptance harness again loaded both real subscription products and opened Apple's sandbox sign-in from the monthly purchase action. The dedicated United States Sandbox Apple Account credential was supplied from protected Keychain without logging it, and every temporary handoff and clipboard was cleared. Credential-safe logs again showed AuthKit success followed by AppleMediaServices `AMSErrorDomain` authentication failure (`Password reuse not available` / unrecognized authentication failure); iOS did not retain the account. Provider purchase/refund/restore therefore remain unresolved rather than passed.
-- [x] App Review notes explain the universal account trial and native StoreKit purchase path. No Stripe purchase UI is presented inside iOS.
-- [x] TestFlight build 14 is `VALID` and `IN_BETA_TESTING` in External Beta; the public link and TesterBuddy redirect resolve correctly, with 3 of 10 tester seats in use. The external-distribution API preflight was rerun successfully on 2026-08-15.
+- [ ] App Review notes and screenshots describe native StoreKit monthly and annual purchases, cancellation/restore paths, and attorney access. Verify that no Stripe purchase call to action is presented inside iOS.
+- [x] TestFlight build 15 is `VALID` and `IN_BETA_TESTING` in External Beta; the public link and TesterBuddy redirect resolve correctly, with 3 of 10 tester seats in use. Reverified read-only on 2026-08-23.
+- [ ] Upload and test the next release-candidate build containing the required-reason privacy-manifest correction; build 15 is the verified baseline, not the final submission binary.
 
 ## Apple Small Business Program — verification checklist
 
@@ -63,9 +64,9 @@ Status: not approved. The committed production template keeps billing disabled. 
 - [x] Repository unit/integration suite passed 396/396 tests on 2026-08-15, including all billing and security regression tests.
 - [x] Chromium product acceptance suite passed 29/29 tests on 2026-08-15.
 - [x] WebKit/iOS product acceptance suite passed 29/29 tests on 2026-08-15.
-- [x] Native iOS simulator suite passed 15 tests with zero failures and one StoreKit provider acceptance test skipped on iPhone 17 Pro / iOS 26.5 on 2026-08-15. The skip remains represented by the unchecked provider-scenario item above.
+- [x] Native iOS simulator suite ran 16 tests with 15 passed, zero failures, and one StoreKit provider acceptance test skipped on iPhone 17 Pro / iOS 26.5 on 2026-08-23. The privacy manifest was packaged in the app, and the skip remains represented by the unchecked provider-scenario item above.
 - [x] Production build, TypeScript check, 113-key environment-template verification, repository secret scan, and npm production dependency audit passed on 2026-08-15; npm reported zero vulnerabilities.
-- [x] Production smoke test passed on 2026-08-15 with only the three expected human-approval blockers: data retention, incident response, and legal review.
+- [x] Historical production smoke test passed on 2026-08-15 with three then-pending approval-evidence gates. Because the policy bundle changed on 2026-08-23, a new exact-digest approval manifest and zero-blocker readiness check are required before activation.
 - [x] Production synthetic attorney-access verification passed invitation, mailbox-provider handoff, MFA, read-only portal, revocation, post-revocation denial, and cleanup on 2026-08-14. Inbox placement was outside this synthetic test.
 - [x] A synthetic privacy-rights deletion workflow rehearsal passed all 14 route/evidence tests and the protected request-evidence verifier on 2026-08-15. It used no customer data and mocked provider boundaries.
 - [x] An incident-response tabletop was completed and documented on 2026-08-15 using the real Stripe out-of-order dispute discovery, containment, rollback, repair, and post-deploy verification. Named responder ownership and independent contact-channel tests remain pending.
@@ -75,7 +76,8 @@ Status: not approved. The committed production template keeps billing disabled. 
 - [ ] The user explicitly authorizes production activation after reviewing this evidence.
 - [ ] `LIVE_BILLING_APPROVED=true` is set by the authorized operator.
 - [ ] `BILLING_LIVE_ACTIVATION_AUTHORIZED=true` is set for the same monitored release window.
-- [ ] `BILLING_MODE=live`, `APPLE_BILLING_ENVIRONMENT=production`, and `BILLING_CHECKOUT_ENABLED=true` are applied together.
+- [ ] `BILLING_MODE=live`, `BILLING_CHECKOUT_ENABLED=true`, and `APPLE_PURCHASE_ENABLED=true` are applied together only for the approved dual-provider activation window.
+- [ ] `ATTORNEY_GUEST_FEATURE_ENABLED=true` and `ATTORNEY_INVITE_OWNER_SHARE_ENABLED=true` are applied only after the release-candidate attorney consent, MFA, revocation, and audit tests pass.
 - [ ] A synthetic live purchase is performed only if expressly authorized and legally/operationally appropriate; verify entitlement, management, cancellation, export-only, and reconciliation.
 - [ ] Monitoring covers provider failures, conflicts, reconciliation, account-deletion billing cancellation, and unusual webhook volume.
 

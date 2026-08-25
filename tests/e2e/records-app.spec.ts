@@ -1462,7 +1462,7 @@ test("settings use structured time zone selectors for profiles and cases", async
   const profileTimeZone = accountSettings.getByLabel("Time zone");
   await expect(profileTimeZone).toHaveJSProperty("tagName", "SELECT");
   await expect(profileTimeZone.locator('option[value="America/Anchorage"]')).toHaveText(
-    "Alaska Time — most of Alaska"
+    "UTC−09/UTC−08"
   );
   await profileTimeZone.selectOption("America/Anchorage");
   await accountSettings.getByRole("button", { name: "Save profile" }).click();

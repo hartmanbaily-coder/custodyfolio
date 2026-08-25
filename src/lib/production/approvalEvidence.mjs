@@ -186,20 +186,29 @@ function validateLegal(approval, now) {
   const errors = [];
   validateCommonApproval(
     approval,
-    ["qualified_counsel"],
+    ["qualified_counsel", "product_owner"],
     requiredApprovalDocuments.legal,
     now,
     errors
   );
-  if (!meaningfulText(approval?.reviewerOrganization)) {
-    errors.push("reviewer organization is missing or a placeholder");
-  }
-  if (
-    !Array.isArray(approval?.licenseJurisdictions) ||
-    approval.licenseJurisdictions.length === 0 ||
-    approval.licenseJurisdictions.some((value) => !meaningfulText(value))
+  if (approval?.approverRole === "qualified_counsel") {
+    if (!meaningfulText(approval?.reviewerOrganization)) {
+      errors.push("reviewer organization is missing or a placeholder");
+    }
+    if (
+      !Array.isArray(approval?.licenseJurisdictions) ||
+      approval.licenseJurisdictions.length === 0 ||
+      approval.licenseJurisdictions.some((value) => !meaningfulText(value))
+    ) {
+      errors.push("counsel license jurisdiction is missing");
+    }
+  } else if (
+    approval?.reviewBasis !== "operator_self_review" ||
+    approval?.counselReviewStatus !== "not_obtained"
   ) {
-    errors.push("counsel license jurisdiction is missing");
+    errors.push(
+      "operator legal approval must disclose operator_self_review and counsel review not_obtained"
+    );
   }
   return { ready: errors.length === 0, errors };
 }

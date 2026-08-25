@@ -2,9 +2,9 @@
 
 Effective date: August 10, 2026
 
-Policy owner: Slantwire Studios
+Policy owner: Slantwire Studios, LLC
 
-Custody Folio keeps sensitive records only as long as users need them and as long as a specific operational, security, legal, or backup constraint requires. This runbook defines the production deletion and retention model. A qualified legal reviewer must approve material changes before `LEGAL_REVIEW_APPROVED=true` is set.
+Custody Folio keeps sensitive records only as long as users need them and as long as a specific operational, security, legal, or backup constraint requires. This runbook defines the production deletion and retention model. An authorized reviewer must adopt material changes and record the exact document digest before `LEGAL_REVIEW_APPROVED=true` is set. Operator self-review must be disclosed as such and is not qualified legal advice.
 
 This is product and operations guidance, not legal advice.
 
@@ -70,15 +70,18 @@ If deletion is queued:
 
 Required behavior:
 
-1. User requests account deletion.
-2. App confirms identity and reauthentication.
-3. User is offered export.
-4. All user cases are queued for deletion.
-5. Private evidence objects are deleted.
-6. Records snapshots and normalized records are deleted.
-7. Supabase Auth user is deleted or disabled after records cleanup.
-8. Active sessions are revoked.
-9. Minimal deletion audit metadata is retained for the security retention period if lawful and necessary.
+1. The signed-in user opens the self-service deletion page, where export remains available before the irreversible action.
+2. The deletion request requires the authenticated records session, the configured MFA assurance level, CSRF verification, rate limiting, the `account:delete` capability, and the exact `DELETE` confirmation.
+3. The server creates an account-deletion tombstone before cleanup. Evidence uploads check that tombstone and are blocked while deletion is active.
+4. The server checks provider billing. Active Stripe web subscriptions are cancelled before deletion; deletion stops if cancellation or billing verification cannot be confirmed. App Store billing is controlled by Apple and does not delay account deletion, so the user is told to cancel separately in Apple subscription settings.
+5. The server recursively enumerates and deletes the authenticated user's private evidence-storage prefix and requires Storage cleanup to succeed.
+6. The server globally revokes the Supabase Auth session before removing the account.
+7. Billing identity is replaced with a keyed pseudonymous deletion hash, and active trial/entitlement links are removed through the billing redaction procedure.
+8. The server deletes the Supabase Auth user. Database foreign-key cascades remove the user's records snapshots, normalized records, profiles, invitations, grants, and owner audit rows; events owned by another user retain no deleted actor identity.
+9. The server marks the non-Auth deletion tombstone completed so an in-flight upload cannot recreate data after Auth deletion.
+10. The app clears local session cookies and records only minimal deletion-completion or failure telemetry without custody-record content.
+
+The route fails closed at each safety boundary. If Stripe cancellation, evidence cleanup, session revocation, billing redaction, Auth deletion, or tombstone finalization cannot be confirmed, it returns a specific failure state instead of claiming complete deletion. Some later-stage failures occur after files or sessions have already been removed; the user is instructed to contact support so the remaining step can be completed.
 
 ## Evidence Deletion
 
@@ -129,7 +132,7 @@ Production limits:
 - Raw application and request logs: no more than 180 days; minimize IP addresses and user agents where practical
 - Authentication, security, attorney-access, and deletion audit events: no more than 365 days unless a documented legal hold applies
 - Closed support and privacy correspondence: no more than 24 months unless an active request, dispute, or documented legal hold requires longer
-- Backup restore owner: the Slantwire Studios infrastructure operator or a specifically designated incident lead
+- Backup restore owner: the Slantwire Studios, LLC infrastructure operator or a specifically designated incident lead
 - Backup restore test cadence: at least once every 180 days and after a material backup-provider change
 
 The operator must review provider settings at least quarterly. If a provider cannot meet these maximums, do not place new production customer data with that provider until the mismatch is corrected or the public policy is lawfully revised with required notice or consent.
@@ -147,7 +150,7 @@ The verifier intentionally rejects the `.example.json` template and common place
 
 A deletion request may be paused only when a documented legal requirement or a written, case-specific legal assessment requires it.
 
-- Placement: only the Slantwire Studios operator, acting on documented legal process or advice, may place a hold.
+- Placement: only the Slantwire Studios, LLC operator, acting on documented legal process or advice, may place a hold.
 - Scope: identify the account, exact data categories, legal basis, start date, and the least amount of data necessary. Do not copy record contents into the hold log.
 - Notice: notify the affected user unless the law or legal process prohibits notice; record the reason if notice is delayed or withheld.
 - Protection: restrict held data to specifically authorized personnel and preserve existing encryption and access logging.

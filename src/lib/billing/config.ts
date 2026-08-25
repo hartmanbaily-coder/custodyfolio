@@ -1,5 +1,6 @@
 import type { BillingEnvironment, BillingMode } from "./types";
 import { assertLiveBillingReady } from "./readiness";
+import { billingFeatureMayRun } from "@/lib/legalRelease";
 
 export const stripeApiVersion = "2026-07-29.dahlia" as const;
 
@@ -40,8 +41,32 @@ export function billingIsEnabled(
 export function billingCheckoutEnabled(
   env: Record<string, string | undefined> = process.env
 ) {
-  return billingMode(env) !== "disabled" &&
+  return billingFeatureMayRun(env) &&
+    billingMode(env) !== "disabled" &&
     env.BILLING_CHECKOUT_ENABLED?.trim().toLowerCase() === "true";
+}
+
+export function applePurchaseEnabled(
+  env: Record<string, string | undefined> = process.env
+) {
+  return env.APPLE_PURCHASE_ENABLED?.trim().toLowerCase() === "true";
+}
+
+export type StripeTaxMode = "disabled" | "automatic" | "not_collecting";
+
+export function stripeTaxMode(
+  env: Record<string, string | undefined> = process.env
+): StripeTaxMode {
+  const value = env.STRIPE_TAX_MODE?.trim().toLowerCase();
+  return value === "automatic" || value === "not_collecting"
+    ? value
+    : "disabled";
+}
+
+export function stripeAutomaticTaxEnabled(
+  env: Record<string, string | undefined> = process.env
+) {
+  return stripeTaxMode(env) === "automatic";
 }
 
 function liveCanaryCheckoutEnabled(
@@ -50,6 +75,7 @@ function liveCanaryCheckoutEnabled(
   now: Date
 ) {
   if (
+    !billingFeatureMayRun(env) ||
     billingMode(env) !== "live" ||
     billingCheckoutEnabled(env) ||
     env.BILLING_LIVE_CANARY_AUTHORIZED?.trim().toLowerCase() !== "true"
@@ -85,7 +111,11 @@ export function billingPurchaseEnabledForUser(
   now = new Date()
 ) {
   if (options.nativeIos === true) {
-    return billingMode(env) !== "disabled";
+    return (
+      billingFeatureMayRun(env) &&
+      applePurchaseEnabled(env) &&
+      billingMode(env) !== "disabled"
+    );
   }
   return billingCheckoutEnabledForUser(userId, env, now);
 }
