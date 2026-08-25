@@ -1,5 +1,12 @@
-import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { access, chmod, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+
+const execFileAsync = promisify(execFile);
 
 async function source(path: string) {
   return readFile(new URL(path, import.meta.url), "utf8");
@@ -33,6 +40,84 @@ describe("release security regressions", () => {
     expect(deploy).toContain("--exclude '.mcp.json'");
     expect(deploy).toContain("--exclude '.codex/'");
     expect(deploy).toContain("--exclude '.agents/'");
+  });
+
+  it("limits TestFlight StoreKit acceptance to one user and restores live billing", async () => {
+    const [helper, runner, config, envTemplate] = await Promise.all([
+      source("../deploy/production/configure-apple-testflight-canary.sh"),
+      source("../deploy/production/run-apple-testflight-purchase-window.sh"),
+      source("../src/lib/billing/config.ts"),
+      source("../.env.example"),
+    ]);
+    expect(helper).toContain('print "BILLING_MODE=test"');
+    expect(helper).toContain('print "BILLING_CHECKOUT_ENABLED=false"');
+    expect(helper).toContain('print "APPLE_PURCHASE_ENABLED=false"');
+    expect(helper).toContain('print "APPLE_BILLING_ENVIRONMENT=sandbox"');
+    expect(helper).toContain("remaining > 7200");
+    expect(helper).toContain('cp "${backup_file}" "${next_env}"');
+    expect(runner).toContain("trap cleanup EXIT INT TERM HUP");
+    expect(runner).toContain('read -r -t "$((window_minutes * 60))" _ || true');
+    expect(config).toContain("appleTestFlightCanaryEnabled(userId, env, now)");
+    expect(config).toContain('billingMode(env) !== "test"');
+    expect(envTemplate).toContain("APPLE_TESTFLIGHT_CANARY_AUTHORIZED=false");
+  });
+
+  it("restores the exact protected environment after a TestFlight canary", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "custodyfolio-apple-canary-"));
+    const envFile = join(directory, "app.env");
+    const helper = fileURLToPath(
+      new URL("../deploy/production/configure-apple-testflight-canary.sh", import.meta.url)
+    );
+    await writeFile(
+      envFile,
+      [
+        "BILLING_MODE=live",
+        "BILLING_CHECKOUT_ENABLED=false",
+        "BILLING_LIVE_CANARY_AUTHORIZED=false",
+        "APPLE_PURCHASE_ENABLED=false",
+        "APPLE_BILLING_ENVIRONMENT=production",
+        "",
+      ].join("\n"),
+      { mode: 0o600 }
+    );
+    await chmod(envFile, 0o600);
+    const commandEnv = {
+      ...process.env,
+      LOSTTOFOUND_ENV_FILE: envFile,
+    };
+    await execFileAsync("bash", [helper, "install"], { env: commandEnv });
+    const installed = await readFile(envFile, "utf8");
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000)
+      .toISOString()
+      .replace(/\.\d{3}Z$/, "Z");
+    await execFileAsync(
+      "bash",
+      [helper, "open", "724f81aa-b6d1-4b8a-ab59-aec5fe29e7ea", expiresAt],
+      { env: commandEnv }
+    );
+    const opened = await readFile(envFile, "utf8");
+    expect(opened).toContain("BILLING_MODE=test");
+    expect(opened).toContain("BILLING_CHECKOUT_ENABLED=false");
+    expect(opened).toContain("APPLE_PURCHASE_ENABLED=false");
+    expect(opened).toContain("APPLE_TESTFLIGHT_CANARY_AUTHORIZED=true");
+    expect(opened).toContain("APPLE_BILLING_ENVIRONMENT=sandbox");
+    await execFileAsync("bash", [helper, "close"], { env: commandEnv });
+    expect(await readFile(envFile, "utf8")).toBe(installed);
+    await expect(access(`${envFile}.apple-testflight-canary-backup`)).rejects.toThrow();
+  });
+
+  it("records billing evidence without opening either purchase provider", async () => {
+    const evidence = await source(
+      "../deploy/production/configure-billing-readiness-evidence.sh"
+    );
+    expect(evidence).toContain('keys["BILLING_POLICY_APPROVED"] = "true"');
+    expect(evidence).toContain(
+      'keys["BILLING_POLICY_APPROVAL_BASIS"] = "operator_self_review"'
+    );
+    expect(evidence).not.toContain('keys["BILLING_CHECKOUT_ENABLED"]');
+    expect(evidence).not.toContain('keys["LIVE_BILLING_APPROVED"]');
+    expect(evidence).not.toContain('keys["BILLING_LIVE_ACTIVATION_AUTHORIZED"]');
+    expect(evidence).not.toContain('keys["BILLING_TAX_REVIEW_APPROVED"]');
   });
 
   it("limits the deployment override to documented approval-only blockers", async () => {

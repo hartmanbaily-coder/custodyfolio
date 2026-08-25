@@ -52,6 +52,34 @@ export function applePurchaseEnabled(
   return env.APPLE_PURCHASE_ENABLED?.trim().toLowerCase() === "true";
 }
 
+function appleTestFlightCanaryEnabled(
+  userId: string,
+  env: Record<string, string | undefined>,
+  now: Date
+) {
+  if (
+    !billingFeatureMayRun(env) ||
+    billingMode(env) !== "test" ||
+    env.APPLE_TESTFLIGHT_CANARY_AUTHORIZED?.trim().toLowerCase() !== "true"
+  ) {
+    return false;
+  }
+  const configuredUserId = String(
+    env.APPLE_TESTFLIGHT_CANARY_USER_ID || ""
+  ).trim();
+  if (
+    configuredUserId !== userId ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      configuredUserId
+    )
+  ) {
+    return false;
+  }
+  const expiresAt = Date.parse(env.APPLE_TESTFLIGHT_CANARY_EXPIRES_AT || "");
+  const remaining = expiresAt - now.getTime();
+  return Number.isFinite(expiresAt) && remaining > 0 && remaining <= 2 * 60 * 60 * 1000;
+}
+
 export type StripeTaxMode = "disabled" | "automatic" | "not_collecting";
 
 export function stripeTaxMode(
@@ -113,8 +141,9 @@ export function billingPurchaseEnabledForUser(
   if (options.nativeIos === true) {
     return (
       billingFeatureMayRun(env) &&
-      applePurchaseEnabled(env) &&
-      billingMode(env) !== "disabled"
+      billingMode(env) !== "disabled" &&
+      (applePurchaseEnabled(env) ||
+        appleTestFlightCanaryEnabled(userId, env, now))
     );
   }
   return billingCheckoutEnabledForUser(userId, env, now);

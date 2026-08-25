@@ -158,6 +158,48 @@ describe("billing capability policy", () => {
         canaryNow
       )
     ).toBe(false);
+    const appleCanaryEnv = {
+      BILLING_MODE: "test",
+      APPLE_PURCHASE_ENABLED: "false",
+      APPLE_TESTFLIGHT_CANARY_AUTHORIZED: "true",
+      APPLE_TESTFLIGHT_CANARY_USER_ID: canaryUserId,
+      APPLE_TESTFLIGHT_CANARY_EXPIRES_AT: "2026-08-14T21:00:00.000Z",
+    };
+    expect(
+      billingPurchaseEnabledForUser(
+        canaryUserId,
+        { nativeIos: true },
+        appleCanaryEnv,
+        canaryNow
+      )
+    ).toBe(true);
+    expect(
+      billingPurchaseEnabledForUser(
+        "00000000-0000-4000-8000-000000000000",
+        { nativeIos: true },
+        appleCanaryEnv,
+        canaryNow
+      )
+    ).toBe(false);
+    expect(
+      billingPurchaseEnabledForUser(
+        canaryUserId,
+        { nativeIos: true },
+        {
+          ...appleCanaryEnv,
+          APPLE_TESTFLIGHT_CANARY_EXPIRES_AT: "2026-08-14T19:59:59.000Z",
+        },
+        canaryNow
+      )
+    ).toBe(false);
+    expect(
+      billingPurchaseEnabledForUser(
+        canaryUserId,
+        { nativeIos: true },
+        { ...appleCanaryEnv, BILLING_MODE: "live" },
+        canaryNow
+      )
+    ).toBe(false);
     expect(
       billingPurchaseEnabledForUser(
         canaryUserId,
