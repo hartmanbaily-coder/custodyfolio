@@ -15,6 +15,19 @@
 /test-results
 /playwright-report
 /tmp
+/testerbuddy-screenshots/
+
+# local Codex/Xcode tool configuration
+/.codex/
+
+# superseded local App Store capture variants
+/app-store-screenshots/01-dashboard-428x926.png
+/app-store-screenshots/01-dashboard-light-1284x2778.jpg
+/app-store-screenshots/01-dashboard-light-428x926.png
+/app-store-screenshots/02-timeline-light-1284x2778.jpg
+/app-store-screenshots/02-timeline-light-428x926.png
+/app-store-screenshots/03-child-support-light-1284x2778.jpg
+/app-store-screenshots/03-child-support-light-428x926.png
 
 # next.js
 /.next/
@@ -45,7 +58,7 @@ yarn-error.log*
 /ops/backup-restore-evidence.json
 /ops/*-restore-evidence.json
 !/ops/backup-restore-evidence.example.json
-/ops/production-approval-manifest.json
+/ops/production-approval-manifest*.json
 /ops/privacy-rights-request.json
 /ops/privacy-rights-requests/
 !/ops/privacy-rights-request.example.json
