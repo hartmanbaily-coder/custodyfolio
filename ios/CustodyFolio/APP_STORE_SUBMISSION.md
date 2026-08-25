@@ -8,7 +8,7 @@ This packet describes the intended submission. Evidence checkboxes and external 
 - Display name: Custody Folio
 - Bundle ID: `io.lendori.losttofound`
 - Version: `1.0.0`
-- Build: next uploaded build after build 15; the next binary must include the privacy-manifest correction
+- Build: 16; uploaded, externally testing, and attached to version 1.0.0 on August 24, 2026
 - Minimum iOS version: `17.0`
 - Supported devices: iPhone and iPad
 - Signing team: `HQG9VJ8JK2`
@@ -82,7 +82,7 @@ Current native build snapshot:
 
 - Product: `CustodyFolio.app`
 - Bundle ID: `io.lendori.losttofound`
-- Version/build: `1.0.0`; TestFlight build 15 is the verified baseline and the privacy-manifest correction requires a later release-candidate build
+- Version/build: `1.0.0` (16); build 16 includes the privacy-manifest correction and secure attorney/owner session-scope restoration
 - Deployment target: iOS 17.0
 - Records URL: `https://custodyfolio.com/records`
 - Account deletion URL: `https://custodyfolio.com/account/delete`

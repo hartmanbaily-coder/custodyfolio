@@ -2,7 +2,7 @@
 
 Audit date: August 24, 2026 (America/Anchorage; live checks recorded August 25 UTC)
 
-Status: **not ready to submit yet**. The code candidate is locally healthy and App Store Connect is staged correctly, but operator review, live provider acceptance, and a replacement binary are still required.
+Status: **not ready to submit yet**. The code candidate is locally healthy and replacement build 16 is staged correctly in App Store Connect, but operator review, physical-device purchase testing, and live provider acceptance are still required.
 
 This document records verification evidence. It does not approve policy text, enable production features, upload a build, or submit the app.
 
@@ -16,31 +16,31 @@ Production billing and attorney access remain fail closed until that review is r
 
 ## App Store Connect
 
-Read-only App Store Connect audit result at `2026-08-25T00:21:49.419Z`:
+Read-only App Store Connect audit reverified at `2026-08-25T07:06:20.134Z`:
 
 - App: Custody Folio, Apple ID `6789433883`, bundle ID `io.lendori.losttofound`.
 - Version 1.0.0 is `READY_FOR_REVIEW` and has not been submitted.
-- Build 15 is `VALID` and attached to the version.
+- Build 16 is `VALID` and attached to the version.
 - The draft review submission contains the app version, monthly subscription, annual subscription, and subscription group; all four items are `READY_FOR_REVIEW`.
 - Monthly and annual subscriptions are both `READY_TO_SUBMIT`.
 - Direct App Store Connect inspection on August 24, 2026 reconfirmed current U.S. subscription prices of $6.99 monthly and $69.99 annually. Each subscription already has localized pricing for all 175 App Store countries and regions.
 - Review contact, demo information, review notes, and version metadata are complete.
 - Three iPhone and three iPad screenshots are uploaded.
-- Build 15 is in TestFlight beta testing, and the public link is enabled.
+- Build 16 is `IN_BETA_TESTING` in External Beta. The automated release verifier confirmed the public TestFlight and TesterBuddy links and reported tester capacity of 3/10.
 - The App Store Connect API sandbox-tester endpoint returned HTTP 404. This is an API limitation and does not verify whether a sandbox tester exists; confirm the tester in the App Store Connect interface before purchase testing.
 
 Direct inspection on August 24, 2026 initially found the app available on release only in the United States. With explicit product-owner authorization, App Store availability was changed and reverified as `Available on App Release` in all 175 current countries and regions. Automatic enrollment in future new App Store countries or regions remains off. App Store Connect identifies Custody Folio as a trader, and the product owner accepts use of the existing verified trader profile for EU distribution. Apple states that a trader distributing in any EU App Store must have verified contact information, including an address, displayed on the App Store product page; for an organization, Apple displays the address associated with its D-U-N-S Number. Trader status and address information were not changed. Reference: [Apple's EU trader requirements](https://developer.apple.com/help/app-store-connect/manage-compliance-information/manage-european-union-digital-services-act-trader-requirements).
 
 Apple requires a first auto-renewable subscription to be submitted with a new app version. The current four-item review package follows that model. References: [submit an in-app purchase](https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-in-app-purchase/) and [offer auto-renewable subscriptions](https://developer.apple.com/help/app-store-connect/manage-subscriptions/offer-auto-renewable-subscriptions/).
 
-### Replacement binary required
+### Replacement binary complete; acceptance pending
 
-Do not submit build 15. The following release changes are newer than that binary:
+Build 16 replaces build 15 and contains:
 
 - the required-reason privacy-manifest correction; and
 - native preservation of the attorney/owner role-scope cookie across secure WebKit-session restoration.
 
-Upload and test a new build, then replace build 15 on version 1.0.0 before submission.
+The mandatory TestFlight lane reported `PUBLIC TESTFLIGHT RELEASE COMPLETE` for exact build 16. A physical-device sandbox purchase, restore, revocation/refund, notification, and reconciliation pass is still required before submission.
 
 ## Verified Code and Release Controls
 

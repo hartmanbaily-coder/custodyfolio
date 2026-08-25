@@ -114,8 +114,10 @@ These are evidence checks, not product-owner policy decisions:
 
 Current local and App Store Connect results are recorded in
 [SUBMISSION_READINESS_AUDIT_2026-08-24.md](SUBMISSION_READINESS_AUDIT_2026-08-24.md).
-Local code/build checks have passed. Live provider acceptance, the replacement
-TestFlight build, and the final no-blocker production-readiness check remain pending.
+Local code/build checks have passed. TestFlight build 16 was uploaded on August 24,
+2026, verified as Testing in External Beta, and attached to App Store version 1.0.0.
+Physical-device Apple sandbox acceptance, live provider acceptance, and the final
+no-blocker production-readiness check remain pending.
 
 - web lint, type checking, unit/integration tests, WebKit acceptance tests, production build, secret scan, and dependency audit;
 - native iOS build and native test suite;
