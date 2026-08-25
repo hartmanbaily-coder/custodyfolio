@@ -69,10 +69,12 @@ enum SessionCookiePolicy {
         "www.custodyfolio.com",
     ])
     static let refreshCookieName = "__Host-l2f-records-refresh"
+    static let scopeCookieName = "__Host-l2f-records-scope"
     static let sessionCookieNames = Set([
         "__Host-l2f-records-access",
         "__Host-l2f-records-refresh",
         "__Host-l2f-records-case",
+        scopeCookieName,
     ])
 
     static func managedCookies(_ cookies: [HTTPCookie]) -> [HTTPCookie] {
