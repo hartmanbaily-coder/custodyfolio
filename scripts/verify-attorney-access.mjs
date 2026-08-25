@@ -45,6 +45,7 @@ let ownerUserId = "";
 let attorneyUserId = "";
 let invitationId = "";
 let grantId = "";
+let mailboxProviderHandoffVerified = false;
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -259,8 +260,14 @@ async function requestMailboxAuthentication(attorneyJar, attorneyCsrf) {
       legalAccepted: true,
     },
   });
-  assert(
-    requested.response.status === 202,
+  if (requested.response.status === 202) return true;
+  if (
+    requested.response.status === 503 &&
+    /\.(?:test|invalid)$/i.test(attorneyEmail.split("@").at(-1) || "")
+  ) {
+    return false;
+  }
+  throw new Error(
     `Mailbox authentication handoff failed with ${requested.response.status}: ${requested.body.error || "unknown error"}`
   );
 }
@@ -484,6 +491,8 @@ async function cleanup() {
   await deleteMatching("records_attorney_invitations", "owner_user_id", ownerUserId);
   await deleteMatching("records_case_snapshots", "user_id", ownerUserId);
   await deleteMatching("records_attorney_profiles", "user_id", attorneyUserId);
+  await deleteMatching("custody_folio_billing_accounts", "user_id", attorneyUserId);
+  await deleteMatching("custody_folio_billing_accounts", "user_id", ownerUserId);
   await deleteMatching("records_profiles", "user_id", ownerUserId);
   if (attorneyUserId) {
     const removed = await admin.auth.admin.deleteUser(attorneyUserId);
@@ -531,7 +540,7 @@ try {
     body: { token: invitationToken },
   });
   assert(prepared.response.ok, `Attorney invitation preparation failed with ${prepared.response.status}.`);
-  await requestMailboxAuthentication(attorneyJar, attorneyCsrf);
+  mailboxProviderHandoffVerified = await requestMailboxAuthentication(attorneyJar, attorneyCsrf);
   const mailboxSession = await syntheticMailboxSession(invitationToken);
   await verifyAcceptancePreconditions(invitationToken, mailboxSession);
   await acceptWithMailboxSession(attorneyJar, attorneyCsrf, invitationToken, mailboxSession);
@@ -549,8 +558,12 @@ try {
   grantId = grant.data.id;
 
   console.log("Synthetic attorney access verification passed.");
-  console.log("Verified: invitation, mailbox-provider handoff, mailbox token, MFA, read-only portal, revoke, and post-revoke denial.");
-  console.log("Inbox placement was not verified; the test used a reserved synthetic email domain and an admin-generated equivalent magic link.");
+  console.log("Verified: invitation, mailbox token, MFA, read-only portal, revoke, and post-revoke denial.");
+  console.log(
+    mailboxProviderHandoffVerified
+      ? "Mailbox-provider handoff passed; inbox placement was not verified."
+      : "Mailbox-provider handoff and inbox placement were not verified because the acceptance test uses a reserved synthetic email domain."
+  );
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
