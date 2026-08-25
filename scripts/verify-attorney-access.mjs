@@ -507,6 +507,15 @@ try {
   }
   ownerUserId = owner.data.user.id;
 
+  const ownerProfile = await admin.from("records_profiles").insert({
+    user_id: ownerUserId,
+    email: ownerEmail,
+    updated_at: new Date().toISOString(),
+  });
+  if (ownerProfile.error) {
+    throw new Error(`Unable to approve the synthetic owner profile: ${ownerProfile.error.message}`);
+  }
+
   const ownerJar = new CookieJar();
   await ownerLogin(ownerJar);
   const ownerCsrf = await csrfToken(ownerJar);
