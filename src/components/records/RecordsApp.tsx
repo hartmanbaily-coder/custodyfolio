@@ -241,8 +241,8 @@ function recordsHistoryState(view: ActiveView, index: number) {
 }
 
 const recordsTimezoneOptions = [
-  { value: "America/Adak", label: "Aleutian Time (UTC−10/UTC−09)" },
-  { value: "America/Anchorage", label: "UTC−09/UTC−08" },
+  { value: "America/Adak", label: "Aleutian Time — Adak, Alaska" },
+  { value: "America/Anchorage", label: "Alaska Time — most of Alaska" },
   { value: "Pacific/Honolulu", label: "Hawaii Time — Hawaii" },
   { value: "America/Los_Angeles", label: "Pacific Time — Los Angeles" },
   { value: "America/Phoenix", label: "Mountain Time without daylight saving — Arizona" },
