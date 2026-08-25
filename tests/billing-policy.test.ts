@@ -1,9 +1,14 @@
 import { readFile } from "node:fs/promises";
 import type Stripe from "stripe";
-import { Status, type JWSTransactionDecodedPayload } from "@apple/app-store-server-library";
+import {
+  Environment,
+  Status,
+  type JWSTransactionDecodedPayload,
+} from "@apple/app-store-server-library";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   applePlanInterval,
+  appleServerEnvironment,
   mapAppleSubscription,
 } from "@/lib/billing/apple";
 import {
@@ -155,6 +160,44 @@ describe("billing capability policy", () => {
         canaryUserId,
         { nativeIos: true },
         { BILLING_MODE: "live", APPLE_PURCHASE_ENABLED: "false" },
+        canaryNow
+      )
+    ).toBe(false);
+    const reviewSandboxEnv = {
+      BILLING_MODE: "live",
+      APPLE_PURCHASE_ENABLED: "false",
+      APPLE_REVIEW_SANDBOX_ENABLED: "true",
+      APPLE_REVIEW_SANDBOX_USER_ID: canaryUserId,
+      APPLE_REVIEW_SANDBOX_EXPIRES_AT: "2026-09-01T00:00:00.000Z",
+    };
+    expect(
+      billingPurchaseEnabledForUser(
+        canaryUserId,
+        { nativeIos: true },
+        reviewSandboxEnv,
+        canaryNow
+      )
+    ).toBe(true);
+    expect(
+      appleServerEnvironment(reviewSandboxEnv, {
+        userId: canaryUserId,
+        now: canaryNow,
+      })
+    ).toBe(Environment.SANDBOX);
+    expect(
+      appleServerEnvironment(reviewSandboxEnv, {
+        userId: "00000000-0000-4000-8000-000000000000",
+        now: canaryNow,
+      })
+    ).toBe(Environment.PRODUCTION);
+    expect(
+      billingPurchaseEnabledForUser(
+        canaryUserId,
+        { nativeIos: true },
+        {
+          ...reviewSandboxEnv,
+          APPLE_REVIEW_SANDBOX_EXPIRES_AT: "2026-08-14T19:59:59.000Z",
+        },
         canaryNow
       )
     ).toBe(false);

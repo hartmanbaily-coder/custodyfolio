@@ -60,6 +60,9 @@ const requiredKeys = [
   "APPLE_TESTFLIGHT_CANARY_AUTHORIZED",
   "APPLE_TESTFLIGHT_CANARY_USER_ID",
   "APPLE_TESTFLIGHT_CANARY_EXPIRES_AT",
+  "APPLE_REVIEW_SANDBOX_ENABLED",
+  "APPLE_REVIEW_SANDBOX_USER_ID",
+  "APPLE_REVIEW_SANDBOX_EXPIRES_AT",
   "APPLE_BILLING_ENVIRONMENT",
   "APPLE_BUNDLE_ID",
   "APPLE_APP_ID",
@@ -214,6 +217,18 @@ if (entries.get("BILLING_POLICY_APPROVAL_BASIS") !== "operator_self_review") {
 
 if (entries.get("APPLE_PURCHASE_ENABLED") !== "false") {
   findings.push("APPLE_PURCHASE_ENABLED must remain false in the fail-closed template until the App Store activation window.");
+}
+
+if (entries.get("APPLE_REVIEW_SANDBOX_ENABLED") !== "false") {
+  findings.push("APPLE_REVIEW_SANDBOX_ENABLED must remain false in the fail-closed template.");
+}
+
+if (entries.get("APPLE_REVIEW_SANDBOX_USER_ID") !== "") {
+  findings.push("APPLE_REVIEW_SANDBOX_USER_ID must remain empty in the fail-closed template.");
+}
+
+if (entries.get("APPLE_REVIEW_SANDBOX_EXPIRES_AT") !== "") {
+  findings.push("APPLE_REVIEW_SANDBOX_EXPIRES_AT must remain empty in the fail-closed template.");
 }
 
 if (entries.get("STRIPE_TAX_MODE") !== "disabled") {

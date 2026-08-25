@@ -132,6 +132,11 @@ require_safe_starting_state() {
     echo "Refusing to replace an already-authorized TestFlight canary." >&2
     exit 1
   }
+  if [[ $(env_count APPLE_REVIEW_SANDBOX_ENABLED) -eq 1 ]] &&
+    [[ $(env_value APPLE_REVIEW_SANDBOX_ENABLED) != "false" ]]; then
+    echo "Refusing to overlap TestFlight and App Review Sandbox authorizations." >&2
+    exit 1
+  fi
   [[ $(env_value APPLE_BILLING_ENVIRONMENT) == "production" ]] || {
     echo "Refusing to open the TestFlight canary unless the prior Apple state is production." >&2
     exit 1

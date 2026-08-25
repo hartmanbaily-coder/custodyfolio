@@ -54,6 +54,7 @@ describe("release security regressions", () => {
     expect(helper).toContain('print "APPLE_PURCHASE_ENABLED=false"');
     expect(helper).toContain('print "APPLE_BILLING_ENVIRONMENT=sandbox"');
     expect(helper).toContain("remaining > 7200");
+    expect(helper).toContain("APPLE_REVIEW_SANDBOX_ENABLED");
     expect(helper).toContain('cp "${backup_file}" "${next_env}"');
     expect(runner).toContain("trap cleanup EXIT INT TERM HUP");
     expect(runner).toContain('read -r -t "$((window_minutes * 60))" _ || true');
@@ -105,6 +106,54 @@ describe("release security regressions", () => {
     await execFileAsync("bash", [helper, "close"], { env: commandEnv });
     expect(await readFile(envFile, "utf8")).toBe(installed);
     await expect(access(`${envFile}.apple-testflight-canary-backup`)).rejects.toThrow();
+  });
+
+  it("limits App Review Sandbox to one expiring account without changing Stripe checkout", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "custodyfolio-apple-review-"));
+    const envFile = join(directory, "app.env");
+    const helper = fileURLToPath(
+      new URL("../deploy/production/configure-apple-review-sandbox.sh", import.meta.url)
+    );
+    await writeFile(
+      envFile,
+      [
+        "BILLING_MODE=live",
+        "BILLING_CHECKOUT_ENABLED=true",
+        "BILLING_LIVE_CANARY_AUTHORIZED=false",
+        "APPLE_PURCHASE_ENABLED=false",
+        "APPLE_TESTFLIGHT_CANARY_AUTHORIZED=false",
+        "",
+      ].join("\n"),
+      { mode: 0o600 }
+    );
+    await chmod(envFile, 0o600);
+    const commandEnv = {
+      ...process.env,
+      LOSTTOFOUND_ENV_FILE: envFile,
+    };
+    await execFileAsync("bash", [helper, "install"], { env: commandEnv });
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .replace(/\.\d{3}Z$/, "Z");
+    await execFileAsync(
+      "bash",
+      [helper, "open", "724f81aa-b6d1-4b8a-ab59-aec5fe29e7ea", expiresAt],
+      { env: commandEnv }
+    );
+    const opened = await readFile(envFile, "utf8");
+    expect(opened).toContain("BILLING_MODE=live");
+    expect(opened).toContain("BILLING_CHECKOUT_ENABLED=true");
+    expect(opened).toContain("APPLE_REVIEW_SANDBOX_ENABLED=true");
+    expect(opened).toContain(
+      "APPLE_REVIEW_SANDBOX_USER_ID=724f81aa-b6d1-4b8a-ab59-aec5fe29e7ea"
+    );
+    await execFileAsync("bash", [helper, "close"], { env: commandEnv });
+    const closed = await readFile(envFile, "utf8");
+    expect(closed).toContain("BILLING_MODE=live");
+    expect(closed).toContain("BILLING_CHECKOUT_ENABLED=true");
+    expect(closed).toContain("APPLE_REVIEW_SANDBOX_ENABLED=false");
+    expect(closed).toContain("APPLE_REVIEW_SANDBOX_USER_ID=\n");
+    expect(closed).toContain("APPLE_REVIEW_SANDBOX_EXPIRES_AT=\n");
   });
 
   it("records billing evidence without opening either purchase provider", async () => {

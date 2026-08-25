@@ -8,6 +8,7 @@ import {
   mapAppleSubscription,
 } from "@/lib/billing/apple";
 import { requireRecordsCapability } from "@/lib/billing/capabilities";
+import { appleReviewSandboxEnabledForUser } from "@/lib/billing/config";
 import { findBillingAccountByUser, getBillingStatus } from "@/lib/billing/repository";
 import { getRecordsAuthContext } from "@/lib/records/authServer";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
@@ -67,8 +68,10 @@ export async function POST(request: NextRequest) {
     if (run.error || !run.data) throw new Error("Reconciliation run could not be recorded.");
     runId = run.data.id;
 
-    const client = createAppleServerApiClient();
-    const verifier = createAppleSignedDataVerifier();
+    const reviewSandbox = appleReviewSandboxEnabledForUser(context.userId);
+    const serverContext = { userId: context.userId };
+    const client = createAppleServerApiClient(process.env, serverContext);
+    const verifier = createAppleSignedDataVerifier(process.env, serverContext);
     const response = await client.getAllSubscriptionStatuses(
       stored.data.original_transaction_id
     );
@@ -105,7 +108,7 @@ export async function POST(request: NextRequest) {
         const digest = createHash("sha256").update(state).digest("hex");
         await applyAppleProviderEvent({
           supabase: context.supabase,
-          eventId: `reconcile:${transaction.transactionId || subscription.providerSubscriptionId}:${digest.slice(0, 32)}`,
+          eventId: `${reviewSandbox ? "review-sandbox:" : ""}reconcile:${transaction.transactionId || subscription.providerSubscriptionId}:${digest.slice(0, 32)}`,
           eventType: "reconciliation.subscription",
           payloadSha256: digest,
           occurredAt: new Date(),

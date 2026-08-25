@@ -80,6 +80,42 @@ function appleTestFlightCanaryEnabled(
   return Number.isFinite(expiresAt) && remaining > 0 && remaining <= 2 * 60 * 60 * 1000;
 }
 
+export function appleReviewSandboxUserId(
+  env: Record<string, string | undefined> = process.env,
+  now = new Date()
+) {
+  if (
+    !billingFeatureMayRun(env) ||
+    billingMode(env) !== "live" ||
+    env.APPLE_REVIEW_SANDBOX_ENABLED?.trim().toLowerCase() !== "true"
+  ) {
+    return null;
+  }
+  const userId = String(env.APPLE_REVIEW_SANDBOX_USER_ID || "").trim();
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      userId
+    )
+  ) {
+    return null;
+  }
+  const expiresAt = Date.parse(env.APPLE_REVIEW_SANDBOX_EXPIRES_AT || "");
+  const remaining = expiresAt - now.getTime();
+  return Number.isFinite(expiresAt) &&
+    remaining > 0 &&
+    remaining <= 45 * 24 * 60 * 60 * 1000
+    ? userId
+    : null;
+}
+
+export function appleReviewSandboxEnabledForUser(
+  userId: string,
+  env: Record<string, string | undefined> = process.env,
+  now = new Date()
+) {
+  return appleReviewSandboxUserId(env, now) === userId;
+}
+
 export type StripeTaxMode = "disabled" | "automatic" | "not_collecting";
 
 export function stripeTaxMode(
@@ -143,7 +179,8 @@ export function billingPurchaseEnabledForUser(
       billingFeatureMayRun(env) &&
       billingMode(env) !== "disabled" &&
       (applePurchaseEnabled(env) ||
-        appleTestFlightCanaryEnabled(userId, env, now))
+        appleTestFlightCanaryEnabled(userId, env, now) ||
+        appleReviewSandboxEnabledForUser(userId, env, now))
     );
   }
   return billingCheckoutEnabledForUser(userId, env, now);
