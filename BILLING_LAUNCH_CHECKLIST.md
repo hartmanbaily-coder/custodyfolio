@@ -4,7 +4,7 @@ Status: dual-provider release prepared but not activated. The iOS app uses Apple
 
 ## Product and policy
 
-- [ ] The operator adopted the exact operative Terms, Privacy, subprocessor, subscription disclosure, refund, grace, account-deletion, and billing-retention text and recorded whether review was `operator_self_review` or `qualified_counsel`. Operator self-review is not a legal-compliance claim.
+- [x] On August 24, 2026, the operator adopted the exact operative Terms, Privacy, subprocessor, subscription disclosure, refund, grace, account-deletion, and billing-retention text as `operator_self_review`. Operator self-review is not a legal-compliance claim.
 - [ ] The operator documented the sales-tax/VAT/GST decision and launch footprint. Set `STRIPE_TAX_MODE=automatic` only after active registrations and the product tax configuration are verified; use `not_collecting` only after documenting why collection is not required for the launch footprint.
 - [x] Monthly web charge is exactly $5.99 and annual charge is exactly $59.99; annual total and 16.5% savings are displayed. Verified in the live Stripe catalog on 2026-08-14.
 - [x] One universal 30-day no-card trial is confirmed in the database entitlement policy and customer copy; Stripe Checkout does not add a provider trial, and both App Store subscription products have no introductory offer. Reverified 2026-08-15.

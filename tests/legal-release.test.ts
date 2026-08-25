@@ -11,32 +11,24 @@ import {
 import { checkAttorneyGuestEntitlement } from "@/lib/records/attorneyEntitlement";
 
 describe("public legal release gate", () => {
-  it("keeps production billing and attorney access closed pending explicit review", () => {
-    expect(billingLegalClausesStatus).toBe(
-      "feature_disabled_pending_review"
-    );
-    expect(billingLegalClausesAreOperative()).toBe(false);
-    expect(billingFeatureMayRun({ NODE_ENV: "production" })).toBe(false);
-    expect(attorneyLegalClausesStatus).toBe(
-      "feature_disabled_pending_review"
-    );
-    expect(attorneyFeatureMayRun({ NODE_ENV: "production" })).toBe(false);
+  it("allows production billing and attorney access after operator approval", () => {
+    expect(billingLegalClausesStatus).toBe("operative");
+    expect(billingLegalClausesAreOperative()).toBe(true);
+    expect(billingFeatureMayRun({ NODE_ENV: "production" })).toBe(true);
+    expect(attorneyLegalClausesStatus).toBe("operative");
+    expect(attorneyFeatureMayRun({ NODE_ENV: "production" })).toBe(true);
     expect(
       publicLegalClausesAreOperative({ ATTORNEY_GUEST_FEATURE_ENABLED: "false" })
-    ).toBe(false);
+    ).toBe(true);
     expect(
       publicLegalClausesAreOperative({ ATTORNEY_GUEST_FEATURE_ENABLED: "true" })
-    ).toBe(false);
+    ).toBe(true);
     expect(
       checkAttorneyGuestEntitlement("synthetic-owner", {
         NODE_ENV: "production",
         ATTORNEY_GUEST_FEATURE_ENABLED: "true",
       })
-    ).toEqual({
-      allowed: false,
-      reason:
-        "Attorney guest access is unavailable until the published terms are operative.",
-    });
+    ).toEqual({ allowed: true });
     expect(
       checkAttorneyGuestEntitlement("synthetic-owner", {
         NODE_ENV: "production",

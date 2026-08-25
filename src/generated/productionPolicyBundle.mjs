@@ -25,7 +25,7 @@ export const productionPolicyDocumentDigests = {
   "legalReviewPacket": "sha256:df21310bea6bab8712e77cfb18867c62a2e77319caca613396fffe83e2100f19",
   "privacyRightsOperations": "sha256:f0767c39ced3b07af7f1755711389dc6e8a7e84a8c0c83dac02bb55f70e63470",
   "billingOperationsRunbook": "sha256:f8833f4c6cd5360514dd7ad7838c18a16339c6c514cb03f214588d65355158da",
-  "billingLaunchChecklist": "sha256:1c98dc2f515af5453b4e8efc7b5a2a3961a6b5c689fbde0450bba1538bcb38cc"
+  "billingLaunchChecklist": "sha256:2c6d7623f6e55de6a2aea13004a3aebaa1c9509378d0726ff4e8c2444a52c188"
 };
 
-export const productionPolicyBundleSha256 = "sha256:fb0ff852a56ee5a50c3fa0caaef39a50dde060556e2ebd48cd8f4d65df8195e9";
+export const productionPolicyBundleSha256 = "sha256:cab6caabe54b82ec58bc3dd78540f9fc3c5173c5e26efde1f4b0cdc4a6299b1b";

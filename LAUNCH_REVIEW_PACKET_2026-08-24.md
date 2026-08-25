@@ -1,6 +1,6 @@
 # Custody Folio 1.0 Launch Review Packet
 
-Status: operator review in progress. Confirmed product-owner decisions are recorded below. This packet is a decision aid, not legal or tax advice, and does not activate production features.
+Status: operator policy review approved August 24, 2026. Incident-contact and direct-tax evidence remain incomplete. This packet is a decision aid, not legal or tax advice, and does not by itself activate production configuration.
 
 ## Confirmed Launch Scope
 
@@ -52,35 +52,35 @@ Do not approve an item unless the statement is accurate. Record revisions instea
 - [x] The public operator name `Slantwire Studios, LLC` is exact.
 - [x] The operator is based in Alaska, United States.
 - [x] Omitting a public street or mailing address is intentional. Public contact is by monitored email.
-- [ ] The Terms should omit a state-specific governing-law and exclusive-forum clause.
+- [x] The Terms should omit a state-specific governing-law and exclusive-forum clause.
 - [x] The adult-only account rule and the statement that children cannot create accounts are accurate.
 - [x] The no-legal-advice and no-admissibility statements accurately describe the app.
-- [ ] The warranty, liability, dispute, and user-responsibility clauses are accepted as contract terms. They are not code behavior; see the Codex accuracy review before adopting them.
+- [x] The warranty, liability, dispute, and user-responsibility clauses are accepted as contract terms through disclosed operator self-review. They are not code behavior or attorney approval.
 
 ### Subscription terms
 
 - [x] Web pricing is USD $5.99 monthly and USD $59.99 annually. The amounts match the source and the previously verified live Stripe catalog.
 - [x] App Store U.S. pricing is USD $6.99 monthly and USD $69.99 annually, subject to Apple's localized storefront display. Both current U.S. prices were directly reverified in App Store Connect on August 24, 2026.
-- [ ] Every eligible account receives one app-managed, 30-day, no-card trial; neither Stripe nor Apple adds a second introductory trial.
-- [ ] Stripe purchases are offered only on the web; the iOS app presents only Apple's StoreKit purchase flow.
-- [ ] Automatic renewal, cancellation timing, refund-provider responsibility, grace handling, and export-only behavior are accepted as written.
-- [ ] The account-deletion and provider-record-retention descriptions are accurate.
+- [x] Every eligible account receives one app-managed, 30-day, no-card trial; neither Stripe nor Apple adds a second introductory trial.
+- [x] Stripe purchases are offered only on the web; the iOS app presents only Apple's StoreKit purchase flow.
+- [x] Automatic renewal, cancellation timing, refund-provider responsibility, grace handling, and export-only behavior are accepted as written.
+- [x] The account-deletion and provider-record-retention descriptions are accurate.
 
 ### Attorney access and sensitive sharing
 
-- [ ] Attorney access is invitation-only, revocable, read-only, and free to the attorney. Invitation links are single-use and expire; an accepted grant continues until the owner revokes it, the attorney leaves, or the case/account is deleted.
-- [ ] The owner must select the case, name the intended adult attorney, and separately authorize sharing before an invitation is created.
-- [ ] The separate authorization expressly covers consumer-health or health-adjacent information in the selected case.
-- [ ] Download warnings, audit records, MFA, revocation behavior, and the limitation on copies already downloaded by an attorney are accepted.
+- [x] Attorney access is invitation-only, revocable, read-only, and free to the attorney. Invitation links are single-use and expire; an accepted grant continues until the owner revokes it, the attorney leaves, or the case/account is deleted.
+- [x] The owner must select the case, name the intended adult attorney, and separately authorize sharing before an invitation is created.
+- [x] The separate authorization expressly covers consumer-health or health-adjacent information in the selected case.
+- [x] Download warnings, audit records, MFA, revocation behavior, and the limitation on copies already downloaded by an attorney are accepted.
 
 ### Privacy, deletion, and retention
 
-- [ ] The listed providers and their described data uses are complete and accurate.
-- [ ] Active case/account deletion behavior is accurately described.
+- [x] The listed providers and their described data uses are complete and accurate.
+- [x] Active case/account deletion behavior is accurately described.
 - [x] Encrypted backup aging of no more than 180 days is acceptable as a product commitment. Provider verification remains a technical acceptance requirement.
 - [x] Raw request logs up to 180 days, security/auth/attorney/deletion audit events up to 365 days, and closed support/privacy correspondence up to 24 months are accepted as product commitments. Operational verification remains required.
-- [ ] Washington consumer-health-data consent, rights, appeal, and downstream-recipient handling are accepted for Washington consumers in the intended launch footprint. This is separate from the operator's Alaska location.
-- [ ] Legal-hold language and review cadence are accepted.
+- [x] Washington consumer-health-data consent, rights, appeal, and downstream-recipient handling are accepted for Washington consumers in the intended launch footprint. This is separate from the operator's Alaska location.
+- [x] Legal-hold language and review cadence are accepted.
 
 ### Tax decision for direct Stripe sales
 
@@ -103,7 +103,7 @@ Also record:
 - [ ] A primary and backup incident commander are named.
 - [ ] Engineering, Supabase, infrastructure, communications, forensics/vendor, backup/restore, and legal/privacy contacts are named.
 - [ ] Every role has tested primary and independent backup contact channels.
-- [ ] The retention/privacy-operations owner accepts the deletion and request workflow.
+- [x] The retention/privacy-operations owner accepts the deletion and request workflow through operator self-review.
 - [ ] The incident-response owner accepts the runbook and the documented tabletop limitations.
 
 Names, phone numbers, private addresses, credentials, and privileged advice belong only in the ignored protected approval manifest or an appropriate private system. Do not add them to this repository.

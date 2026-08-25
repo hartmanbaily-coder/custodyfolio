@@ -2,14 +2,13 @@ export type PublicLegalClausesStatus =
   | "feature_disabled_pending_review"
   | "operative";
 
-// The proposed subscription and attorney-sharing language is awaiting the
-// operator's explicit review. Non-production acceptance tests may still run,
-// but production remains fail closed until these source-controlled states are
-// deliberately changed after that review.
+// Slantwire Studios, LLC approved the published subscription and
+// attorney-sharing language through operator self-review on August 24, 2026.
+// Operational environment controls remain independently fail closed.
 export const billingLegalClausesStatus: PublicLegalClausesStatus =
-  "feature_disabled_pending_review";
+  "operative";
 export const attorneyLegalClausesStatus: PublicLegalClausesStatus =
-  "feature_disabled_pending_review";
+  "operative";
 
 export function billingLegalClausesAreOperative() {
   return billingLegalClausesStatus === "operative";

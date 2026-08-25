@@ -172,7 +172,7 @@ describe("billing capability policy", () => {
         BILLING_MODE: "live",
         BILLING_CHECKOUT_ENABLED: "true",
       })
-    ).toBe(false);
+    ).toBe(true);
     expect(
       billingPurchaseEnabledForUser(
         canaryUserId,
