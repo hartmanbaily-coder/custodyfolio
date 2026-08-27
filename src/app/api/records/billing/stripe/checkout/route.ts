@@ -16,6 +16,7 @@ import {
   ensureStripeCustomer,
   stripeCheckoutIntegrationIdentifier,
   stripeEnvironment,
+  stripeUnitedStatesCheckoutControls,
   verifyConfiguredStripePrice,
 } from "@/lib/billing/stripe";
 import {
@@ -124,15 +125,18 @@ export async function POST(request: NextRequest) {
         customer: customer.id,
         client_reference_id: account.id,
         line_items: [{ price: price.id, quantity: 1 }],
+        ...stripeUnitedStatesCheckoutControls(),
         integration_identifier: stripeCheckoutIntegrationIdentifier(),
         automatic_tax: { enabled: stripeAutomaticTaxEnabled() },
         metadata: {
           custody_folio_billing_account: account.id,
+          custody_folio_checkout_market: "us_only",
           custody_folio_plan: parsed.data.plan,
         },
         subscription_data: {
           metadata: {
             custody_folio_billing_account: account.id,
+            custody_folio_checkout_market: "us_only",
             custody_folio_plan: parsed.data.plan,
           },
         },

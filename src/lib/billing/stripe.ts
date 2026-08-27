@@ -55,6 +55,28 @@ export function stripeCheckoutIntegrationIdentifier() {
   return `custody_folio_${suffix}`;
 }
 
+export const stripeWebCheckoutCountry = "US" as const;
+
+export function stripeUnitedStatesCheckoutControls(): Pick<
+  Stripe.Checkout.SessionCreateParams,
+  "custom_text" | "customer_update" | "shipping_address_collection"
+> {
+  return {
+    shipping_address_collection: {
+      allowed_countries: [stripeWebCheckoutCountry],
+    },
+    customer_update: {
+      shipping: "auto",
+    },
+    custom_text: {
+      shipping_address: {
+        message:
+          "Custody Folio is a digital service. Enter your U.S. service address to confirm web-purchase eligibility; nothing will be shipped.",
+      },
+    },
+  };
+}
+
 export function stripeObjectId(
   value: string | { id: string } | null | undefined
 ) {

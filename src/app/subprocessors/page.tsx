@@ -62,7 +62,7 @@ const sections: PolicySection[] = [
     title: "Stripe — web billing subprocessor",
     body: [
       "Provides hosted web checkout, recurring subscriptions, invoices, payment-method management, refunds, disputes, and the Customer Portal when web billing is enabled.",
-      "May process account email, provider customer and subscription identifiers, payment details, billing address, transaction information, and fraud-prevention signals. Custody Folio does not receive or store full card numbers.",
+      "May process account email, provider customer and subscription identifiers, payment details, billing or U.S. service address, transaction information, and fraud-prevention signals. Custody Folio does not receive or store full card numbers.",
       "Custody-record contents, evidence files, case labels, and child information are not sent to Stripe.",
     ],
   },

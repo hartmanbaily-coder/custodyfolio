@@ -170,6 +170,46 @@ describe("release security regressions", () => {
     expect(evidence).not.toContain('keys["BILLING_TAX_REVIEW_APPROVED"]');
   });
 
+  it("records only the reviewed United States tax decision without activating billing", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "custodyfolio-tax-decision-"));
+    const envFile = join(directory, "app.env");
+    const helper = fileURLToPath(
+      new URL("../deploy/production/configure-billing-tax-decision.sh", import.meta.url)
+    );
+    await writeFile(
+      envFile,
+      [
+        "STRIPE_TAX_MODE=disabled",
+        "BILLING_TAX_REVIEW_APPROVED=false",
+        "BILLING_TAX_REVIEWED_AT=",
+        "BILLING_CHECKOUT_ENABLED=false",
+        "LIVE_BILLING_APPROVED=false",
+        "BILLING_LIVE_ACTIVATION_AUTHORIZED=false",
+        "APPLE_PURCHASE_ENABLED=false",
+        "",
+      ].join("\n"),
+      { mode: 0o600 }
+    );
+    await chmod(envFile, 0o600);
+    await execFileAsync(
+      "bash",
+      [
+        helper,
+        "approve-us-only-not-collecting",
+        new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
+      ],
+      { env: { ...process.env, LOSTTOFOUND_ENV_FILE: envFile } }
+    );
+
+    const configured = await readFile(envFile, "utf8");
+    expect(configured).toContain("STRIPE_TAX_MODE=not_collecting");
+    expect(configured).toContain("BILLING_TAX_REVIEW_APPROVED=true");
+    expect(configured).toContain("BILLING_CHECKOUT_ENABLED=false");
+    expect(configured).toContain("LIVE_BILLING_APPROVED=false");
+    expect(configured).toContain("BILLING_LIVE_ACTIVATION_AUTHORIZED=false");
+    expect(configured).toContain("APPLE_PURCHASE_ENABLED=false");
+  });
+
   it("limits the deployment override to documented approval-only blockers", async () => {
     const [smoke, classification, readinessRoute] = await Promise.all([
       source("../deploy/production/smoke-test.sh"),

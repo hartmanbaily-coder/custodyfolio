@@ -1,6 +1,6 @@
 # Legal Review Packet
 
-Review status: dual-provider billing and attorney-sharing policies revised August 23, 2026. On August 24, 2026, the operator confirmed the exact name `Slantwire Studios, LLC`, Alaska ownership/operation, adult-only accounts, no public website street address, the Product Wording section below, existing web/App Store prices, worldwide launch intent, and the proposed retention maximums. Review of the remaining contract, incident, tax, jurisdiction-specific, provider-verification, and App Store trader-address details is still in progress. The policies have not yet been adopted as operative. Runtime activation remains fail closed pending review, technical evidence, and operational evidence.
+Review status: the operator adopted the contract, privacy, subscription, deletion, retention, and attorney-sharing policies through disclosed operator self-review on August 24, 2026. On August 27, 2026, the operator approved a United States-only direct Stripe checkout footprint with `not_collecting` tax mode and monthly threshold monitoring; App Store distribution remains worldwide. No qualified-counsel or tax-professional approval is represented. Runtime activation remains fail closed pending incident-contact evidence, release verification, and the monitored activation controls.
 
 This packet is not legal advice. It packages the current product materials for qualified counsel or an authorized reviewer.
 
@@ -44,7 +44,7 @@ The MVP does not provide legal advice, does not decide court strategy, does not 
 4. Active account and case deletion is immediate; encrypted backup aging is capped at 180 days.
 5. Raw request logs are capped at 180 days; security, authentication, attorney-access, and deletion audit events are capped at 365 days; closed support/privacy correspondence is capped at 24 months absent a documented exception.
 6. Legal holds require a documented basis, narrow scope, access controls, user notice unless prohibited, and review at least every 90 days.
-7. Stripe web and Apple in-app subscription, renewal, cancellation, trial, refund, and tax disclosures are proposed for review. Apple prices and renewal terms are shown by StoreKit before purchase; Stripe checkout is not presented inside iOS.
+7. Stripe web and Apple in-app subscription, renewal, cancellation, trial, refund, and tax disclosures are operative through disclosed operator self-review. Direct Stripe checkout requires a United States service address; Apple prices and renewal terms are shown by StoreKit before purchase, and Stripe checkout is not presented inside iOS.
 8. The `heic-to` and libheif components are identified on a public open-source notice page with license and corresponding-source links.
 
 ## Decisions Still Recommended For Counsel Review
@@ -59,7 +59,7 @@ The MVP does not provide legal advice, does not decide court strategy, does not 
 
 ## Product Wording To Approve
 
-The operator approved these product descriptions on August 24, 2026. Qualified-counsel review of their legal effect remains recommended before `LEGAL_REVIEW_APPROVED=true` is set:
+The operator approved these product descriptions on August 24, 2026. Qualified-counsel review of their legal effect remains recommended; the current approval basis is operator self-review, not counsel approval:
 
 - The app helps organize records and does not provide legal advice.
 - Users remain responsible for deciding what to file, share, or present in court.
@@ -68,11 +68,11 @@ The operator approved these product descriptions on August 24, 2026. Qualified-c
 - Deleted data may remain in encrypted backups until backup retention expires.
 - Users should avoid entering unnecessary real child names, full account numbers, or unrelated third-party details.
 
-Technical status: Stripe and Apple subscription clauses and the separate attorney-sharing authorization are proposed for adoption. Production billing and attorney access remain gated by this review plus technical, tax, consent-evidence, and activation checks. This status note is not part of the Product Wording section approved by the operator.
+Technical status: Stripe and Apple subscription clauses and the separate attorney-sharing authorization are operative. Production billing remains gated by the United States checkout control, incident-response evidence, provider verification, and activation checks. This status note is not part of the Product Wording section approved by the operator.
 
 ## Launch Approval Evidence
 
-Before setting `LEGAL_REVIEW_APPROVED=true`, generate the protected manifest with `npm run approval:prepare` and record:
+Before setting or renewing `LEGAL_REVIEW_APPROVED=true`, generate the protected manifest with `npm run approval:prepare` and record:
 
 - the real approver name and role
 - `operator_self_review` with `counselReviewStatus: not_obtained`, or qualified counsel's organization and license jurisdiction(s)
