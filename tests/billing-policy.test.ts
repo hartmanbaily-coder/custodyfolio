@@ -1,9 +1,14 @@
 import { readFile } from "node:fs/promises";
 import type Stripe from "stripe";
-import { Status, type JWSTransactionDecodedPayload } from "@apple/app-store-server-library";
+import {
+  Environment,
+  Status,
+  type JWSTransactionDecodedPayload,
+} from "@apple/app-store-server-library";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   applePlanInterval,
+  appleServerEnvironment,
   mapAppleSubscription,
 } from "@/lib/billing/apple";
 import {
@@ -145,6 +150,7 @@ describe("billing capability policy", () => {
         {
           BILLING_MODE: "live",
           BILLING_CHECKOUT_ENABLED: "false",
+          APPLE_PURCHASE_ENABLED: "true",
         },
         canaryNow
       )
@@ -153,7 +159,110 @@ describe("billing capability policy", () => {
       billingPurchaseEnabledForUser(
         canaryUserId,
         { nativeIos: true },
+        { BILLING_MODE: "live", APPLE_PURCHASE_ENABLED: "false" },
+        canaryNow
+      )
+    ).toBe(false);
+    const reviewSandboxEnv = {
+      BILLING_MODE: "live",
+      APPLE_PURCHASE_ENABLED: "false",
+      APPLE_REVIEW_SANDBOX_ENABLED: "true",
+      APPLE_REVIEW_SANDBOX_USER_ID: canaryUserId,
+      APPLE_REVIEW_SANDBOX_EXPIRES_AT: "2026-09-01T00:00:00.000Z",
+    };
+    expect(
+      billingPurchaseEnabledForUser(
+        canaryUserId,
+        { nativeIos: true },
+        reviewSandboxEnv,
+        canaryNow
+      )
+    ).toBe(true);
+    expect(
+      appleServerEnvironment(reviewSandboxEnv, {
+        userId: canaryUserId,
+        now: canaryNow,
+      })
+    ).toBe(Environment.SANDBOX);
+    expect(
+      appleServerEnvironment(reviewSandboxEnv, {
+        userId: "00000000-0000-4000-8000-000000000000",
+        now: canaryNow,
+      })
+    ).toBe(Environment.PRODUCTION);
+    expect(
+      billingPurchaseEnabledForUser(
+        canaryUserId,
+        { nativeIos: true },
+        {
+          ...reviewSandboxEnv,
+          APPLE_REVIEW_SANDBOX_EXPIRES_AT: "2026-08-14T19:59:59.000Z",
+        },
+        canaryNow
+      )
+    ).toBe(false);
+    const appleCanaryEnv = {
+      BILLING_MODE: "test",
+      APPLE_PURCHASE_ENABLED: "false",
+      APPLE_TESTFLIGHT_CANARY_AUTHORIZED: "true",
+      APPLE_TESTFLIGHT_CANARY_USER_ID: canaryUserId,
+      APPLE_TESTFLIGHT_CANARY_EXPIRES_AT: "2026-08-14T21:00:00.000Z",
+    };
+    expect(
+      billingPurchaseEnabledForUser(
+        canaryUserId,
+        { nativeIos: true },
+        appleCanaryEnv,
+        canaryNow
+      )
+    ).toBe(true);
+    expect(
+      billingPurchaseEnabledForUser(
+        "00000000-0000-4000-8000-000000000000",
+        { nativeIos: true },
+        appleCanaryEnv,
+        canaryNow
+      )
+    ).toBe(false);
+    expect(
+      billingPurchaseEnabledForUser(
+        canaryUserId,
+        { nativeIos: true },
+        {
+          ...appleCanaryEnv,
+          APPLE_TESTFLIGHT_CANARY_EXPIRES_AT: "2026-08-14T19:59:59.000Z",
+        },
+        canaryNow
+      )
+    ).toBe(false);
+    expect(
+      billingPurchaseEnabledForUser(
+        canaryUserId,
+        { nativeIos: true },
+        { ...appleCanaryEnv, BILLING_MODE: "live" },
+        canaryNow
+      )
+    ).toBe(false);
+    expect(
+      billingPurchaseEnabledForUser(
+        canaryUserId,
+        { nativeIos: true },
         { BILLING_MODE: "disabled" },
+        canaryNow
+      )
+    ).toBe(false);
+    expect(
+      billingCheckoutEnabled({
+        NODE_ENV: "production",
+        BILLING_MODE: "live",
+        BILLING_CHECKOUT_ENABLED: "true",
+      })
+    ).toBe(true);
+    expect(
+      billingPurchaseEnabledForUser(
+        canaryUserId,
+        { nativeIos: true },
+        { NODE_ENV: "production", BILLING_MODE: "live" },
         canaryNow
       )
     ).toBe(false);
@@ -540,7 +649,6 @@ describe("live billing fail-closed report", () => {
         "stripe-live-key",
         "stripe-live-webhook",
         "stripe-live-portal-configuration",
-        "apple-server-api",
         "billing-tax-review",
         "live-billing-approval",
       ])
@@ -553,6 +661,7 @@ describe("live billing fail-closed report", () => {
       {
         BILLING_MODE: "live",
         BILLING_CHECKOUT_ENABLED: "true",
+        APPLE_PURCHASE_ENABLED: "false",
         APPLE_BILLING_ENVIRONMENT: "production",
         AUTH_SECRET: "auth-secret-123456789012345678901234",
         STRIPE_LIVE_RESTRICTED_KEY: "rk_live_test_fixture",
@@ -581,9 +690,12 @@ describe("live billing fail-closed report", () => {
         BILLING_PRIVACY_VERSION: "2026-08-13-reviewed",
         BILLING_SUBPROCESSOR_VERSION: "2026-08-13-reviewed",
         BILLING_DISCLOSURE_VERSION: "2026-08-13-reviewed",
-        BILLING_POLICY_COUNSEL_REVIEWED: "true",
+        BILLING_POLICY_APPROVED: "true",
+        BILLING_POLICY_APPROVAL_BASIS: "operator_self_review",
         BILLING_POLICY_VERSIONS_VERIFIED_AT: now,
+        STRIPE_TAX_MODE: "not_collecting",
         BILLING_TAX_REVIEW_APPROVED: "true",
+        BILLING_TAX_REVIEWED_AT: now,
         LIVE_BILLING_APPROVED: "true",
         BILLING_LIVE_ACTIVATION_AUTHORIZED: "true",
         APPLE_SMALL_BUSINESS_PROGRAM_STATUS: "not_enrolled",

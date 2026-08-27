@@ -1,4 +1,5 @@
 import { evaluateProductionApprovalEvidence } from "@/lib/production/approvalEvidence.mjs";
+import { publicLegalClausesAreOperative } from "@/lib/legalRelease";
 
 export type ProductionReadinessSeverity = "blocker" | "warning";
 
@@ -287,10 +288,11 @@ export function evaluateProductionReadiness(
     check(
       "attorney-portal-secret",
       "Attorney portal has a separate strong cryptographic secret",
-      hasStrongSecret(env.ATTORNEY_PORTAL_SECRET)
-        && env.ATTORNEY_PORTAL_SECRET !== env.AUTH_SECRET,
+      !isEnabled(env.ATTORNEY_GUEST_FEATURE_ENABLED) ||
+        (hasStrongSecret(env.ATTORNEY_PORTAL_SECRET) &&
+          env.ATTORNEY_PORTAL_SECRET !== env.AUTH_SECRET),
       "blocker",
-      "Set ATTORNEY_PORTAL_SECRET to a separate random value of at least 32 characters."
+      "When attorney guest access is enabled, set ATTORNEY_PORTAL_SECRET to a separate random value of at least 32 characters."
     ),
     check(
       "attorney-owner-share-delivery",
@@ -542,11 +544,18 @@ export function evaluateProductionReadiness(
       "Set PRIVACY_POLICY_URL to the exact /privacy page on NEXT_PUBLIC_APP_URL, without credentials, query parameters, or fragments."
     ),
     check(
+      "public-legal-clauses",
+      "Published subscription and attorney clauses are operative",
+      publicLegalClausesAreOperative(env),
+      "blocker",
+      "Keep any feature whose published clauses are not operative disabled. Stripe billing and attorney access have separate source-controlled release states."
+    ),
+    check(
       "legal-review",
-      "Privacy, terms, and runbooks have counsel approval",
+      "Privacy, terms, and runbooks have documented approval",
       isEnabled(env.LEGAL_REVIEW_APPROVED) && approvalEvidence.legal.ready,
       "blocker",
-      "Have qualified counsel approve the exact deployed policy digests and provide the validated approval manifest before setting LEGAL_REVIEW_APPROVED=true."
+      "Record either qualified-counsel review or explicit operator self-review of the exact deployed policy digests in the protected approval manifest. Operator self-review is not a claim of legal compliance."
     ),
     check(
       "vendor-security-review",

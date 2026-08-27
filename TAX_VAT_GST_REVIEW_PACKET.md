@@ -1,14 +1,15 @@
 # Custody Folio Tax / VAT / GST Review Packet
 
-Review status: prepared August 15, 2026; approval by a qualified tax professional remains pending.
+Review status: prepared August 15, 2026; the operator must document a launch-footprint tax decision before billing activation. No professional tax review is represented.
 
 This packet is not tax or legal advice. It provides the current product and payment facts needed for an independent indirect-tax review. The reviewer should record conclusions, registrations, effective dates, filing obligations, and any required configuration changes in a separate privileged or protected workpaper.
 
 ## Business and product facts
 
-- Operator: Slantwire LLC, a United States business based in Alaska.
+- Operator: Slantwire Studios, LLC, owned and operated from Alaska, United States. The public site does not publish a street or mailing address.
 - Product: consumer software for organizing custody-related records, evidence, schedules, expenses, and court-packet-oriented exports.
 - Delivery: electronically supplied subscription software; no physical goods.
+- Intended launch footprint: worldwide direct web subscriptions and all available App Store countries and regions, including the European Union. This intent does not establish any registration or tax conclusion.
 - Web billing: direct-to-consumer Stripe Checkout subscriptions at USD $5.99 monthly or USD $59.99 annually.
 - Apple billing: native iOS subscriptions sold through StoreKit. The local StoreKit catalog uses USD $6.99 monthly and USD $69.99 annually; the customer sees Apple’s localized storefront price before purchase.
 - Trial: one universal 30-day account trial managed by Custody Folio, with no card required. Stripe and Apple introductory offers are intentionally disabled.
@@ -22,20 +23,20 @@ This packet is not tax or legal advice. It provides the current product and paym
 - No Stripe tax registration is treated as valid merely because it exists in Stripe; the business must first be registered with the relevant authority.
 - The Stripe Price allowlist and Checkout implementation do not currently add tax.
 - Apple’s storefront calculates applicable transaction taxes in the jurisdictions it administers; App Store Connect financial reports show customer price, applicable taxes, commission, refunds, and proceeds.
-- Live billing readiness remains blocked until a qualified reviewer sets `BILLING_TAX_REVIEW_APPROVED=true` based on documented conclusions.
+- Live billing readiness remains blocked until an authorized reviewer records the basis for `BILLING_TAX_REVIEW_APPROVED=true`. Operator self-review is permitted by the readiness model but is not professional tax advice or a compliance claim.
 
 ## Questions requiring the reviewer’s written conclusion
 
 1. Classify the web subscription and Apple subscription for US sales-tax purposes and for non-US VAT/GST or similar consumption taxes.
-2. Determine Slantwire LLC’s physical nexus, economic nexus, and registration obligations based on its Alaska location, personnel, contractors, sales history, and expected launch footprint.
-3. Determine whether direct Stripe sales into Alaska municipal jurisdictions create collection or registration duties, including any Alaska Remote Seller Sales Tax Commission rules.
+2. Determine Slantwire Studios, LLC’s physical nexus, economic nexus, and registration obligations based on its places of business, personnel, contractors, sales history, and expected launch footprint.
+3. Determine whether direct Stripe sales into any home or local jurisdiction create collection, registration, or filing duties.
 4. Identify every jurisdiction in which direct web sales must be registered, collected, reported, or filed before launch, and state the effective date for each registration.
 5. Determine whether any jurisdiction requires filings even when no tax is due.
 6. Confirm the correct Stripe product tax code and whether USD prices should be tax-exclusive, tax-inclusive, or automatic by currency.
 7. Confirm whether Stripe Tax should remain disabled at launch or be enabled only after specific registrations become effective.
-8. Confirm how Apple’s role under the Paid Apps Agreement affects Slantwire LLC’s customer-transaction tax obligations, proceeds reporting, commission taxes, and any residual filing duties.
+8. Confirm how Apple’s role under the Paid Apps Agreement affects Slantwire Studios, LLC’s customer-transaction tax obligations, proceeds reporting, commission taxes, and any residual filing duties.
 9. Confirm the App Store tax category for Custody Folio and its in-app subscriptions.
-10. Review US federal and Alaska income, business-license, and information-reporting obligations separately from transaction tax.
+10. Review US federal, state, and local income, business-license, and information-reporting obligations separately from transaction tax.
 11. Identify record-retention requirements for invoices, exemption evidence, location evidence, refunds, Apple reports, Stripe reports, and tax returns.
 12. State whether non-US sales should be geographically restricted until any required VAT/GST registrations are active.
 
@@ -46,7 +47,7 @@ This packet is not tax or legal advice. It provides the current product and paym
 - Current Stripe Tax monitoring and registration screens, without treating Stripe’s monitoring as professional advice.
 - App Store Connect Paid Apps Agreement, tax forms, tax category, pricing, and financial-report configuration.
 - Actual and forecast gross sales by customer jurisdiction and payment provider.
-- Slantwire LLC formation, ownership, address, personnel/contractor locations, and any existing registrations.
+- Slantwire Studios, LLC formation, ownership, business contact information, personnel/contractor locations, and any existing registrations. Keep nonpublic personal addresses out of this repository.
 - Refund and cancellation policy text in the exact release policy bundle.
 
 ## Primary platform references
@@ -56,7 +57,6 @@ This packet is not tax or legal advice. It provides the current product and paym
 - Apple tax-information requirements for the Paid Apps Agreement: https://developer.apple.com/help/app-store-connect/manage-tax-information/provide-tax-information
 - Apple App Store tax-category guidance: https://developer.apple.com/help/app-store-connect/manage-app-information/set-a-tax-category
 - Apple financial reports and transaction-tax reporting: https://developer.apple.com/help/app-store-connect/getting-paid/download-financial-reports
-- Alaska Remote Seller Sales Tax Commission: https://arsstc.org/
 
 ## Approval evidence to record
 

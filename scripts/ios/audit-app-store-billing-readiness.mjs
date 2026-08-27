@@ -314,6 +314,7 @@ async function run(options = parseArguments(process.argv.slice(2))) {
             demoAccountRequired: Boolean(reviewAttributes.demoAccountRequired),
             demoAccountComplete: Boolean(reviewDemoComplete),
             notesComplete: Boolean(reviewAttributes.notes?.trim()),
+            notesLength: reviewAttributes.notes?.length ?? 0,
           },
           reviewSubmissions: reviewSubmissionSummaries,
         },

@@ -3,7 +3,6 @@ import Link from "next/link";
 import { PolicyPage, type PolicySection } from "@/components/PolicyPage";
 import {
   accountDeletionPath,
-  legalOperatorLocation,
   legalOperatorName,
   pageMetadata,
   privacyEmail,
@@ -20,7 +19,7 @@ const sections: PolicySection[] = [
   {
     title: "Scope and operator",
     body: [
-      `${legalOperatorName}, located in ${legalOperatorLocation}, operates Custody Folio. This policy supplements the general Privacy Policy for Washington residents and people whose consumer health data is collected in Washington.`,
+      `${legalOperatorName} operates Custody Folio. This policy supplements the general Privacy Policy for Washington residents and people whose consumer health data is collected in Washington.`,
       "Custody Folio is a general custody-recordkeeping service, not a medical provider. Users can nevertheless choose to enter records that reveal physical or mental health information.",
     ],
   },
@@ -54,6 +53,7 @@ const sections: PolicySection[] = [
     body: [
       "Entering or uploading a health-related record requests that Custody Folio process it to provide the selected private recordkeeping function. Avoid entering health information that is not reasonably necessary.",
       "Before creating attorney access, the client must separately and affirmatively authorize sharing of the selected case, including any health-related records it contains. The client may withhold or withdraw that authorization by not creating or by revoking attorney access.",
+      "The categories shared are the health-related records contained in the selected case, together with the minimum account, case, and security information needed to provide and protect that access.",
       "Revocation stops future attorney access but cannot recall copies already downloaded. Delete or remove health-related records before sharing if the attorney should not receive them.",
     ],
   },
@@ -69,8 +69,8 @@ const sections: PolicySection[] = [
   {
     title: "Your Washington rights",
     body: [
-      "You may confirm whether we collect, share, or sell consumer health data concerning you; access that data; and receive a list of third parties and affiliates with whom it was shared or sold.",
-      "You may withdraw consent from future collection or sharing and request deletion. A verified deletion request is sent to processors, contractors, and other recipients as required by law.",
+      "You may confirm whether we collect, share, or sell consumer health data concerning you; access that data; and receive a list of third parties and affiliates with whom it was shared or sold, including an active email address or other online contact method when required.",
+      "You may withdraw consent from future collection or sharing and request deletion. An authenticated deletion request is sent to processors, contractors, and other recipients as required by law.",
       "You may use existing in-app controls, permanently delete the account, or contact the privacy inbox. You do not need to create a new account to submit a request, and we will not discriminate against you for exercising a right.",
       "We respond without undue delay and within 45 days, subject to one legally permitted 45-day extension with notice. Information is provided free up to twice annually unless a request is manifestly unfounded, excessive, or repetitive.",
     ],

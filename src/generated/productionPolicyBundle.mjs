@@ -15,17 +15,17 @@ export const productionPolicyDocumentPaths = {
 };
 
 export const productionPolicyDocumentDigests = {
-  "privacy": "sha256:25249494558aeae2ca452217b75ff32ca0ef5100c5025d8e0deb76457cf627df",
-  "terms": "sha256:311ae82763f3a2a9d99ad145cf97ba44c8e4e6016bf5a35d69623168780ed80e",
-  "consumerHealthData": "sha256:3fc44ca7c0d15850908f1c8d57940f659f9fa09f90893bfc150243345d8cee09",
-  "subprocessors": "sha256:02147f3387f3014b906cffd0eec341b3df78ef8819af8ab61b8a678e04469839",
-  "dataRetentionRunbook": "sha256:3cf13495528db6f18a73825ce4fd2c0ab2c42dcdf590488e72e22f2f4d19467b",
+  "privacy": "sha256:b62280474f7b19cae892aee1ca6a6ab530a9b43500c9a8e96d7fbddc259e16eb",
+  "terms": "sha256:fc15b72239e01913dc91e630a14aa1d9dce100caa02220b592a20b155e7d2618",
+  "consumerHealthData": "sha256:7fb8fba2fb6537a57fdca7a2bb5102f77b9d1bce18e33ce0845bb9b8438793de",
+  "subprocessors": "sha256:39c65c9b58942026787304b6aa0c7706d9f08d38937061882e4e28dc7f10bd96",
+  "dataRetentionRunbook": "sha256:95299d5e1e205de2a03d416ea08bf2b9ec1776851d7d04268116a17de0cb2c3b",
   "incidentResponseRunbook": "sha256:09f01b64e9eaadf83bbb4641f62c8cf950c8bb8910a98c277fc3a8051573a317",
   "monitoringRunbook": "sha256:ccc9dea9c41184d496f639b143dfe65402180d6093e575b0e5e6a7c6d556f2c7",
-  "legalReviewPacket": "sha256:a78ffc1d3325c43395be51a05dac1bc2fc9d09a0844f5f65abcdb1a0a33ad0e6",
-  "privacyRightsOperations": "sha256:c41593f9a2da590a1dd5243b2e22cbb8fd79f697a9ef80a32a9581911b74d593",
-  "billingOperationsRunbook": "sha256:82ed7ac1fd6d8302a57839c6f3caf29c266bd7fc767eb9d7a9d8ca41839052a2",
-  "billingLaunchChecklist": "sha256:9cbc911b3f2eed9eff90147a65d10226a3ba38bb8d6eff664618a006428c64dd"
+  "legalReviewPacket": "sha256:df21310bea6bab8712e77cfb18867c62a2e77319caca613396fffe83e2100f19",
+  "privacyRightsOperations": "sha256:f0767c39ced3b07af7f1755711389dc6e8a7e84a8c0c83dac02bb55f70e63470",
+  "billingOperationsRunbook": "sha256:f8833f4c6cd5360514dd7ad7838c18a16339c6c514cb03f214588d65355158da",
+  "billingLaunchChecklist": "sha256:2c6d7623f6e55de6a2aea13004a3aebaa1c9509378d0726ff4e8c2444a52c188"
 };
 
-export const productionPolicyBundleSha256 = "sha256:a7ecc549a3fafb7b92828b8de91f46ded40e12b83b5a8353b0c1d14ab3caf07f";
+export const productionPolicyBundleSha256 = "sha256:2808448b1466bc477bf0845845df3a9fb0db8735a43cd66a015cde57df5f2362";

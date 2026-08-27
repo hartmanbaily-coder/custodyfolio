@@ -6,7 +6,10 @@ import {
   mapAppleSubscription,
   recordIgnoredAppleEvent,
 } from "@/lib/billing/apple";
-import { billingMode } from "@/lib/billing/config";
+import {
+  appleReviewSandboxUserId,
+  billingMode,
+} from "@/lib/billing/config";
 import { findBillingAccountByAppleToken } from "@/lib/billing/repository";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import {
@@ -43,28 +46,45 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Signed notification is invalid." }, { status: 400 });
   }
 
-  const verifier = createAppleSignedDataVerifier();
+  let verifier = createAppleSignedDataVerifier();
+  let reviewSandboxUserId: string | null = null;
   let notification;
   try {
     notification = await verifier.verifyAndDecodeNotification(signedPayload);
   } catch {
-    return NextResponse.json(
-      { error: "App Store notification signature is invalid." },
-      { status: 400 }
-    );
+    reviewSandboxUserId = appleReviewSandboxUserId();
+    if (reviewSandboxUserId) {
+      try {
+        verifier = createAppleSignedDataVerifier(process.env, {
+          userId: reviewSandboxUserId,
+        });
+        notification = await verifier.verifyAndDecodeNotification(signedPayload);
+      } catch {
+        reviewSandboxUserId = null;
+      }
+    }
+    if (!notification) {
+      return NextResponse.json(
+        { error: "App Store notification signature is invalid." },
+        { status: 400 }
+      );
+    }
   }
 
   try {
-    const eventId = notification.notificationUUID;
+    const notificationId = notification.notificationUUID;
+    if (!notificationId) {
+      return NextResponse.json({ error: "Verified notification has no identifier." }, { status: 400 });
+    }
+    const eventId = reviewSandboxUserId
+      ? `review-sandbox:${notificationId}`
+      : notificationId;
     const eventType = [notification.notificationType || "UNKNOWN", notification.subtype]
       .filter(Boolean)
       .join(".")
       .slice(0, 180);
     const occurredAt = new Date(notification.signedDate || Date.now());
     const digest = applePayloadDigest(signedPayload);
-    if (!eventId) {
-      return NextResponse.json({ error: "Verified notification has no identifier." }, { status: 400 });
-    }
     const supabase = createSupabaseAdminClient();
     const duplicate = await supabase
       .from("custody_folio_provider_events")
@@ -134,6 +154,12 @@ export async function POST(request: NextRequest) {
         processingCode: "deleted_account_provider_record",
       });
       return NextResponse.json({ received: true, ignored: true });
+    }
+    if (reviewSandboxUserId && account.user_id !== reviewSandboxUserId) {
+      return NextResponse.json(
+        { error: "Sandbox App Review transaction belongs to an unauthorized account." },
+        { status: 403 }
+      );
     }
     const subscription = mapAppleSubscription({
       transaction,

@@ -11,6 +11,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   appleBundleId,
   appleProductIds,
+  appleReviewSandboxEnabledForUser,
   assertBillingProviderMode,
   billingMode,
   configuredGracePeriodDays,
@@ -22,6 +23,11 @@ import type {
 
 type BillingSupabase = SupabaseClient;
 
+type AppleServerContext = {
+  userId?: string;
+  now?: Date;
+};
+
 function requiredValue(
   name: string,
   env: Record<string, string | undefined> = process.env
@@ -32,9 +38,20 @@ function requiredValue(
 }
 
 export function appleServerEnvironment(
-  env: Record<string, string | undefined> = process.env
+  env: Record<string, string | undefined> = process.env,
+  context: AppleServerContext = {}
 ) {
   const mode = assertBillingProviderMode(env);
+  if (
+    context.userId &&
+    appleReviewSandboxEnabledForUser(
+      context.userId,
+      env,
+      context.now || new Date()
+    )
+  ) {
+    return Environment.SANDBOX;
+  }
   if (mode === "live") return Environment.PRODUCTION;
   const configured = (env.APPLE_BILLING_ENVIRONMENT || "sandbox").toLowerCase();
   if (configured === "xcode") return Environment.XCODE;
@@ -69,9 +86,10 @@ export function appleRootCertificates(
 }
 
 export function createAppleSignedDataVerifier(
-  env: Record<string, string | undefined> = process.env
+  env: Record<string, string | undefined> = process.env,
+  context: AppleServerContext = {}
 ) {
-  const environment = appleServerEnvironment(env);
+  const environment = appleServerEnvironment(env, context);
   const appAppleId =
     environment === Environment.PRODUCTION
       ? Number(requiredValue("APPLE_APP_ID", env))
@@ -89,9 +107,10 @@ export function createAppleSignedDataVerifier(
 }
 
 export function createAppleServerApiClient(
-  env: Record<string, string | undefined> = process.env
+  env: Record<string, string | undefined> = process.env,
+  context: AppleServerContext = {}
 ) {
-  const environment = appleServerEnvironment(env);
+  const environment = appleServerEnvironment(env, context);
   if (
     environment === Environment.XCODE ||
     environment === Environment.LOCAL_TESTING

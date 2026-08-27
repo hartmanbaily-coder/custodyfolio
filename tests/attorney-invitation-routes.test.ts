@@ -231,7 +231,7 @@ describe("attorney invitation owner routes", () => {
       eventType: "invitation_resent",
       metadata: {
         consumerHealthSharingConsent: true,
-        consentVersion: "2026-08-10",
+        consentVersion: "2026-08-23.1",
       },
     }));
   });

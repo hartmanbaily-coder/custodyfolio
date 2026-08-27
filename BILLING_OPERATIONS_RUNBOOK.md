@@ -1,6 +1,6 @@
 # Custody Folio Billing Operations Runbook
 
-Status: pre-launch draft. Billing is disabled. This runbook does not authorize live provider changes or deployment.
+Status: Stripe web activation runbook. Billing remains disabled until the readiness checks and explicit activation flags pass. This runbook does not authorize deployment or external provider changes.
 
 ## Safety rules
 
@@ -74,4 +74,4 @@ Follow `BILLING_LAUNCH_CHECKLIST.md`. Run production readiness and billing readi
 1. Set `BILLING_CHECKOUT_ENABLED=false` and restart the app. This stops new Stripe Checkout and removes standard StoreKit purchase actions while retaining Portal/subscription management, verified provider events, reconciliation, account-deletion cancellation, entitlements, and exports.
 2. Do not delete provider resources, subscriptions, customers, database migrations, or billing records during rollback.
 3. Keep provider webhooks reachable. If an exceptional security incident requires disabling provider processing, obtain an incident decision, record the gap, and reconcile before reactivation.
-4. Investigate, test in Stripe test mode and Apple sandbox/StoreKit, rerun readiness, and obtain a new explicit activation approval.
+4. Investigate, test in Stripe test mode, rerun readiness, and obtain a new explicit activation approval. Apple sandbox/StoreKit testing is required only before `APPLE_PURCHASE_ENABLED=true`.

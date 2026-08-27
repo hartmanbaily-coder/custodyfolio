@@ -7,7 +7,10 @@ import {
   mapAppleSubscription,
 } from "@/lib/billing/apple";
 import { requireRecordsCapability } from "@/lib/billing/capabilities";
-import { isNativeIosUserAgent } from "@/lib/billing/config";
+import {
+  appleReviewSandboxEnabledForUser,
+  isNativeIosUserAgent,
+} from "@/lib/billing/config";
 import { ensureBillingAccount, getBillingStatus } from "@/lib/billing/repository";
 import { getRecordsAuthContext } from "@/lib/records/authServer";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
@@ -66,7 +69,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const account = await ensureBillingAccount(context.supabase, context.userId);
-    const verifier = createAppleSignedDataVerifier();
+    const reviewSandbox = appleReviewSandboxEnabledForUser(context.userId);
+    const verifier = createAppleSignedDataVerifier(process.env, {
+      userId: context.userId,
+    });
     const transaction = await verifier.verifyAndDecodeTransaction(
       parsed.data.signedTransactionInfo
     );
@@ -93,7 +99,7 @@ export async function POST(request: NextRequest) {
     });
     await applyAppleProviderEvent({
       supabase: context.supabase,
-      eventId: `transaction:${transaction.transactionId}`,
+      eventId: `${reviewSandbox ? "review-sandbox:" : ""}transaction:${transaction.transactionId}`,
       eventType: "device.transaction",
       payloadSha256: applePayloadDigest(parsed.data.signedTransactionInfo),
       occurredAt,

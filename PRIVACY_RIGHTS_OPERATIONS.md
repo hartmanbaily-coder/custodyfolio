@@ -2,9 +2,9 @@
 
 Effective date: August 12, 2026
 
-Policy owner: Slantwire Studios privacy operations owner
+Policy owner: Slantwire Studios, LLC privacy operations owner
 
-This runbook governs access, deletion, correction, consent-withdrawal, and appeal requests involving Custody Folio data. It is an operational control, not legal advice. Qualified counsel must approve the legal deadlines, exceptions, and Washington consumer-health-data handling before launch.
+This runbook governs access, deletion, correction, consent-withdrawal, and appeal requests involving Custody Folio data. It is an operational control, not legal advice. An authorized reviewer must adopt the deadlines, exceptions, and Washington consumer-health-data handling before launch and record whether the basis is disclosed operator self-review or qualified counsel.
 
 ## Intake and Identity Verification
 

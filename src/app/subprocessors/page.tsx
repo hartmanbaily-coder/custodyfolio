@@ -20,7 +20,7 @@ const sections: PolicySection[] = [
     title: "Hetzner",
     body: [
       "Hosts the Custody Folio application server.",
-      "May process encrypted web traffic and limited operational information needed to provide hosting.",
+      "May process web traffic and limited operational information needed to provide hosting.",
     ],
   },
   {
@@ -59,19 +59,19 @@ const sections: PolicySection[] = [
     ],
   },
   {
-    title: "Stripe — planned billing subprocessor",
+    title: "Stripe — web billing subprocessor",
     body: [
-      "Will provide hosted web checkout, recurring subscriptions, invoices, payment-method management, refunds, disputes, and the Customer Portal when billing is approved and enabled.",
+      "Provides hosted web checkout, recurring subscriptions, invoices, payment-method management, refunds, disputes, and the Customer Portal when web billing is enabled.",
       "May process account email, provider customer and subscription identifiers, payment details, billing address, transaction information, and fraud-prevention signals. Custody Folio does not receive or store full card numbers.",
-      "This entry is draft for qualified-counsel review, and live Stripe billing is not enabled by the committed configuration.",
+      "Custody-record contents, evidence files, case labels, and child information are not sent to Stripe.",
     ],
   },
   {
-    title: "Apple — planned App Store billing subprocessor",
+    title: "Apple — App Store billing provider",
     body: [
-      "Will provide localized App Store subscription purchase, renewal, cancellation, refund, and subscription-management services for iOS users when billing is approved and enabled.",
+      "Provides in-app subscription purchase, renewal, cancellation, refund, and transaction-status services when App Store billing is enabled.",
       "May process Apple account, device, storefront, purchase, subscription, refund, and payment information. Custody Folio receives signed transaction and status information tied to a random app-account token.",
-      "This entry is draft for qualified-counsel review. The App Store subscription products are configured for submission, but production billing remains disabled in Custody Folio until every approval and acceptance gate passes.",
+      "Custody-record contents, evidence files, case labels, and child information are not sent to Apple for billing. Apple processing is not required for a Stripe web subscription.",
     ],
   },
   {

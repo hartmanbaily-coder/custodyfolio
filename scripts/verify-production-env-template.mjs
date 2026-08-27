@@ -56,6 +56,13 @@ const requiredKeys = [
   "STRIPE_LIVE_ANNUAL_PRICE_ID",
   "STRIPE_LIVE_PORTAL_CONFIGURATION_ID",
   "STRIPE_CUSTOMER_PORTAL_VERIFIED_AT",
+  "APPLE_PURCHASE_ENABLED",
+  "APPLE_TESTFLIGHT_CANARY_AUTHORIZED",
+  "APPLE_TESTFLIGHT_CANARY_USER_ID",
+  "APPLE_TESTFLIGHT_CANARY_EXPIRES_AT",
+  "APPLE_REVIEW_SANDBOX_ENABLED",
+  "APPLE_REVIEW_SANDBOX_USER_ID",
+  "APPLE_REVIEW_SANDBOX_EXPIRES_AT",
   "APPLE_BILLING_ENVIRONMENT",
   "APPLE_BUNDLE_ID",
   "APPLE_APP_ID",
@@ -75,9 +82,14 @@ const requiredKeys = [
   "BILLING_PRIVACY_VERSION",
   "BILLING_SUBPROCESSOR_VERSION",
   "BILLING_DISCLOSURE_VERSION",
-  "BILLING_POLICY_COUNSEL_REVIEWED",
+  "BILLING_POLICY_APPROVED",
+  "BILLING_POLICY_APPROVAL_BASIS",
   "BILLING_POLICY_VERSIONS_VERIFIED_AT",
+  "STRIPE_TAX_MODE",
   "BILLING_TAX_REVIEW_APPROVED",
+  "BILLING_TAX_REVIEWED_AT",
+  "STRIPE_TAX_REGISTRATIONS_VERIFIED_AT",
+  "STRIPE_TAX_PRODUCT_CONFIGURATION_VERIFIED_AT",
   "ATTORNEY_GUEST_FEATURE_ENABLED",
   "ATTORNEY_PORTAL_SECRET",
   "ATTORNEY_INVITE_OWNER_SHARE_ENABLED",
@@ -195,8 +207,32 @@ if (entries.get("BILLING_LIVE_CANARY_EXPIRES_AT") !== "") {
   findings.push("BILLING_LIVE_CANARY_EXPIRES_AT must remain empty in the production template.");
 }
 
-if (entries.get("BILLING_POLICY_COUNSEL_REVIEWED") !== "false") {
-  findings.push("BILLING_POLICY_COUNSEL_REVIEWED must remain false while policy copy is draft.");
+if (entries.get("BILLING_POLICY_APPROVED") !== "false") {
+  findings.push("BILLING_POLICY_APPROVED must remain false until the exact policy versions are adopted.");
+}
+
+if (entries.get("BILLING_POLICY_APPROVAL_BASIS") !== "operator_self_review") {
+  findings.push("BILLING_POLICY_APPROVAL_BASIS must disclose operator_self_review in the template.");
+}
+
+if (entries.get("APPLE_PURCHASE_ENABLED") !== "false") {
+  findings.push("APPLE_PURCHASE_ENABLED must remain false in the fail-closed template until the App Store activation window.");
+}
+
+if (entries.get("APPLE_REVIEW_SANDBOX_ENABLED") !== "false") {
+  findings.push("APPLE_REVIEW_SANDBOX_ENABLED must remain false in the fail-closed template.");
+}
+
+if (entries.get("APPLE_REVIEW_SANDBOX_USER_ID") !== "") {
+  findings.push("APPLE_REVIEW_SANDBOX_USER_ID must remain empty in the fail-closed template.");
+}
+
+if (entries.get("APPLE_REVIEW_SANDBOX_EXPIRES_AT") !== "") {
+  findings.push("APPLE_REVIEW_SANDBOX_EXPIRES_AT must remain empty in the fail-closed template.");
+}
+
+if (entries.get("STRIPE_TAX_MODE") !== "disabled") {
+  findings.push("STRIPE_TAX_MODE must remain disabled until a documented tax decision is recorded.");
 }
 
 if (entries.get("BILLING_TAX_REVIEW_APPROVED") !== "false") {

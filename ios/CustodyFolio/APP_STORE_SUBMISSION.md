@@ -1,6 +1,6 @@
-# App Store Submission Draft
+# App Store Submission Packet
 
-This draft is a working submission packet. It should be reviewed before public submission, especially privacy, age rating, export compliance, and legal claims.
+This packet describes the intended submission. Evidence checkboxes and external App Store Connect declarations must be completed before submission.
 
 ## App Identity
 
@@ -8,7 +8,7 @@ This draft is a working submission packet. It should be reviewed before public s
 - Display name: Custody Folio
 - Bundle ID: `io.lendori.losttofound`
 - Version: `1.0.0`
-- Build: Xcode-managed next available number
+- Build: 16; uploaded, externally testing, and attached to version 1.0.0 on August 24, 2026
 - Minimum iOS version: `17.0`
 - Supported devices: iPhone and iPad
 - Signing team: `HQG9VJ8JK2`
@@ -40,6 +40,8 @@ Key features:
 - Timeline, calendar, notes, and file organization
 - Document upload support through the protected workspace
 - Report and export workflows for review
+- Client-authorized, MFA-protected, read-only attorney access with revocation
+- One 30-day no-card account trial, followed by optional monthly or annual auto-renewing access purchased through Apple in the iOS app
 - Device level unlock with Face ID, Touch ID, or passcode
 - Controlled records web view limited to Custody Folio-owned domains
 - Privacy, security, and AI data use notices available in app
@@ -69,13 +71,10 @@ Review flow:
 3. Open the Records tab and sign in with the review account below.
 4. Review the Policies tab for native privacy, terms, security, AI data use, subprocessors, accessibility, and contact links.
 5. Review the Support tab for support contact, account/data help, and the in-app self-service account deletion entry point. The deletion entry point opens `https://custodyfolio.com/account/delete`, where a signed-in records user can permanently delete the account after explicit confirmation.
+6. Open Subscription while the review account is in export-only mode. Monthly and annual products are loaded from StoreKit and Apple's sheet shows localized price and renewal terms. Purchase, restore, refund request, and subscription management use Apple interfaces; no Stripe checkout is offered inside iOS.
+7. Open Attorney Access. The client selects one case, identifies the adult attorney, separately authorizes sharing including any health-related information in that case, and creates a single-use invitation. The accepted grant is read-only and can be revoked by the client.
 
-Provide Apple Review with a dedicated test account before submission:
-
-- Email: `[create-app-review-test-account]`
-- Password: `[create-secure-temporary-password]`
-- MFA status: `[disable for review account or provide review instructions]`
-- Test data: synthetic only
+The dedicated review account credentials are stored only in App Store Connect and must never be committed here. Before submission, verify that the saved account uses synthetic data, is export-only so the StoreKit purchase controls are visible, and includes workable MFA instructions.
 
 Account deletion path for review: Support tab -> Account and Data -> Delete account -> `https://custodyfolio.com/account/delete`. The direct deletion page lets a signed-in records user confirm the irreversible consequences and press "Permanently delete my account." The server removes private evidence files, revokes sessions, deletes the Auth account and cascaded active records, and reports completion without an approval queue. The public Privacy Policy also documents backup aging and legally required retention.
 
@@ -83,15 +82,15 @@ Current native build snapshot:
 
 - Product: `CustodyFolio.app`
 - Bundle ID: `io.lendori.losttofound`
-- Version/build: `1.0.0` with Xcode-managed next-available build numbering
+- Version/build: `1.0.0` (16); build 16 includes the privacy-manifest correction and secure attorney/owner session-scope restoration
 - Deployment target: iOS 17.0
 - Records URL: `https://custodyfolio.com/records`
 - Account deletion URL: `https://custodyfolio.com/account/delete`
 - Web navigation allowlist: `custodyfolio.com` and `www.custodyfolio.com`
 - Scene privacy behavior: app returns to locked state when it leaves the active scene
-- Automated verification: 13 native security and behavior tests passed with 0 failures on 2026-08-06; the simulator build compiled and launched without warnings
+- Automated verification: the corrected native source built and ran 16 simulator tests on 2026-08-23; 15 passed, zero failed, and the StoreKit provider lifecycle test was skipped because Apple's simulator service returned `notEntitled`. A signed uploaded release-candidate binary still requires provider-backed purchase and restore verification.
 
-Do not submit to App Review until the production backend is ready for review access, including reviewed auth email delivery, auth redirect URLs, leaked-password protection, monitoring, backup/restore evidence, retention/deletion approval, and legal review.
+Do not submit to App Review until the production backend is ready for review access, including auth email delivery, auth redirect URLs, leaked-password protection, monitoring, backup/restore evidence, adopted retention/deletion decisions, zero readiness blockers, and verified Apple purchase/restore behavior.
 
 ## App Privacy Labels Draft
 
@@ -99,6 +98,7 @@ Use App Store Connect's current privacy questionnaire. Based on the current prod
 
 - Contact Info: email address for account/support.
 - Identifiers: user ID or account identifier.
+- Purchases: subscription product, status, renewal dates, and signed provider transaction identifiers used to grant access and prevent fraud.
 - User Content: notes, files, documents, message exports, calendar/timeline records, reports.
 - Sensitive Info: custody, court, child-related, family, financial, or health-adjacent records may be entered by the user.
 - Diagnostics: security events, logs, rate-limit events, and reliability diagnostics if collected.
@@ -166,7 +166,9 @@ Do not use real custody, child, court, message, phone, address, or evidence data
 - No production secrets committed.
 - No real user data in screenshots or demo account.
 - Native app tested for login, MFA/recovery path, file upload, report export, and support links.
-- Legal/privacy review complete before public launch.
+- Apple monthly/annual purchase, cancellation, restore, pending, refund/revoke, and entitlement reconciliation tested with the release candidate.
+- Attorney invitation, separate sharing authorization, MFA acceptance, read-only access, download warning, revocation, and post-revocation denial tested with synthetic data.
+- Operator has adopted the exact versioned Terms, Privacy, consumer-health sharing consent, retention, tax, and incident-response decisions; any unresolved legal uncertainty remains disclosed rather than represented as compliance.
 
 ## Apple References
 

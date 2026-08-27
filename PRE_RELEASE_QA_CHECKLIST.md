@@ -112,7 +112,10 @@ For every supported record type: create, locate in source and derived views, rel
 - [ ] Review required-reason APIs, encryption/export compliance, permissions, screenshots, description, keywords, and review notes.
 - [ ] Create a dedicated synthetic reviewer account and document MFA/device-unlock instructions without committing credentials.
 - [ ] Confirm subscriptions/paid claims match the build and metadata promises no unavailable functionality.
-- [ ] Obtain qualified privacy/legal review; do not represent draft review as approval.
+- [ ] Confirm Stripe web and Apple in-app subscription clauses match checkout behavior, and no Stripe purchase call to action appears inside iOS.
+- [ ] Confirm attorney invitations require separate case-specific sharing authorization, adult account verification, MFA, read-only capability enforcement, download warning, and working revocation.
+- [ ] Confirm timestamped protected readiness evidence is current before accepting real sensitive records; without it, allow informational pages and synthetic/internal testing only.
+- [ ] Record either qualified privacy/legal review or explicit operator self-review. Never represent operator self-review as counsel approval or a compliance certification.
 - [ ] If native code or metadata changed, upload a new build and complete TestFlight/internal-device testing before submission.
 - [ ] For a public beta release, run `npm run ios:testflight`; do not use an upload-only lane.
 - [ ] Record the command's final `PUBLIC TESTFLIGHT RELEASE COMPLETE` line, including the exact build number. The command must fail unless that build is `Testing` inside `External Beta`.

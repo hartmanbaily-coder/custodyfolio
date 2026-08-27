@@ -12,6 +12,7 @@ import {
   productionPolicyBundleSha256,
   productionPolicyDocumentDigests,
 } from "@/generated/productionPolicyBundle.mjs";
+import { publicLegalClausesAreOperative } from "@/lib/legalRelease";
 
 function validApprovalManifest() {
   const common = {
@@ -59,7 +60,7 @@ function validApprovalManifest() {
         approvedBy: "Independent privacy counsel",
         approverRole: "qualified_counsel",
         reviewerOrganization: "North Counsel PLLC",
-        licenseJurisdictions: ["Alaska"],
+        licenseJurisdictions: ["Synthetic jurisdiction"],
         scope: "Privacy, terms, retention, incident response, and launch jurisdiction.",
       },
     },
@@ -120,6 +121,17 @@ const readyEnv = {
   VENDOR_SECURITY_REVIEW_APPROVED: "true",
 };
 
+function expectReadyApartFromPendingPublicClauses(
+  report: ReturnType<typeof evaluateProductionReadiness>,
+  env: Record<string, string | undefined>
+) {
+  const publicClausesReady = publicLegalClausesAreOperative(env);
+  expect(report.ready).toBe(publicClausesReady);
+  expect(report.blockers.map((item) => item.id)).toEqual(
+    publicClausesReady ? [] : ["public-legal-clauses"]
+  );
+}
+
 function fakeJwt(payload: Record<string, unknown>) {
   const encode = (input: Record<string, unknown>) =>
     Buffer.from(JSON.stringify(input)).toString("base64url");
@@ -137,14 +149,21 @@ describe("production readiness", () => {
     expect(report.blockers.map((item) => item.id)).toContain("malware-provider");
   });
 
-  it("passes when production blockers are configured", () => {
+  it("allows attorney access when its policy and operational controls are enabled", () => {
     const report = evaluateProductionReadiness(
-      readyEnv,
+      {
+        ...readyEnv,
+        ATTORNEY_GUEST_FEATURE_ENABLED: "true",
+        ATTORNEY_INVITE_OWNER_SHARE_ENABLED: "true",
+      },
       "2026-06-15T00:00:00.000Z"
     );
 
-    expect(report.ready).toBe(true);
-    expect(report.blockers).toHaveLength(0);
+    expectReadyApartFromPendingPublicClauses(report, {
+      ...readyEnv,
+      ATTORNEY_GUEST_FEATURE_ENABLED: "true",
+      ATTORNEY_INVITE_OWNER_SHARE_ENABLED: "true",
+    });
   });
 
   it("does not accept approval booleans without structured evidence", () => {
@@ -250,14 +269,17 @@ describe("production readiness", () => {
     expect(report.blockers.map((item) => item.id)).not.toContain("attorney-development-delivery");
   });
 
-  it("requires the dedicated attorney secret even while new invitations are disabled", () => {
+  it("does not require an attorney secret while attorney access is disabled", () => {
     const report = evaluateProductionReadiness({
       ...readyEnv,
       ATTORNEY_PORTAL_SECRET: "",
     }, "2026-06-15T00:00:00.000Z");
 
-    expect(report.ready).toBe(false);
-    expect(report.blockers.map((item) => item.id)).toContain("attorney-portal-secret");
+    expectReadyApartFromPendingPublicClauses(report, {
+      ...readyEnv,
+      ATTORNEY_PORTAL_SECRET: "",
+    });
+    expect(report.blockers.map((item) => item.id)).not.toContain("attorney-portal-secret");
   });
 
   it("accepts the app-level leaked-password guard as a free-plan compensating control", () => {
@@ -282,7 +304,10 @@ describe("production readiness", () => {
       "2026-06-15T00:00:00.000Z"
     );
 
-    expect(report.ready).toBe(true);
+    expectReadyApartFromPendingPublicClauses(report, {
+      ...readyEnv,
+      STARTER_RESOURCE_PROFILE: "true",
+    });
     expect(report.blockers.map((item) => item.id)).not.toContain("customer-resource-profile");
     expect(report.warnings.map((item) => item.id)).toContain("customer-resource-profile");
   });
@@ -348,7 +373,11 @@ describe("production readiness", () => {
     const phases = summarizeReadinessPhases(report);
 
     expect(report.ready).toBe(false);
-    expect(phases.preSupabaseReady).toBe(true);
+    const publicClausesReady = publicLegalClausesAreOperative(readyEnv);
+    expect(phases.preSupabaseReady).toBe(publicClausesReady);
+    expect(phases.preSupabaseBlockers.map((item) => item.id)).toEqual(
+      publicClausesReady ? [] : ["public-legal-clauses"]
+    );
     expect(phases.supabaseFinalReady).toBe(false);
     expect(phases.supabaseFinalBlockers.map((item) => item.id)).toEqual(
       expect.arrayContaining(["supabase-url", "two-user-isolation-tested"])

@@ -1,6 +1,5 @@
 import { PolicyPage, type PolicySection } from "@/components/PolicyPage";
 import {
-  legalOperatorLocation,
   legalOperatorName,
   pageMetadata,
   supportEmail,
@@ -16,7 +15,7 @@ const sections: PolicySection[] = [
   {
     title: "Agreement and operator",
     body: [
-      `${legalOperatorName}, located in ${legalOperatorLocation}, operates Custody Folio. These Terms form an agreement between you and ${legalOperatorName}.`,
+      `${legalOperatorName} operates Custody Folio. These Terms form an agreement between you and ${legalOperatorName}.`,
       "By creating an account or signing in after being shown the acceptance notice, you affirmatively agree to these Terms and acknowledge the Privacy Policy. If you do not agree, do not create or use an account.",
       "You must be an adult legally able to enter this agreement. Children may not create or use accounts.",
     ],
@@ -71,21 +70,22 @@ const sections: PolicySection[] = [
     ],
   },
   {
-    title: "Subscriptions, trial, and renewal — draft for counsel review",
+    title: "Subscriptions, trial, renewal, cancellation, and refunds",
     body: [
-      "Billing-related language in this section is a pre-launch draft for qualified-counsel review. Production billing remains disabled until that review and the separate readiness gates are complete.",
-      "Custody Folio plans one complete subscription tier. Each eligible account receives one 30-day no-card trial managed by Custody Folio. Stripe and Apple will not add a second introductory trial under this design.",
-      "On the web, the planned prices are $5.99 each month or $59.99 each year. The annual total is charged at once and is 16.5% less than twelve monthly payments. App Store prices and any applicable taxes are shown by Apple in the user’s localized storefront before purchase.",
-      "Subscriptions automatically renew at the selected monthly or annual frequency until cancelled. Stripe-managed subscriptions are changed or cancelled through the Stripe Customer Portal. App Store subscriptions are changed or cancelled through Apple subscription settings.",
+      "Custody Folio offers one complete subscription tier. Each eligible account receives one 30-day no-card trial managed by Custody Folio. Stripe and Apple do not add a second introductory trial.",
+      "Web subscriptions cost $5.99 each month or $59.99 each year in U.S. dollars. Stripe Checkout shows the selected price, billing frequency, and final charge before purchase. In the iOS app, Apple's purchase sheet shows the localized monthly or annual price and renewal period before purchase.",
+      "Subscriptions automatically renew at the selected monthly or annual frequency until cancelled. Stripe-managed subscriptions are changed or cancelled through the Stripe Customer Portal. App Store subscriptions are managed through Apple subscription settings.",
       "Cancellation takes effect at the end of a paid period unless the provider or applicable law requires an earlier remedy. A payment grace period may temporarily preserve full access. After trial or paid access ends, the account becomes export-only: existing records remain viewable, downloadable, exportable, and deletable, and account deletion and attorney revocation remain available.",
-      "Stripe handles refunds for web purchases under the disclosed refund policy and applicable law. Apple handles App Store purchase and refund decisions. A refund, chargeback, or revocation may end paid entitlement sooner, but never blocks export of existing records.",
-      "Quoted prices may exclude taxes. Tax collection will remain disabled until registration and tax obligations have been reviewed and configured; the purchase screen will show the final charge before consent.",
+      "Refund requests for web purchases are handled through Stripe and the support channel, subject to applicable law. Apple controls refunds for App Store purchases. A full refund, chargeback, or payment reversal may end paid entitlement sooner, but never blocks export of existing records.",
+      "Quoted prices may exclude taxes. Tax is collected only where the operator has configured collection after reviewing registration obligations. Stripe Checkout shows the final charge before purchase.",
+      "Use only one billing provider at a time. An iOS purchase is processed by Apple; a web purchase is processed by Stripe. Custody Folio does not present Stripe checkout inside the iOS app.",
     ],
   },
   {
-    title: "Attorney access — draft for counsel review",
+    title: "Attorney access availability",
     body: [
-      "Attorneys do not pay for client-granted read-only access. Their access remains governed by the client’s invitation and grant, not the client’s subscription state.",
+      "A client may activate attorney access only by choosing a case, naming the intended adult attorney, and separately authorizing sharing, including any health-related information in that case. Invitations expire, are single-use, and may be revoked before acceptance.",
+      "Attorneys do not pay for client-granted read-only access. Their access is governed by the client’s invitation and grant, not the client’s subscription state.",
     ],
   },
   {
@@ -116,9 +116,9 @@ const sections: PolicySection[] = [
   {
     title: "Governing law and disputes",
     body: [
-      "These Terms are governed by Alaska law and applicable United States federal law, without overriding mandatory consumer protections that apply where you live.",
+      "Applicable law governs these Terms without overriding mandatory consumer protections that apply where you live. The operator has not selected a state-specific governing-law or exclusive-forum clause.",
       `Before filing a non-emergency dispute, contact ${supportEmail} and provide a concise description so both sides can try to resolve it informally. This does not extend a legal deadline or prevent a party from seeking urgent relief.`,
-      "Unless mandatory law provides otherwise, disputes may be brought in a court with jurisdiction in Alaska. These Terms do not require private arbitration and do not waive a right that cannot lawfully be waived.",
+      "These Terms do not require private arbitration and do not waive a right that cannot lawfully be waived.",
     ],
   },
   {

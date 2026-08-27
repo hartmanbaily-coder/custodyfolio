@@ -2,7 +2,7 @@
 
 Recorded status: `not_enrolled`.
 
-Evidence: the signed-in Apple Developer Small Business Program page displayed the enrollment form for Slantwire Studios, LLC, Account Holder Baily Hartman, Team ID `HQG9VJ8JK2`. App Store Connect separately showed the Paid Apps Agreement, banking, W-9, and DSA records as active. No enrollment submission was made during this review because Apple requires the Account Holder to declare every Associated Developer Account and the reviewer cannot infer that declaration.
+Evidence: the signed-in Apple Developer Small Business Program page displayed the enrollment form for Slantwire Studios, LLC and the configured team. App Store Connect separately showed the Paid Apps Agreement, banking, tax, and DSA records as active. No enrollment submission was made during this review because Apple requires the Account Holder to declare every Associated Developer Account and the reviewer cannot infer that declaration.
 
 Financial planning must therefore use Apple's standard auto-renewable subscription proceeds: 70% of the customer price, minus applicable taxes, during a subscriber's first paid year and 85% after one year of paid service in the same subscription group. If Apple later approves Small Business Program enrollment, the forecast may use 85% from the first day beginning when Apple's adjusted proceeds take effect.
 

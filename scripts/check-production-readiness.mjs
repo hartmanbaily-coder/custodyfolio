@@ -223,9 +223,10 @@ const checks = [
   ],
   [
     "ATTORNEY_PORTAL_SECRET",
-    hasStrongSecret(process.env.ATTORNEY_PORTAL_SECRET)
-      && process.env.ATTORNEY_PORTAL_SECRET !== process.env.AUTH_SECRET,
-    "must be a separate secret of at least 32 characters",
+    !isEnabled(process.env.ATTORNEY_GUEST_FEATURE_ENABLED)
+      || (hasStrongSecret(process.env.ATTORNEY_PORTAL_SECRET)
+        && process.env.ATTORNEY_PORTAL_SECRET !== process.env.AUTH_SECRET),
+    "must be a separate secret of at least 32 characters when attorney guest access is enabled",
   ],
   [
     "ATTORNEY_INVITE_DEV_DELIVERY",
@@ -341,7 +342,7 @@ const checks = [
   [
     "LEGAL_REVIEW_APPROVED",
     isEnabled(process.env.LEGAL_REVIEW_APPROVED) && approvalEvidence.legal.ready,
-    "must be true with qualified-counsel approval of the exact policy digests in PRODUCTION_APPROVAL_MANIFEST_BASE64",
+    "must be true with documented qualified-counsel review or disclosed operator self-review of the exact policy digests in PRODUCTION_APPROVAL_MANIFEST_BASE64",
   ],
   [
     "PRIVACY_POLICY_URL",

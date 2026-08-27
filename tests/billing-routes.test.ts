@@ -7,6 +7,9 @@ const getRecordsAuthContext = vi.hoisted(() => vi.fn());
 const verifyAndDecodeNotification = vi.hoisted(() => vi.fn());
 const verifyAndDecodeTransaction = vi.hoisted(() => vi.fn());
 const verifyAndDecodeRenewalInfo = vi.hoisted(() => vi.fn());
+const createAppleSignedDataVerifier = vi.hoisted(() => vi.fn());
+const applyAppleProviderEvent = vi.hoisted(() => vi.fn());
+const findBillingAccountByAppleToken = vi.hoisted(() => vi.fn());
 const providerEventMaybeSingle = vi.hoisted(() => vi.fn());
 const requireRecordsCapability = vi.hoisted(() => vi.fn());
 
@@ -19,15 +22,16 @@ vi.mock("@/lib/records/authServer", () => ({
 vi.mock("@/lib/billing/capabilities", () => ({ requireRecordsCapability }));
 
 vi.mock("@/lib/billing/apple", () => ({
-  applyAppleProviderEvent: vi.fn(),
+  applyAppleProviderEvent,
   applePayloadDigest: () => "a".repeat(64),
-  createAppleSignedDataVerifier: () => ({
-    verifyAndDecodeNotification,
-    verifyAndDecodeTransaction,
-    verifyAndDecodeRenewalInfo,
-  }),
+  createAppleSignedDataVerifier,
   mapAppleSubscription: vi.fn(),
   recordIgnoredAppleEvent: vi.fn(),
+}));
+
+vi.mock("@/lib/billing/repository", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/billing/repository")>()),
+  findBillingAccountByAppleToken,
 }));
 
 vi.mock("@/lib/supabaseAdmin", () => ({
@@ -69,7 +73,13 @@ describe("billing route trust boundaries", () => {
       STRIPE_TEST_SECRET_KEY: "sk_test_custody_folio_fake_key",
       STRIPE_TEST_WEBHOOK_SECRET: "whsec_custody_folio_test_secret",
     };
+    createAppleSignedDataVerifier.mockReturnValue({
+      verifyAndDecodeNotification,
+      verifyAndDecodeTransaction,
+      verifyAndDecodeRenewalInfo,
+    });
     providerEventMaybeSingle.mockResolvedValue({ data: null, error: null });
+    findBillingAccountByAppleToken.mockResolvedValue(null);
     getRecordsAuthContext.mockResolvedValue({
       userId: "00000000-0000-4000-8000-000000000001",
       email: "owner@example.test",
@@ -124,7 +134,7 @@ describe("billing route trust boundaries", () => {
     if (!response) throw new Error("Checkout route returned no response.");
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
-      code: "native_storekit_required",
+      code: "native_purchase_unavailable",
     });
     expect(getRecordsAuthContext).not.toHaveBeenCalled();
   });
@@ -220,5 +230,126 @@ describe("billing route trust boundaries", () => {
     );
     expect(response.status).toBe(400);
     expect(response.headers.get("Retry-After")).toBeNull();
+  });
+
+  it("accepts review Sandbox signatures only for the configured App Review account", async () => {
+    const reviewUserId = "724f81aa-b6d1-4b8a-ab59-aec5fe29e7ea";
+    process.env = {
+      ...process.env,
+      BILLING_MODE: "live",
+      APPLE_REVIEW_SANDBOX_ENABLED: "true",
+      APPLE_REVIEW_SANDBOX_USER_ID: reviewUserId,
+      APPLE_REVIEW_SANDBOX_EXPIRES_AT: new Date(
+        Date.now() + 30 * 24 * 60 * 60 * 1000
+      ).toISOString(),
+    };
+    const productionNotificationVerifier = vi.fn().mockRejectedValue(
+      new Error("not a production JWS")
+    );
+    const sandboxNotificationVerifier = vi.fn().mockResolvedValue({
+      notificationUUID: "4e05b297-d8ca-43fa-8340-d2bce94d8293",
+      notificationType: "DID_RENEW",
+      signedDate: Date.now(),
+      data: { signedTransactionInfo: "sandbox-transaction" },
+    });
+    const sandboxTransactionVerifier = vi.fn().mockResolvedValue({
+      appAccountToken: "b5d7fdec-e96e-423e-9c03-10d8afe194ac",
+      transactionId: "200000000000001",
+    });
+    createAppleSignedDataVerifier.mockImplementation(
+      (_env?: Record<string, string | undefined>, context?: { userId?: string }) =>
+        context?.userId === reviewUserId
+          ? {
+              verifyAndDecodeNotification: sandboxNotificationVerifier,
+              verifyAndDecodeTransaction: sandboxTransactionVerifier,
+              verifyAndDecodeRenewalInfo,
+            }
+          : {
+              verifyAndDecodeNotification: productionNotificationVerifier,
+              verifyAndDecodeTransaction,
+              verifyAndDecodeRenewalInfo,
+            }
+    );
+    findBillingAccountByAppleToken.mockResolvedValue({
+      id: "a4dfefa1-3b40-4863-aa37-ac8acb6cd42c",
+      user_id: reviewUserId,
+    });
+
+    const response = await appleNotification(
+      new NextRequest(
+        "https://custodyfolio.com/api/records/billing/apple/notifications",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ signedPayload: "x".repeat(120) }),
+        }
+      )
+    );
+
+    expect(response.status).toBe(200);
+    expect(createAppleSignedDataVerifier).toHaveBeenNthCalledWith(1);
+    expect(createAppleSignedDataVerifier).toHaveBeenNthCalledWith(
+      2,
+      expect.any(Object),
+      { userId: reviewUserId }
+    );
+    expect(applyAppleProviderEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: "review-sandbox:4e05b297-d8ca-43fa-8340-d2bce94d8293",
+        billingAccountId: "a4dfefa1-3b40-4863-aa37-ac8acb6cd42c",
+      })
+    );
+  });
+
+  it("rejects a review Sandbox notification bound to any other account", async () => {
+    const reviewUserId = "724f81aa-b6d1-4b8a-ab59-aec5fe29e7ea";
+    process.env = {
+      ...process.env,
+      BILLING_MODE: "live",
+      APPLE_REVIEW_SANDBOX_ENABLED: "true",
+      APPLE_REVIEW_SANDBOX_USER_ID: reviewUserId,
+      APPLE_REVIEW_SANDBOX_EXPIRES_AT: new Date(
+        Date.now() + 30 * 24 * 60 * 60 * 1000
+      ).toISOString(),
+    };
+    createAppleSignedDataVerifier
+      .mockReturnValueOnce({
+        verifyAndDecodeNotification: vi.fn().mockRejectedValue(
+          new Error("not a production JWS")
+        ),
+        verifyAndDecodeTransaction,
+        verifyAndDecodeRenewalInfo,
+      })
+      .mockReturnValueOnce({
+        verifyAndDecodeNotification: vi.fn().mockResolvedValue({
+          notificationUUID: "db33b885-56d7-4228-88d3-696420613b18",
+          notificationType: "DID_RENEW",
+          signedDate: Date.now(),
+          data: { signedTransactionInfo: "sandbox-transaction" },
+        }),
+        verifyAndDecodeTransaction: vi.fn().mockResolvedValue({
+          appAccountToken: "e3aeed0d-c58d-4ea4-86dd-60b26ba6d719",
+          transactionId: "200000000000002",
+        }),
+        verifyAndDecodeRenewalInfo,
+      });
+    findBillingAccountByAppleToken.mockResolvedValue({
+      id: "7bc9285d-9550-4cd2-81e0-e1642771082a",
+      user_id: "00000000-0000-4000-8000-000000000099",
+    });
+
+    const response = await appleNotification(
+      new NextRequest(
+        "https://custodyfolio.com/api/records/billing/apple/notifications",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ signedPayload: "x".repeat(120) }),
+        }
+      )
+    );
+
+    expect(response.status).toBe(403);
+    expect(applyAppleProviderEvent).not.toHaveBeenCalled();
   });
 });
