@@ -405,14 +405,14 @@ export default function AttorneyPortal() {
     window.location.replace("/attorney/sign-in");
   }
 
-  if (sessionState === "loading") return <main className="grid min-h-screen place-items-center bg-[#f4f7f6]"><p>Opening shared matters…</p></main>;
+  if (sessionState === "loading") return <main className="grid min-h-screen place-items-center bg-[#fffdf9]"><p>Opening shared matters…</p></main>;
   if (sessionState === "signed_out") {
-    return <main className="grid min-h-screen place-items-center bg-[#f4f7f6] px-4"><section className="max-w-lg rounded-lg border bg-white p-6 shadow-sm"><h1 className="text-2xl font-semibold">Shared With Me</h1><p className="mt-3 text-sm text-slate-600">Sign in with the attorney account created through your first client invitation. A new client can share another matter with the same account.</p><div className="mt-5 flex flex-wrap gap-2"><Link href="/attorney/sign-in" className="btn-primary">Attorney sign in</Link><Link href="/" className="btn-secondary">Custody Folio home</Link></div></section></main>;
+    return <main className="grid min-h-screen place-items-center bg-[#fffdf9] px-4"><section className="max-w-lg rounded-lg border bg-white p-6 shadow-sm"><h1 className="text-2xl font-semibold">Shared With Me</h1><p className="mt-3 text-sm text-slate-600">Sign in with the attorney account created through your first client invitation. A new client can share another matter with the same account.</p><div className="mt-5 flex flex-wrap gap-2"><Link href="/attorney/sign-in" className="btn-primary">Attorney sign in</Link><Link href="/" className="btn-secondary">Custody Folio home</Link></div></section></main>;
   }
 
   if (!portal) {
     return (
-      <main className="min-h-screen bg-[#f4f7f6] px-4 py-8 text-slate-950">
+      <main className="min-h-screen bg-[#fffdf9] px-4 py-8 text-slate-950">
         <section className="mx-auto max-w-2xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-wrap justify-between gap-3"><div><h1 className="text-2xl font-semibold">Shared With Me</h1><p className="mt-2 text-sm text-slate-600">Read-only client matters available until each client revokes access.</p></div><button type="button" className="btn-secondary" onClick={() => void logout()}>Sign out</button></div>
           {message ? <p role="status" className="mt-4 rounded-md border bg-slate-50 p-3 text-sm">{message}</p> : null}
@@ -455,7 +455,7 @@ export default function AttorneyPortal() {
   const exportReviewComplete = exportReview.every(Boolean);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#f4f7f6] text-slate-950">
+    <div className="min-h-screen overflow-x-hidden bg-[#fffdf9] text-slate-950">
       <header className="border-b border-slate-200 bg-white px-4 py-4">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
           <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Read-only attorney portal</p><h1 className="mt-1 text-xl font-semibold">{selectedCaseName}</h1></div>

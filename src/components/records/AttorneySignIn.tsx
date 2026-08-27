@@ -195,7 +195,7 @@ export default function AttorneySignIn() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f4f7fc] text-slate-950">
+    <main className="min-h-screen bg-[#fffdf9] text-slate-950">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 py-4 sm:px-6">
         <header>
           <Link href="/" className="inline-flex items-center gap-3">

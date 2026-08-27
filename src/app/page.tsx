@@ -42,7 +42,7 @@ const previewRows = [
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#f4f7f6] text-slate-950">
+    <main className="min-h-screen overflow-hidden bg-[#fffdf9] text-slate-950">
       <header className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:px-8">
         <Link href="/" className="flex min-w-0 items-center gap-3">
           <Image

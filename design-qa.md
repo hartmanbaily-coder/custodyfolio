@@ -52,3 +52,57 @@ The combined artifact is already a focused crop of the entire sidebar, so an add
 5. Post-correction visual comparison: passed with no remaining P0, P1, or P2 issues.
 
 final result: passed
+
+---
+
+# Action-First Mobile Styling Deployment QA — 2026-08-27
+
+- Source visual truth: `/Users/BailyHartman/code/custodyfolio/artifacts/design-recommendations-2026-08-27/action-first.png`
+- Implementation screenshot: `/Users/BailyHartman/code/custodyfolio/artifacts/design-recommendations-2026-08-27/action-first-live-implementation.png`
+- Combined comparison: `/Users/BailyHartman/code/custodyfolio/artifacts/design-recommendations-2026-08-27/action-first-live-comparison.png`
+- Viewport: 393 x 852 CSS px at device scale factor 1
+- Source dimensions: 853 x 1844 px, normalized to 393 x 852 px for comparison
+- Implementation dimensions: 393 x 852 px
+- State: authenticated parent workspace, Home selected, light appearance, seeded local case data
+
+## Full-view comparison evidence
+
+The source and implementation share the approved action-first hierarchy: warm off-white canvas, brand header, prominent confidence-focused headline, teal Add a record action, smaller secondary actions, calm neutral typography, icon-led controls, and a persistent Home/Add/Timeline/More mobile navigation. The live implementation keeps the existing compact case/date header and surfaces Share with an attorney as a second secondary action because both are required product capabilities.
+
+The live screen intentionally retains the existing overview and reporting structure rather than replacing real case data with the reference image's illustrative activity rows. This preserves function while applying the approved visual direction.
+
+## Focused region comparison evidence
+
+An additional crop was not needed. At the normalized 786 x 852 side-by-side size, the headline, primary action, secondary-action iconography, card treatments, dates, and bottom navigation are readable at 1:1 density.
+
+## Findings
+
+- No actionable P0, P1, or P2 differences remain.
+- Accepted product constraint: the live compact case/date header adds vertical height that is absent from the visual reference. Removing it would reduce access to case selection, date-range controls, reports, and session options.
+- Accepted product constraint: attorney access remains visible beside the PDF action because attorney sharing is a critical launch feature.
+- Follow-up P3: the reference reaches Recent activity sooner, while the live screen reaches Your overview first. Reordering those existing sections would be a product-flow change and was not made without separate approval.
+
+## Required fidelity surfaces
+
+- Fonts and typography: passed. System/SF-style font stack, weights, wrapping, and hierarchy closely match the reference and remain legible at 393 px.
+- Spacing and layout rhythm: passed. The 16 px mobile margins, section gaps, 12 px card radii, raised Add control, and bottom safe-area allowance are consistent and do not create horizontal overflow.
+- Colors and visual tokens: passed. Warm `#fffdf9` background, white surfaces, slate text, teal primary action, and subtle borders preserve the approved simple palette without adding plum or another accent.
+- Image quality and asset fidelity: passed. The existing Custody Folio app icon remains sharp; interface icons use the Radix icon library rather than custom glyph art.
+- Copy and content: passed. Approved product wording is retained. Existing legal, privacy, billing, report, and attorney-access copy was not changed by this styling implementation.
+- Accessibility and responsiveness: passed. Mobile navigation controls meet a minimum 44 px target, expose current/expanded state, and keep every workspace section reachable through More.
+
+## Interaction and browser checks
+
+- Add records opened from the raised mobile action.
+- Timeline opened from the direct mobile tab.
+- More opened the complete workspace-section dialog.
+- Attorney access opened from More.
+- Home restored the comparison state.
+- Browser console errors and uncaught page errors: none.
+
+## Comparison history
+
+1. Source visual and first production implementation were normalized to the same 393 x 852 viewport and compared side by side.
+2. The comparison found no P0, P1, or P2 visual defects. The remaining structural differences were classified as intentional preservation of existing case controls, attorney access, and overview functionality; no post-comparison visual fix was required.
+
+final result: passed

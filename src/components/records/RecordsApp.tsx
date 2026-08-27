@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type {
+  ComponentType,
   Dispatch,
   FormEvent,
   PointerEvent as ReactPointerEvent,
@@ -10,6 +11,23 @@ import type {
   SetStateAction,
 } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArchiveIcon,
+  CalendarIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  Cross2Icon,
+  FileTextIcon,
+  GearIcon,
+  HamburgerMenuIcon,
+  HomeIcon,
+  IdCardIcon,
+  LockClosedIcon,
+  Pencil2Icon,
+  PlusIcon,
+  ReaderIcon,
+  ValueIcon,
+} from "@radix-ui/react-icons";
 import PolicyFooter from "@/components/PolicyFooter";
 import ThemeSelector from "@/components/ThemeSelector";
 import {
@@ -194,6 +212,23 @@ const navGroups: Array<{ label: string; items: ActiveView[] }> = [
   { label: "Prepare & Share", items: ["Reports", "Screenshot PDFs", "Attorney Access"] },
   { label: "Settings", items: ["Subscription", "Settings"] },
 ];
+
+const activeViewIcons: Record<ActiveView, ComponentType<{ className?: string }>> = {
+  Dashboard: HomeIcon,
+  Calendar: CalendarIcon,
+  Import: PlusIcon,
+  Timeline: ClockIcon,
+  Exchanges: CalendarIcon,
+  Notes: Pencil2Icon,
+  Files: ArchiveIcon,
+  "Screenshot PDFs": FileTextIcon,
+  "Child Support": ValueIcon,
+  Expenses: ValueIcon,
+  Reports: ReaderIcon,
+  "Attorney Access": IdCardIcon,
+  Subscription: ReaderIcon,
+  Settings: GearIcon,
+};
 
 function activeViewLabel(view: ActiveView, terminology: CaseTerminology) {
   const labels: Record<ActiveView, string> = {
@@ -440,6 +475,7 @@ export default function RecordsApp() {
   const [mfaResumeRequired, setMfaResumeRequired] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>("Dashboard");
   const [mobileOptionsOpen, setMobileOptionsOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const activeViewRef = useRef<ActiveView>("Dashboard");
   const historyIndexRef = useRef(0);
   const historyMaxIndexRef = useRef(0);
@@ -491,6 +527,7 @@ export default function RecordsApp() {
 
   const openView = useCallback((view: ActiveView) => {
     setMobileOptionsOpen(false);
+    setMobileNavOpen(false);
     if (activeViewRef.current !== view) {
       const nextIndex = historyIndexRef.current + 1;
       window.history.pushState(recordsHistoryState(view, nextIndex), "");
@@ -544,6 +581,7 @@ export default function RecordsApp() {
       historyIndexRef.current = index;
       setActiveView(view);
       setMobileOptionsOpen(false);
+      setMobileNavOpen(false);
       notifyNativeNavigationChanged({
         canGoBack: index > 0,
         canGoForward: index < historyMaxIndexRef.current,
@@ -854,9 +892,9 @@ export default function RecordsApp() {
   }
 
   return (
-    <div className="records-app-shell min-h-screen bg-gradient-to-br from-[#f8faff] via-[#edf4fc] to-[#f4f7fc] text-slate-950">
+    <div className="records-app-shell min-h-screen bg-[#fffdf9] text-slate-950">
       <div className="records-app-grid grid min-h-screen lg:grid-cols-[288px_minmax(0,1fr)]">
-        <aside className="overflow-hidden border-b border-slate-200 bg-white/95 lg:border-b-0 lg:border-r lg:border-slate-200">
+        <aside className="overflow-hidden border-b border-slate-200 bg-[#fffdf9]/95 lg:border-b-0 lg:border-r lg:border-slate-200">
           <div className="flex flex-col p-4 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto">
             <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
               <Image
@@ -874,7 +912,7 @@ export default function RecordsApp() {
               </div>
             </div>
 
-            <nav className="mt-5 flex max-w-full gap-2 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50/80 p-2 lg:block lg:space-y-4 lg:overflow-visible lg:pb-4" aria-label="Records workspace">
+            <nav className="mt-5 hidden max-w-full rounded-xl border border-slate-200 bg-slate-50/80 p-2 lg:block lg:space-y-4 lg:overflow-visible lg:pb-4" aria-label="Records workspace">
               {navGroups.map((group) => (
                 <div key={group.label} className="shrink-0">
                   <p className="mb-1 hidden border-b border-teal-200 px-2 pb-1 text-xs font-bold uppercase tracking-[0.14em] text-teal-700 lg:block">
@@ -912,7 +950,7 @@ export default function RecordsApp() {
           </div>
         </aside>
 
-        <main className="records-workspace min-w-0">
+        <main className="records-workspace min-w-0 pb-[calc(env(safe-area-inset-bottom)+4.75rem)] lg:pb-0">
           <WorkspaceHeader
             activeViewTitle={activeViewLabel(activeView, terminology)}
             mobileOptionsOpen={mobileOptionsOpen}
@@ -951,7 +989,7 @@ export default function RecordsApp() {
               <div
                 role="status"
                 aria-live="polite"
-                className="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] left-4 right-4 z-50 rounded-md border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-medium text-teal-900 shadow-lg sm:left-auto sm:max-w-md"
+                className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] left-4 right-4 z-[60] rounded-md border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-medium text-teal-900 shadow-lg sm:bottom-4 sm:left-auto sm:max-w-md"
               >
                 {toast}
               </div>
@@ -964,6 +1002,7 @@ export default function RecordsApp() {
                 financialCount={selected.expenseItems.length + selected.childSupportPayments.length}
                 onOpen={openView}
                 terminology={terminology}
+                timezone={caseTimezone}
               />
             )}
             {activeView === "Calendar" && (
@@ -1136,8 +1175,159 @@ export default function RecordsApp() {
           </div>
           <PolicyFooter compact className="no-print" recordsNote={recordsPrivacyNote} />
         </main>
+        <MobileWorkspaceNav
+          activeView={activeView}
+          terminology={terminology}
+          moreOpen={mobileNavOpen}
+          setMoreOpen={setMobileNavOpen}
+          onOpen={openView}
+        />
       </div>
     </div>
+  );
+}
+
+function MobileWorkspaceNav({
+  activeView,
+  terminology,
+  moreOpen,
+  setMoreOpen,
+  onOpen,
+}: {
+  activeView: ActiveView;
+  terminology: CaseTerminology;
+  moreOpen: boolean;
+  setMoreOpen: Dispatch<SetStateAction<boolean>>;
+  onOpen: (view: ActiveView) => void;
+}) {
+  const directViews: ActiveView[] = ["Dashboard", "Import", "Timeline"];
+  const moreIsActive = !directViews.includes(activeView);
+  const mobileTabs: Array<{ view: ActiveView; label: string }> = [
+    { view: "Dashboard", label: "Home" },
+    { view: "Import", label: "Add" },
+    { view: "Timeline", label: "Timeline" },
+  ];
+
+  return (
+    <>
+      {moreOpen ? (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <button
+            type="button"
+            aria-label="Close all workspace sections"
+            onClick={() => setMoreOpen(false)}
+            className="absolute inset-0 bg-slate-950/20 backdrop-blur-[1px]"
+          />
+          <section
+            id="mobile-workspace-navigation"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-workspace-navigation-title"
+            className="absolute bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] left-3 right-3 max-h-[min(68vh,620px)] overflow-y-auto rounded-2xl border border-slate-200 bg-[#fffdf9] p-4 shadow-[0_22px_70px_rgba(15,23,42,0.24)]"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-3">
+              <div>
+                <h2 id="mobile-workspace-navigation-title" className="text-lg font-semibold tracking-tight text-slate-950">
+                  All workspace sections
+                </h2>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Every existing record, financial, sharing, and account tool remains available.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMoreOpen(false)}
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600"
+              >
+                <span className="sr-only">Close navigation</span>
+                <Cross2Icon className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              {navGroups.map((group) => {
+                const items = group.items.filter((item) => !directViews.includes(item));
+                if (!items.length) return null;
+                return (
+                  <section key={group.label}>
+                    <h3 className="px-1 text-xs font-bold uppercase tracking-[0.14em] text-teal-700">
+                      {group.label}
+                    </h3>
+                    <div className="mt-1 grid gap-1">
+                      {items.map((item) => {
+                        const ItemIcon = activeViewIcons[item];
+                        return (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => onOpen(item)}
+                            className={`flex min-h-12 items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold transition ${
+                              activeView === item
+                                ? "bg-teal-50 text-teal-950 ring-1 ring-teal-200"
+                                : "bg-white text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-200 bg-[#fffdf9] text-teal-700" aria-hidden="true">
+                              <ItemIcon className="h-5 w-5" />
+                            </span>
+                            <span className="min-w-0 flex-1">{activeViewLabel(item, terminology)}</span>
+                            <ChevronRightIcon className="h-4 w-4 shrink-0 text-slate-400" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      <nav
+        aria-label="Mobile workspace"
+        className="fixed inset-x-0 bottom-0 z-50 grid h-[calc(env(safe-area-inset-bottom)+4.5rem)] grid-cols-4 border-t border-slate-200 bg-[#fffdf9]/95 px-2 pb-[env(safe-area-inset-bottom)] pt-1 shadow-[0_-8px_28px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden"
+      >
+        {mobileTabs.map(({ view, label }) => {
+          const ItemIcon = activeViewIcons[view];
+          const active = activeView === view && !moreOpen;
+          return (
+            <button
+              key={view}
+              type="button"
+              aria-label={view === "Import" ? "Add records" : undefined}
+              aria-current={active ? "page" : undefined}
+              onClick={() => onOpen(view)}
+              className={`flex min-h-11 flex-col items-center justify-center gap-1 text-[11px] font-medium ${
+                active ? "text-teal-800" : "text-slate-500"
+              }`}
+            >
+              {view === "Import" ? (
+                <span className="-mt-4 grid h-12 w-12 place-items-center rounded-full bg-teal-700 text-white shadow-[0_5px_14px_rgba(15,118,110,0.25)]" aria-hidden="true">
+                  <ItemIcon className="h-6 w-6" />
+                </span>
+              ) : (
+                <ItemIcon className="h-5 w-5" />
+              )}
+              <span>{label}</span>
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          aria-controls="mobile-workspace-navigation"
+          aria-expanded={moreOpen}
+          aria-current={moreIsActive && !moreOpen ? "page" : undefined}
+          onClick={() => setMoreOpen((current) => !current)}
+          className={`flex min-h-11 flex-col items-center justify-center gap-1 text-[11px] font-medium ${
+            moreOpen || moreIsActive ? "text-teal-800" : "text-slate-500"
+          }`}
+        >
+          <HamburgerMenuIcon className="h-5 w-5" />
+          <span>More</span>
+        </button>
+      </nav>
+    </>
   );
 }
 
@@ -1145,7 +1335,7 @@ function RecordsSessionLoadingScreen() {
   return (
     <main
       data-testid="records-session-loading"
-      className="grid min-h-screen place-items-center bg-[#f4f7fc] px-6 text-slate-950"
+      className="grid min-h-screen place-items-center bg-[#fffdf9] px-6 text-slate-950"
     >
       <div className="grid justify-items-center gap-4 text-center">
         <Image
@@ -1179,7 +1369,7 @@ function RecordsLoadFailureScreen({
   onLogout: () => void;
 }) {
   return (
-    <main className="flex min-h-screen flex-col bg-[#f4f7fc] text-slate-950">
+    <main className="flex min-h-screen flex-col bg-[#fffdf9] text-slate-950">
       <section className="mx-auto flex w-full max-w-xl flex-1 items-center px-4 py-10 sm:px-6">
         <div role="alert" className="w-full rounded-lg border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">
@@ -1601,7 +1791,7 @@ function LoginScreen({
           : "Sign in";
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#f4f7fc] text-slate-950">
+    <main className="min-h-screen overflow-hidden bg-[#fffdf9] text-slate-950">
       <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between gap-4">
           <Link href="/" className="flex min-w-0 items-center gap-3">
@@ -2008,6 +2198,7 @@ function DashboardView({
   financialCount,
   onOpen,
   terminology,
+  timezone,
 }: {
   range: DateRange;
   calendarEvents: CalendarEvent[];
@@ -2015,6 +2206,7 @@ function DashboardView({
   financialCount: number;
   onOpen: (view: ActiveView) => void;
   terminology: CaseTerminology;
+  timezone: string;
 }) {
   const visibleEvents = calendarEvents.filter(isTimelineVisibleEvent);
   const dashboardEvents = visibleEvents.filter(
@@ -2028,39 +2220,77 @@ function DashboardView({
     (event) => event.type === "scheduled_exchange" || event.type === "logged_exchange"
   ).length;
   const communicationCount = stats.noFaceTimeCount + stats.postCallNoFaceTimeCount;
+  const todayLabel = new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    timeZone: timezone,
+    year: "numeric",
+  }).format(new Date());
   return (
     <div className="space-y-5">
-      <section className="grid gap-3 lg:grid-cols-[1.2fr_1fr_1fr]" aria-label="Quick tools">
-        <button
-          type="button"
-          onClick={() => onOpen("Import")}
-          className="rounded-xl bg-teal-700 p-5 text-left text-white shadow-sm transition hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-200"
-        >
-          <span className="text-base font-semibold">Add a record</span>
-          <span className="mt-1 block text-sm leading-5 text-teal-50">
-            Start with the basics. You can add more detail later.
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => onOpen("Screenshot PDFs")}
-          className="rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-100"
-        >
-          <span className="text-sm font-semibold text-slate-950">Build a PDF</span>
-          <span className="mt-1 block text-xs leading-5 text-slate-600">
-            Arrange screenshots into a clean, printable PDF. PDFs are often used when preparing court exhibits.
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => onOpen("Attorney Access")}
-          className="rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-100"
-        >
-          <span className="text-sm font-semibold text-slate-950">Share with an attorney</span>
-          <span className="mt-1 block text-xs leading-5 text-slate-600">
-            Create or revoke read-only access whenever you choose.
-          </span>
-        </button>
+      <section aria-label="Quick tools">
+        <div className="flex items-start justify-between gap-4">
+          <h2 className="max-w-2xl text-[1.7rem] font-semibold leading-[1.12] tracking-[-0.035em] text-slate-950 sm:text-3xl">
+            Organize your custody records with clarity and confidence.
+          </h2>
+          <time className="shrink-0 pt-1 text-xs text-slate-500" suppressHydrationWarning>
+            {todayLabel}
+          </time>
+        </div>
+
+        <div className="mt-5 grid gap-3 lg:grid-cols-[1.2fr_1fr_1fr]">
+          <button
+            type="button"
+            onClick={() => onOpen("Import")}
+            className="flex min-h-24 items-center gap-4 rounded-xl bg-[#247f79] p-5 text-left text-white shadow-[0_9px_24px_rgba(36,127,121,0.18)] transition hover:bg-[#176b67] focus:outline-none focus:ring-2 focus:ring-teal-200"
+          >
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-white" aria-hidden="true">
+              <PlusIcon className="h-7 w-7" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-xl font-semibold leading-6">Add a record</span>
+              <span className="mt-1 block text-sm leading-5 text-teal-50">
+                Start with the basics. You can add more detail later.
+              </span>
+            </span>
+          </button>
+
+          <div className="space-y-2 lg:contents">
+            <h3 className="pt-3 text-sm font-semibold text-slate-950 lg:hidden">Other actions</h3>
+            <button
+              type="button"
+              onClick={() => onOpen("Screenshot PDFs")}
+              className="flex min-h-20 items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-100"
+            >
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-slate-200 bg-[#fffdf9] text-teal-700" aria-hidden="true">
+                <ArchiveIcon className="h-6 w-6" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-slate-950">Build a PDF</span>
+                <span className="mt-1 block text-xs leading-5 text-slate-600">
+                  Arrange screenshots into a clean, printable PDF.
+                </span>
+              </span>
+              <ChevronRightIcon className="h-5 w-5 shrink-0 text-slate-400" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpen("Attorney Access")}
+              className="flex min-h-20 items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left transition hover:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-100"
+            >
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-slate-200 bg-[#fffdf9] text-teal-700" aria-hidden="true">
+                <IdCardIcon className="h-6 w-6" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-slate-950">Share with an attorney</span>
+                <span className="mt-1 block text-xs leading-5 text-slate-600">
+                  Create or revoke read-only access whenever you choose.
+                </span>
+              </span>
+              <ChevronRightIcon className="h-5 w-5 shrink-0 text-slate-400" />
+            </button>
+          </div>
+        </div>
       </section>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -2082,6 +2312,10 @@ function DashboardView({
           <Timeline events={dashboardEvents} emptyLabel="No timeline records in this date range." />
         </Panel>
       </section>
+      <p className="flex min-h-11 items-center justify-center gap-2 text-xs text-slate-500">
+        <LockClosedIcon className="h-4 w-4 text-teal-700" aria-hidden="true" />
+        Your records are private by default.
+      </p>
     </div>
   );
 }

@@ -146,7 +146,7 @@ export default function AttorneyAccept() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f4f7f6] text-slate-950">
+    <main className="min-h-screen bg-[#fffdf9] text-slate-950">
       <div className="grid min-h-screen place-items-center px-4 py-10">
         <section className="w-full max-w-xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">

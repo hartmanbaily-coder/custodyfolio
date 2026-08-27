@@ -64,6 +64,34 @@ async function revealDateRangeControls(page: Page) {
   await expect(fromDate).toBeVisible();
 }
 
+async function openWorkspaceView(page: Page, name: string | RegExp) {
+  const roleOptions = {
+    name,
+    exact: typeof name === "string",
+  };
+  const mobileNavigation = page.getByRole("navigation", { name: "Mobile workspace" });
+
+  if (await mobileNavigation.isVisible()) {
+    const directButton = mobileNavigation.getByRole("button", roleOptions);
+    if (await directButton.isVisible()) {
+      await directButton.click();
+      return;
+    }
+
+    await mobileNavigation.getByRole("button", { name: "More", exact: true }).click();
+    await page
+      .getByRole("dialog", { name: "All workspace sections" })
+      .getByRole("button", roleOptions)
+      .click();
+    return;
+  }
+
+  await page
+    .getByRole("navigation", { name: "Records workspace" })
+    .getByRole("button", roleOptions)
+    .click();
+}
+
 test("records login and report workflow", async ({ page }) => {
   test.setTimeout(120_000);
   const currentCalendar = localDateParts();
@@ -317,7 +345,7 @@ test("records login and report workflow", async ({ page }) => {
   await expect(editedExchangeRow).toContainText("Not applicable");
   await expect(editedExchangeRow).toContainText("Written agreement");
 
-  await page.getByRole("button", { name: "Child support", exact: true }).click();
+  await openWorkspaceView(page, "Child support");
   await expect(page.getByRole("heading", { name: "Child support", exact: true })).toBeVisible();
   await expect(page.getByText("Past due", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Calculated obligation ledger" })).toBeVisible();
@@ -387,7 +415,7 @@ test("mobile child support records are visible, editable, and deletable", async 
   await enterDemoWorkspace(page);
   await expect(page.getByRole("heading", { name: "Home", exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Child support", exact: true }).click();
+  await openWorkspaceView(page, "Child support");
   await expect(page.getByRole("heading", { name: "Child support", exact: true })).toBeVisible();
   await expect(page.getByTestId("support-history-chart")).toHaveAttribute(
     "data-months",
@@ -514,7 +542,7 @@ test("mobile quick issue saves directly to editable report notes", async ({ page
     "Saved. This event is included in reports."
   );
 
-  await page.getByRole("button", { name: "Notes & events", exact: true }).click();
+  await openWorkspaceView(page, "Notes & events");
   await expect(page.getByText(issueText, { exact: true })).toHaveCount(2);
   const notesPanel = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Notes & events", exact: true, level: 2 }),
@@ -574,8 +602,7 @@ test("mobile screenshot exhibit builder preserves order and generates a protecte
     );
   });
   await page.goto("/records");
-  await expect(page.locator("nav").getByRole("button", { name: "Build a PDF", exact: true })).toBeVisible();
-  await page.locator("nav").getByRole("button", { name: "Build a PDF", exact: true }).click();
+  await openWorkspaceView(page, "Build a PDF");
   const builder = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Screenshot exhibit builder" }),
   });
@@ -623,7 +650,7 @@ test("mobile screenshot exhibit builder preserves order and generates a protecte
   expect(downloadedPdf.toString("latin1")).toContain("/Subtype /Image");
   await builder.getByRole("button", { name: "Save PDF to Files" }).click();
   await expect(builder.getByRole("status")).toContainText("Sign in before saving a generated exhibit to Files");
-  await page.locator("nav").getByRole("button", { name: "Attorney access", exact: true }).click();
+  await openWorkspaceView(page, "Attorney access");
   await expect(page.getByTestId("workspace-header").getByRole("heading", { name: "Attorney access", exact: true })).toBeVisible();
   const fitsViewport = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
   expect(fitsViewport).toBe(true);
@@ -688,7 +715,7 @@ test("lawyer court summary and charts export a populated PDF file", async ({ pag
   await enterDemoWorkspace(page);
   await page.getByLabel("From date").fill("2026-05-01", { force: true });
   await page.getByLabel("To date").fill("2026-06-15", { force: true });
-  await page.locator("nav").getByRole("button", { name: "Reports", exact: true }).click();
+  await openWorkspaceView(page, "Reports");
   await page.getByLabel("Report type").selectOption("incident_timeline");
   await page.getByRole("button", { name: "Preview report" }).click();
   await expect(page.getByRole("heading", { name: "Timeline Report", exact: true }).last()).toBeVisible();
@@ -713,7 +740,7 @@ test("mobile exchange status indicators have readable horizontal spacing", async
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/records");
   await enterDemoWorkspace(page);
-  await page.getByRole("button", { name: "Parenting time", exact: true }).click();
+  await openWorkspaceView(page, "Parenting time");
 
   const addExchangePanel = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Log exchange outcome" }),
@@ -1046,7 +1073,7 @@ test("mobile create flows stay visible across every record tab and reload with a
   await expect(page.getByRole("heading", { name: "Home", exact: true })).toBeVisible();
 
   const expenseName = "Persistence audit expense";
-  await page.getByRole("button", { name: "Expenses", exact: true }).click();
+  await openWorkspaceView(page, "Expenses");
   await expect(page.getByRole("heading", { name: "Expenses", exact: true })).toBeVisible();
   await expectPhoneWidth();
   await page.getByRole("button", { name: "Add expense" }).click();
@@ -1065,7 +1092,7 @@ test("mobile create flows stay visible across every record tab and reload with a
 
   const noteTitle = "Persistence audit note";
   const noteBody = "This note verifies that a newly created record remains visible after reload.";
-  await page.getByRole("button", { name: "Notes & events", exact: true }).click();
+  await openWorkspaceView(page, "Notes & events");
   await expectPhoneWidth();
   const noteForm = page.locator("#date-note-form");
   await noteForm.getByLabel("Title").fill(noteTitle);
@@ -1075,7 +1102,7 @@ test("mobile create flows stay visible across every record tab and reload with a
   await expect(page.getByText(noteTitle, { exact: true })).toBeVisible();
 
   const exchangeRuleName = "Persistence audit exchange rule";
-  await page.getByRole("button", { name: "Calendar", exact: true }).click();
+  await openWorkspaceView(page, "Calendar");
   await expectPhoneWidth();
   await page.getByRole("button", { name: "Add or edit dates" }).click();
   await page.getByText("Recurring exchange schedule (optional)", { exact: true }).click();
@@ -1089,7 +1116,7 @@ test("mobile create flows stay visible across every record tab and reload with a
   );
   await expect(page.getByText(exchangeRuleName, { exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Parenting time", exact: true }).click();
+  await openWorkspaceView(page, "Parenting time");
   await expectPhoneWidth();
   const exchangeLogForm = page.locator("form").filter({
     has: page.getByRole("button", { name: "Save exchange outcome" }),
@@ -1110,7 +1137,7 @@ test("mobile create flows stay visible across every record tab and reload with a
   await expect(loggedExchanges).toContainText("2026-08-14");
 
   const fileName = "persistence-audit-file.txt";
-  await page.locator("nav").getByRole("button", { name: /^Files & evidence/ }).click();
+  await openWorkspaceView(page, /^Files & evidence/);
   await expectPhoneWidth();
   await page.locator("input[name=file]").setInputFiles({
     name: fileName,
@@ -1130,7 +1157,7 @@ test("mobile create flows stay visible across every record tab and reload with a
   await printPopup.close();
 
   const supportOrderName = "Persistence audit support order";
-  await page.getByRole("button", { name: "Child support", exact: true }).click();
+  await openWorkspaceView(page, "Child support");
   await expectPhoneWidth();
   await page.getByRole("button", { name: "Order details" }).click();
   const supportOrderForm = page.locator("#child-support-order-form");
@@ -1154,7 +1181,7 @@ test("mobile create flows stay visible across every record tab and reload with a
   await expect(page.getByTestId("mobile-support-payments")).toContainText("$123.00");
 
   const caregiverName = "Alternate caregiver";
-  await page.getByRole("button", { name: "Calendar", exact: true }).click();
+  await openWorkspaceView(page, "Calendar");
   await expectPhoneWidth();
   await page.getByRole("button", { name: "Add or edit dates" }).click();
   await page.getByLabel("Child will be with").selectOption(caregiverName);
@@ -1167,38 +1194,38 @@ test("mobile create flows stay visible across every record tab and reload with a
   await page.reload();
   await expect(page.getByRole("heading", { name: "Calendar", exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Expenses", exact: true }).click();
+  await openWorkspaceView(page, "Expenses");
   await expectPhoneWidth();
   await page.getByRole("button", { name: "History" }).click();
   await expect(page.getByText(expenseName, { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Notes & events", exact: true }).click();
+  await openWorkspaceView(page, "Notes & events");
   await expectPhoneWidth();
   await expect(page.getByText(noteTitle, { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Calendar", exact: true }).click();
+  await openWorkspaceView(page, "Calendar");
   await expectPhoneWidth();
   await page.getByRole("button", { name: "Add or edit dates" }).click();
   await page.getByText("Recurring exchange schedule (optional)", { exact: true }).click();
   await expect(page.getByText(exchangeRuleName, { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Parenting time", exact: true }).click();
+  await openWorkspaceView(page, "Parenting time");
   await expectPhoneWidth();
   await expect(loggedExchanges).toContainText("2026-08-14");
   await expect(page.getByTestId("exchange-timing-chart")).toHaveAttribute("data-exchange-count", "1");
-  await page.locator("nav").getByRole("button", { name: /^Files & evidence/ }).click();
+  await openWorkspaceView(page, /^Files & evidence/);
   await expectPhoneWidth();
   await expect(page.getByText(fileName, { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Child support", exact: true }).click();
+  await openWorkspaceView(page, "Child support");
   await expectPhoneWidth();
   await page.getByRole("button", { name: "History" }).click();
   await expect(page.getByTestId("mobile-support-orders")).toContainText(supportOrderName);
   await expect(page.getByTestId("mobile-support-payments")).toContainText("$123.00");
-  await page.getByRole("button", { name: "Calendar", exact: true }).click();
+  await openWorkspaceView(page, "Calendar");
   await expectPhoneWidth();
   await expect(
     page.getByRole("button", { name: `Edit calendar day ${currentCalendar.today}` }).getByText(caregiverName)
   ).toBeVisible();
 
   const matterName = "Persistence audit matter";
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await openWorkspaceView(page, "Settings");
   await expectPhoneWidth();
   await page.getByRole("button", { name: "Case", exact: true }).click();
   const createMatterPanel = page.locator("details").filter({ hasText: "Create another case" });
@@ -1215,7 +1242,7 @@ test("mobile notes and file actions contain long synthetic labels without horizo
   await enterDemoWorkspace(page);
 
   const longNoteTitle = `QA_${"x".repeat(130)}`;
-  await page.getByRole("button", { name: "Notes & events", exact: true }).click();
+  await openWorkspaceView(page, "Notes & events");
   const noteForm = page.locator("#date-note-form");
   await noteForm.getByLabel("Title").fill(longNoteTitle);
   await noteForm.getByLabel("What happened?").fill(`QA_${"unbroken_body_".repeat(18)}`);
@@ -1225,7 +1252,7 @@ test("mobile notes and file actions contain long synthetic labels without horizo
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(375);
 
   const longFileName = `QA-${"evidence-label-".repeat(14)}.txt`;
-  await page.locator("nav").getByRole("button", { name: /^Files & evidence/ }).click();
+  await openWorkspaceView(page, /^Files & evidence/);
   await page.locator("input[name=file]").setInputFiles({
     name: longFileName,
     mimeType: "text/plain",
@@ -1237,7 +1264,7 @@ test("mobile notes and file actions contain long synthetic labels without horizo
 
   await page.getByRole("button", { name: `Delete file ${longFileName}` }).click();
   await expect(page.getByRole("status")).toContainText("File metadata deleted");
-  await page.getByRole("button", { name: "Notes & events", exact: true }).click();
+  await openWorkspaceView(page, "Notes & events");
   await page.getByRole("button", { name: `Delete note ${longNoteTitle}` }).click();
   await expect(page.getByRole("status")).toContainText("Date based note deleted");
 });
@@ -1264,14 +1291,13 @@ test("iPhone record tabs keep every tile and data-entry control inside the works
     "Attorney access",
     "Settings",
   ];
-  const nav = page.locator("aside nav");
   const workspace = page.locator(".records-workspace-content");
 
   for (const width of [320, 375, 390]) {
     await page.setViewportSize({ width, height: 844 });
 
     for (const tab of tabs) {
-      await nav.getByRole("button").filter({ hasText: tab }).click();
+      await openWorkspaceView(page, tab);
       await expect(page.getByRole("heading", { name: tab, exact: true }).first()).toBeVisible();
       await expect(
         workspace.locator("[placeholder]"),
@@ -1399,7 +1425,7 @@ test("iPhone record tabs keep every tile and data-entry control inside the works
   expect(dateOptionsOverflow, "mobile date-range controls escape the options panel").toEqual([]);
   await page.getByRole("button", { name: "Done", exact: true }).click();
 
-  await nav.getByRole("button").filter({ hasText: "Notes & events" }).click();
+  await openWorkspaceView(page, "Notes & events");
   const noteCard = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Notes & events", exact: true, level: 2 }),
   }).locator("div.rounded-md").filter({ hasText: "School pickup note" }).first();
@@ -1416,7 +1442,7 @@ test("workspace tab changes support native and browser back navigation", async (
   await enterDemoWorkspace(page);
   await expect(page.getByRole("heading", { name: "Home", exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Notes & events", exact: true }).click();
+  await openWorkspaceView(page, "Notes & events");
   await expect(page.getByRole("heading", { name: "Notes & events", exact: true }).first()).toBeVisible();
 
   await page.goBack();
@@ -1431,7 +1457,7 @@ test("workspace tab changes return the new section to the top", async ({ page })
   await page.goto("/records");
   await enterDemoWorkspace(page);
 
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await openWorkspaceView(page, "Settings");
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 
@@ -1453,7 +1479,7 @@ test("settings use structured time zone selectors for profiles and cases", async
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/records");
   await enterDemoWorkspace(page);
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await openWorkspaceView(page, "Settings");
 
   const accountSettings = page
     .getByRole("heading", { name: "Your profile", exact: true })
@@ -1484,7 +1510,7 @@ test("settings use structured time zone selectors for profiles and cases", async
   await expect(createMatter.getByLabel("Time zone")).toHaveJSProperty("tagName", "SELECT");
   await expect(page.locator('input[name="timezone"]')).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Calendar", exact: true }).click();
+  await openWorkspaceView(page, "Calendar");
   await expect(page.getByText("Case timezone: America/Anchorage")).toBeVisible();
 });
 
@@ -1492,7 +1518,7 @@ test("advanced data backup keeps JSON out of the primary export flow", async ({ 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/records");
   await enterDemoWorkspace(page);
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await openWorkspaceView(page, "Settings");
   await page.getByRole("button", { name: "Security & data", exact: true }).click();
 
   const backup = page.getByTestId("advanced-data-backup");
@@ -1810,7 +1836,7 @@ test("timeline designations explain automatic labels and remain editable", async
     await page.getByLabel("From date").fill("2026-05-01");
     await page.getByLabel("To date").fill("2026-06-15");
     await page.getByRole("button", { name: "Done", exact: true }).click();
-    await page.locator("aside nav button").filter({ hasText: "Timeline" }).click();
+    await openWorkspaceView(page, "Timeline");
     await expect(page.getByRole("heading", { name: "Case timeline", exact: true })).toBeVisible();
   }
 
@@ -1870,7 +1896,7 @@ test("mobile calendar, policy menu, and timeline labels remain usable", async ({
   await enterWorkspace.click();
   await expect(page.getByRole("heading", { name: "Home", exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Calendar", exact: true }).click();
+  await openWorkspaceView(page, "Calendar");
   await expect(page.getByRole("heading", { name: "Calendar", exact: true })).toBeVisible();
   const calendarScroll = page.getByTestId("calendar-scroll");
   await expect(calendarScroll).toBeVisible();
@@ -1935,8 +1961,10 @@ test("mobile calendar, policy menu, and timeline labels remain usable", async ({
   const policyFooterBox = await policyFooter.boundingBox();
   expect(policyFooterBox?.height).toBeLessThanOrEqual(220);
 
-  const timelineNavButton = page.locator("aside nav button").filter({ hasText: "Timeline" });
-  await expect(timelineNavButton).toHaveCount(1);
+  const timelineNavButton = page
+    .getByRole("navigation", { name: "Mobile workspace" })
+    .getByRole("button", { name: "Timeline", exact: true });
+  await expect(timelineNavButton).toBeVisible();
   await page.getByRole("button", { name: "Options", exact: true }).click();
   await page.getByLabel("From date").fill("2026-05-01");
   await page.getByLabel("To date").fill("2026-06-15");

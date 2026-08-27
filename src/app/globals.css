@@ -5,11 +5,11 @@
 
 :root {
   color-scheme: light;
-  --cf-page: #f4f7fc;
-  --cf-page-accent: #eaf2fb;
+  --cf-page: #fffdf9;
+  --cf-page-accent: #f7f2eb;
   --cf-surface: #ffffff;
   --cf-surface-elevated: #ffffff;
-  --cf-surface-muted: #f8fafc;
+  --cf-surface-muted: #faf7f2;
   --cf-border: #cbd5e1;
   --cf-text: #0f172a;
   --cf-text-muted: #475569;
@@ -138,7 +138,7 @@ html.dark main {
 
 html.dark .records-app-shell {
   background-color: var(--cf-page) !important;
-  background-image: linear-gradient(145deg, #07111f, #0a1a2b 52%, #0b1726) !important;
+  background-image: none !important;
 }
 
 html.dark :where(
@@ -177,7 +177,9 @@ html.dark :where(
 html.dark :where(
   [class~="bg-[#f4f7f6]"],
   [class~="bg-[#f4f7fc]"],
-  [class~="bg-[#f6f8f7]"]
+  [class~="bg-[#f6f8f7]"],
+  [class~="bg-[#fffdf9]"],
+  [class~="bg-[#fffdf9]/95"]
 ) {
   background-color: var(--cf-page) !important;
 }
