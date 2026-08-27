@@ -15,10 +15,10 @@ export const productionPolicyDocumentPaths = {
 };
 
 export const productionPolicyDocumentDigests = {
-  "privacy": "sha256:fc58edc3ff3a456fb34026382b3aeb5d17c3a39883b6f9984154f5ca3465b50a",
+  "privacy": "sha256:b62280474f7b19cae892aee1ca6a6ab530a9b43500c9a8e96d7fbddc259e16eb",
   "terms": "sha256:fc15b72239e01913dc91e630a14aa1d9dce100caa02220b592a20b155e7d2618",
-  "consumerHealthData": "sha256:5b8d127657556ef6437b5ecd3ff8ae05fde6dba24b4a37205d58a116f796beb0",
-  "subprocessors": "sha256:7188c0555735cb61ec245d14d6b0a19ef3f9f63ea2ca9a54af3963871d730414",
+  "consumerHealthData": "sha256:7fb8fba2fb6537a57fdca7a2bb5102f77b9d1bce18e33ce0845bb9b8438793de",
+  "subprocessors": "sha256:39c65c9b58942026787304b6aa0c7706d9f08d38937061882e4e28dc7f10bd96",
   "dataRetentionRunbook": "sha256:95299d5e1e205de2a03d416ea08bf2b9ec1776851d7d04268116a17de0cb2c3b",
   "incidentResponseRunbook": "sha256:09f01b64e9eaadf83bbb4641f62c8cf950c8bb8910a98c277fc3a8051573a317",
   "monitoringRunbook": "sha256:ccc9dea9c41184d496f639b143dfe65402180d6093e575b0e5e6a7c6d556f2c7",
@@ -28,4 +28,4 @@ export const productionPolicyDocumentDigests = {
   "billingLaunchChecklist": "sha256:2c6d7623f6e55de6a2aea13004a3aebaa1c9509378d0726ff4e8c2444a52c188"
 };
 
-export const productionPolicyBundleSha256 = "sha256:cab6caabe54b82ec58bc3dd78540f9fc3c5173c5e26efde1f4b0cdc4a6299b1b";
+export const productionPolicyBundleSha256 = "sha256:2808448b1466bc477bf0845845df3a9fb0db8735a43cd66a015cde57df5f2362";

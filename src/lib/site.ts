@@ -15,7 +15,7 @@ export const privacyMailto = `mailto:${privacyEmail}`;
 export const securityMailto = `mailto:${securityEmail}`;
 export const accountDeletionPath = "/account/delete";
 export const accountDeletionMailto = `mailto:${supportEmail}?subject=Custody%20Folio%20account%20deletion%20request`;
-export const policyLastUpdated = "August 23, 2026";
+export const policyLastUpdated = "August 27, 2026";
 
 export const publicPolicyLinks = [
   { href: "/privacy", label: "Privacy" },

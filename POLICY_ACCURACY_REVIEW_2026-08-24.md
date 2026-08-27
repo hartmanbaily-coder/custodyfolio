@@ -1,5 +1,7 @@
 # Custody Folio Policy Accuracy Review
 
+> Superseded by the [August 27, 2026 policy accuracy review](POLICY_ACCURACY_REVIEW_2026-08-27.md), which reflects the final pre-submission follow-up audit and proposed wording corrections.
+
 Reviewed August 24, 2026 against the current application code, database migrations, tested user flows, live readiness output, App Store Connect configuration, and Stripe integration.
 
 Purpose: answer whether the proposed public wording accurately describes what the app actually does. This is a technical and product-accuracy review, not a legal opinion about enforceability.

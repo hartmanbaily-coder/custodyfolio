@@ -20,7 +20,7 @@ const sections: PolicySection[] = [
     title: "Hetzner",
     body: [
       "Hosts the Custody Folio application server.",
-      "May process encrypted web traffic and limited operational information needed to provide hosting.",
+      "May process web traffic and limited operational information needed to provide hosting.",
     ],
   },
   {
