@@ -7,6 +7,7 @@ import {
 import {
   encodeProductionApprovalManifest,
   requiredIncidentContactRoles,
+  requiredSoloOperatorServiceEscalations,
 } from "@/lib/production/approvalEvidence.mjs";
 import {
   productionPolicyBundleSha256,
@@ -62,6 +63,45 @@ function validApprovalManifest() {
         reviewerOrganization: "North Counsel PLLC",
         licenseJurisdictions: ["Synthetic jurisdiction"],
         scope: "Privacy, terms, retention, incident response, and launch jurisdiction.",
+      },
+    },
+  };
+}
+
+function validSoloOperatorApprovalManifest() {
+  const manifest = validApprovalManifest();
+  const incident = Object.fromEntries(
+    Object.entries(manifest.approvals.incident).filter(([key]) => key !== "contacts")
+  );
+  return {
+    ...manifest,
+    approvals: {
+      ...manifest.approvals,
+      incident: {
+        ...incident,
+        operatingModel: "solo_operator",
+        limitations: [
+          "No alternate human responder is currently designated; response may be delayed if the operator is unavailable.",
+          "No retained legal or forensics provider is represented.",
+        ],
+        acceptedNoAlternateHumanResponder: true,
+        soloOperator: {
+          name: "Named solo operator",
+          primaryChannel: {
+            type: "email",
+            value: "operator@provider.test",
+          },
+          testedAt: "2026-06-01T00:00:00.000Z",
+        },
+        serviceEscalations: requiredSoloOperatorServiceEscalations.map((service) => ({
+          service,
+          provider: `Provider for ${service}`,
+          channel: {
+            type: "vendor_portal",
+            value: `https://provider.test/support/${service}`,
+          },
+          testedAt: "2026-06-01T00:00:00.000Z",
+        })),
       },
     },
   };
@@ -210,6 +250,52 @@ describe("production readiness", () => {
   it("requires every named incident responder and independent tested channels", () => {
     const manifest = validApprovalManifest();
     manifest.approvals.incident.contacts = manifest.approvals.incident.contacts.slice(1);
+
+    const report = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        PRODUCTION_APPROVAL_MANIFEST_BASE64: encodeProductionApprovalManifest(manifest),
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+
+    expect(report.blockers.map((item) => item.id)).toContain("incident-response-plan");
+  });
+
+  it("accepts a disclosed solo operator with no phone and tested provider escalations", () => {
+    const manifest = validSoloOperatorApprovalManifest();
+    const report = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        PRODUCTION_APPROVAL_MANIFEST_BASE64: encodeProductionApprovalManifest(manifest),
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+
+    expectReadyApartFromPendingPublicClauses(report, readyEnv);
+    expect(JSON.stringify(manifest.approvals.incident)).not.toContain('"phone"');
+  });
+
+  it("rejects a solo operator plan that hides the lack of an alternate responder", () => {
+    const manifest = validSoloOperatorApprovalManifest();
+    manifest.approvals.incident.acceptedNoAlternateHumanResponder = false;
+    manifest.approvals.incident.limitations = [];
+
+    const report = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        PRODUCTION_APPROVAL_MANIFEST_BASE64: encodeProductionApprovalManifest(manifest),
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+
+    expect(report.blockers.map((item) => item.id)).toContain("incident-response-plan");
+  });
+
+  it("rejects a solo operator plan with an untested provider escalation", () => {
+    const manifest = validSoloOperatorApprovalManifest();
+    manifest.approvals.incident.serviceEscalations =
+      manifest.approvals.incident.serviceEscalations.slice(1);
 
     const report = evaluateProductionReadiness(
       {

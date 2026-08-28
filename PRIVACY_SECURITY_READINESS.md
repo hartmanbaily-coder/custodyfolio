@@ -35,7 +35,7 @@ These gates are enforced by `src/lib/production/readiness.ts` and `scripts/check
 | Backup restore test | `BACKUP_RESTORE_TESTED_AT` within 180 days | Required |
 | Two-user isolation test | `TWO_USER_ISOLATION_TESTED_AT` within 30 days | Required |
 | Retention/deletion policy | `DATA_RETENTION_POLICY_APPROVED=true` plus current digest-bound retention approval and a privacy-rights rehearsal in `PRODUCTION_APPROVAL_MANIFEST_BASE64` | Required |
-| Incident response plan | `INCIDENT_RESPONSE_PLAN_APPROVED=true` plus current digest-bound approval, named tested contacts, and recent tabletop evidence | Required |
+| Incident response plan | `INCIDENT_RESPONSE_PLAN_APPROVED=true` plus current digest-bound staffed-team contacts or disclosed solo-operator/provider escalations, and recent tabletop evidence | Required |
 | Privacy policy | Exact HTTPS `/privacy` URL on `NEXT_PUBLIC_APP_URL`, with no query or fragment | Required |
 | Legal/policy adoption | `LEGAL_REVIEW_APPROVED=true` plus a protected manifest recording either qualified-counsel review or disclosed operator self-review of the exact generated policy digests | Required |
 | Operative public clauses | Stripe billing clauses must be `operative`; attorney clauses may remain pending only while `ATTORNEY_GUEST_FEATURE_ENABLED=false` | Required |
@@ -68,7 +68,7 @@ These gates are enforced by `src/lib/production/readiness.ts` and `scripts/check
 
 ## Version-Bound Approval Evidence
 
-The boolean approval flags are necessary but not sufficient. Readiness also validates an ignored manifest containing reviewer authority, scope, limitations, validity dates, required exercise dates, named incident contacts, and the SHA-256 of every covered document.
+The boolean approval flags are necessary but not sufficient. Readiness also validates an ignored manifest containing reviewer authority, scope, limitations, validity dates, required exercise dates, the staffed-team contacts or solo-operator/provider escalations, and the SHA-256 of every covered document.
 
 ```bash
 npm run approval:prepare

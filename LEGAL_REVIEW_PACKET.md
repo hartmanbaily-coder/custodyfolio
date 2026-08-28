@@ -1,6 +1,6 @@
 # Legal Review Packet
 
-Review status: the operator adopted the contract, privacy, subscription, deletion, retention, and attorney-sharing policies through disclosed operator self-review on August 24, 2026. On August 27, 2026, the operator approved a United States-only direct Stripe checkout footprint with `not_collecting` tax mode and monthly threshold monitoring; App Store distribution remains worldwide. No qualified-counsel or tax-professional approval is represented. Runtime activation remains fail closed pending incident-contact evidence, release verification, and the monitored activation controls.
+Review status: the operator adopted the contract, privacy, subscription, deletion, retention, and attorney-sharing policies through disclosed operator self-review on August 24, 2026. On August 27, 2026, the operator approved a United States-only direct Stripe checkout footprint with `not_collecting` tax mode and monthly threshold monitoring; App Store distribution remains worldwide. On August 28, 2026, the operator selected the disclosed solo-operator incident model with a monitored business email, no personal phone number, tested provider escalation routes, and an accepted limitation that no alternate human responder is designated. No qualified-counsel or tax-professional approval is represented. Runtime activation remains fail closed pending exact-digest evidence, release verification, and monitored activation controls.
 
 This packet is not legal advice. It packages the current product materials for qualified counsel or an authorized reviewer.
 

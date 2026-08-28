@@ -30,9 +30,11 @@ Examples:
 | Medium | Limited suspicious behavior or control degradation without confirmed exposure | Triage within one business day |
 | Low | Non-sensitive operational issue or false-positive likely | Track and review |
 
-## Roles
+## Roles and operating model
 
-Assign named owners before launch. The public repository defines roles only; names and channels belong in the ignored, access-restricted production approval manifest:
+The approval manifest must identify either a staffed-team model or a solo-operator model. Names and private contact details belong only in the ignored, access-restricted production approval manifest.
+
+For a staffed team, assign:
 
 - primary incident commander
 - backup incident commander
@@ -44,7 +46,17 @@ Assign named owners before launch. The public repository defines roles only; nam
 - backup/restore owner
 - legal/privacy counsel
 
-Every role must have a named person or contracted service, a tested primary channel, and a tested independent backup channel. Validate every contact at least every 90 days and conduct a tabletop exercise at least every 180 days. A shared mailbox alone is not a named incident commander and does not satisfy the backup-channel requirement.
+Every staffed-team role must have a named person or contracted service, a tested primary channel, and a tested independent backup channel.
+
+For a solo-operated service, one named operator may own incident command, engineering, service administration, communications, and recovery. A personal telephone number is not required. The protected approval must instead:
+
+- identify the named operator and a monitored business email;
+- explicitly record that no alternate human responder is designated and that response may be delayed if the operator is unavailable;
+- record current, tested authenticated support or account portals for Supabase, hosting, edge-network/DNS, backup storage, and business email;
+- disclose when qualified legal counsel or a forensics provider is not retained; and
+- require professional legal or forensics support when a High or Critical incident needs expertise the operator does not have.
+
+Validate the operator contact and provider escalation routes at least every 90 days and conduct a tabletop exercise at least every 180 days. Reassess the solo-operator model before adding staff, materially increasing production volume, or accepting an insurer, customer, or regulator requirement for an alternate human responder.
 
 ## First 15 Minutes
 
@@ -195,8 +207,10 @@ Public routing information:
 Protected contact evidence is required before approval:
 
 - Run `npm run approval:prepare` to generate the ignored `ops/production-approval-manifest.json` template bound to exact policy digests.
-- Fill all required incident roles with real names and independent channels; do not commit that file.
-- Test every channel, run a tabletop, and record the real dates.
+- Select the staffed-team or solo-operator model; do not commit the completed manifest.
+- For a staffed team, fill every required role with real names and independent channels.
+- For a solo operator, record the named operator, monitored business email, accepted availability limitation, and tested provider escalation portals. Do not add a personal phone number unless the operator explicitly chooses to do so.
+- Test the applicable contact and escalation routes, run a tabletop, and record the real dates.
 - Run `npm run verify:approvals -- --incident` before producing the deployment secret.
 
-`INCIDENT_RESPONSE_PLAN_APPROVED=true` is valid only when the matching incident section in `PRODUCTION_APPROVAL_MANIFEST_BASE64` also passes. The readiness gate fails closed on missing roles, placeholder contacts, stale channel tests, stale tabletops, expired approval, or a changed runbook digest.
+`INCIDENT_RESPONSE_PLAN_APPROVED=true` is valid only when the matching incident section in `PRODUCTION_APPROVAL_MANIFEST_BASE64` also passes. The readiness gate fails closed on an incomplete operating model, placeholder contacts, missing solo-operator limitations, stale channel or provider-route tests, stale tabletops, expired approval, or a changed runbook digest.

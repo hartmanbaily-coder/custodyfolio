@@ -47,6 +47,14 @@ export const requiredIncidentContactRoles = [
   "legal_privacy",
 ];
 
+export const requiredSoloOperatorServiceEscalations = [
+  "supabase",
+  "hosting",
+  "edge_network",
+  "backup_storage",
+  "business_email",
+];
+
 const placeholderPattern = /(?:replace|placeholder|example|tbd|todo|unassigned|unknown)/i;
 const dayMs = 24 * 60 * 60 * 1000;
 
@@ -67,6 +75,20 @@ function validFutureDate(value, now) {
 function recentDate(value, now, maximumDays) {
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) && parsed <= now && now - parsed <= maximumDays * dayMs;
+}
+
+function validEmail(value) {
+  return meaningfulText(value) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function validHttpsUrl(value) {
+  if (!meaningfulText(value)) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password;
+  } catch {
+    return false;
+  }
 }
 
 function decodeManifest(encoded) {
@@ -155,6 +177,51 @@ function validateIncident(approval, now) {
   }
   if (!recentDate(approval?.contactsValidatedAt, now, 90)) {
     errors.push("incident contacts were not validated within 90 days");
+  }
+
+  if (approval?.operatingModel === "solo_operator") {
+    const operator = approval?.soloOperator;
+    if (!meaningfulText(operator?.name)) {
+      errors.push("solo operator name is missing or a placeholder");
+    }
+    if (operator?.primaryChannel?.type !== "email" || !validEmail(operator?.primaryChannel?.value)) {
+      errors.push("solo operator monitored email is missing or invalid");
+    }
+    if (!recentDate(operator?.testedAt, now, 90)) {
+      errors.push("solo operator contact test is stale or missing");
+    }
+    if (approval?.acceptedNoAlternateHumanResponder !== true) {
+      errors.push("solo operator must explicitly accept that no alternate human responder is designated");
+    }
+    if (
+      !Array.isArray(approval?.limitations) ||
+      !approval.limitations.some(
+        (value) => meaningfulText(value) && /no alternate human responder/i.test(value)
+      )
+    ) {
+      errors.push("solo-operator limitations must disclose the lack of an alternate human responder");
+    }
+
+    const escalations = Array.isArray(approval?.serviceEscalations)
+      ? approval.serviceEscalations
+      : [];
+    for (const service of requiredSoloOperatorServiceEscalations) {
+      const escalation = escalations.find((candidate) => candidate?.service === service);
+      if (!escalation) {
+        errors.push(`${service} service escalation is missing`);
+        continue;
+      }
+      if (!meaningfulText(escalation.provider)) {
+        errors.push(`${service} service escalation provider is missing or a placeholder`);
+      }
+      if (escalation.channel?.type !== "vendor_portal" || !validHttpsUrl(escalation.channel?.value)) {
+        errors.push(`${service} service escalation portal is missing or invalid`);
+      }
+      if (!recentDate(escalation.testedAt, now, 90)) {
+        errors.push(`${service} service escalation test is stale or missing`);
+      }
+    }
+    return { ready: errors.length === 0, errors };
   }
 
   const contacts = Array.isArray(approval?.contacts) ? approval.contacts : [];

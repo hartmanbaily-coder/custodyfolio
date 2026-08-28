@@ -70,7 +70,7 @@ Status: dual-provider release prepared but not activated. The iOS app uses Apple
 - [x] Historical production smoke test passed on 2026-08-15 with three then-pending approval-evidence gates. Because the policy bundle changed on 2026-08-23, a new exact-digest approval manifest and zero-blocker readiness check are required before activation.
 - [x] Production synthetic attorney-access verification passed invitation, mailbox-provider handoff, MFA, read-only portal, revocation, post-revocation denial, and cleanup on 2026-08-14. Inbox placement was outside this synthetic test.
 - [x] A synthetic privacy-rights deletion workflow rehearsal passed all 14 route/evidence tests and the protected request-evidence verifier on 2026-08-15. It used no customer data and mocked provider boundaries.
-- [x] An incident-response tabletop was completed and documented on 2026-08-15 using the real Stripe out-of-order dispute discovery, containment, rollback, repair, and post-deploy verification. Named responder ownership and independent contact-channel tests remain pending.
+- [x] An incident-response tabletop was completed and documented on 2026-08-15 using the real Stripe out-of-order dispute discovery, containment, rollback, repair, and post-deploy verification. On August 28, 2026, the operator selected the disclosed solo-operator model, supplied the monitored business email, declined use of a personal phone number, accepted the lack of an alternate human responder, and required tested provider escalation portals.
 
 ## Activation
 

@@ -534,7 +534,7 @@ export function evaluateProductionReadiness(
       "Incident response plan is approved",
       isEnabled(env.INCIDENT_RESPONSE_PLAN_APPROVED) && approvalEvidence.incident.ready,
       "blocker",
-      "Approve the exact incident plan, validate named primary/backup contacts and a recent tabletop, and provide the validated approval manifest before real records are accepted."
+      "Approve the exact incident plan, validate the staffed-team contacts or disclosed solo-operator escalation model and a recent tabletop, and provide the validated approval manifest before real records are accepted."
     ),
     check(
       "privacy-policy",

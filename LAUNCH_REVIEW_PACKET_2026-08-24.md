@@ -1,6 +1,6 @@
 # Custody Folio 1.0 Launch Review Packet
 
-Status: operator policy review approved August 24, 2026. Incident-contact and direct-tax evidence remain incomplete. This packet is a decision aid, not legal or tax advice, and does not by itself activate production configuration.
+Status: operator policy review approved August 24, 2026; United States-only direct-web tax decision approved August 27, 2026; solo-operator incident model approved August 28, 2026. This packet is a decision aid, not legal or tax advice, and does not by itself activate production configuration.
 
 ## Confirmed Launch Scope
 
@@ -87,11 +87,11 @@ Do not approve an item unless the statement is accurate. Record revisions instea
 Apple's merchant/platform handling does not by itself resolve the tax treatment of direct Stripe sales. Before live Stripe checkout, record one supported decision:
 
 - [ ] `automatic`: every required registration is active, the Stripe product tax code and price tax behavior are verified, and collection/filing ownership is assigned; or
-- [ ] `not_collecting`: the operator has documented why the intended launch footprint does not yet require collection and what thresholds or jurisdictions will be monitored.
+- [x] `not_collecting`: the operator approved United States-only direct Stripe checkout based on the documented Alaska launch facts, with monthly threshold monitoring and review before geographic expansion.
 
 Also record:
 
-- worldwide direct web sales are intended;
+- direct Stripe web sales are initially limited to United States service addresses;
 - all App Store countries and regions are intended, including European Union distribution with verified trader contact information displayed;
 - business, personnel, and contractor locations relevant to nexus;
 - current and forecast sales by jurisdiction;
@@ -100,11 +100,11 @@ Also record:
 
 ### Incident and operational ownership
 
-- [ ] A primary and backup incident commander are named.
-- [ ] Engineering, Supabase, infrastructure, communications, forensics/vendor, backup/restore, and legal/privacy contacts are named.
-- [ ] Every role has tested primary and independent backup contact channels.
+- [x] The operator selected the disclosed solo-operator model and accepted that no alternate human incident commander is currently designated.
+- [x] The operator supplied a monitored business email and directed that no personal phone number be stored or published.
+- [x] Supabase, hosting, edge-network/DNS, backup-storage, and business-email escalation portals are required and recorded in the protected manifest.
 - [x] The retention/privacy-operations owner accepts the deletion and request workflow through operator self-review.
-- [ ] The incident-response owner accepts the runbook and the documented tabletop limitations.
+- [x] The incident-response owner accepts the runbook, the documented tabletop, and the solo-operator availability limitation.
 
 Names, phone numbers, private addresses, credentials, and privileged advice belong only in the ignored protected approval manifest or an appropriate private system. Do not add them to this repository.
 
