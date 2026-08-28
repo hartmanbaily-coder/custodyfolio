@@ -210,6 +210,52 @@ describe("release security regressions", () => {
     expect(configured).toContain("APPLE_PURCHASE_ENABLED=false");
   });
 
+  it("opens and reverses global U.S. web checkout without changing Apple purchases", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "custodyfolio-live-release-"));
+    const envFile = join(directory, "app.env");
+    const helper = fileURLToPath(
+      new URL("../deploy/production/configure-billing-live-release.sh", import.meta.url)
+    );
+    const initial = [
+      "BILLING_MODE=live",
+      "BILLING_CHECKOUT_ENABLED=false",
+      "LIVE_BILLING_APPROVED=false",
+      "BILLING_LIVE_ACTIVATION_AUTHORIZED=false",
+      "BILLING_LIVE_CANARY_AUTHORIZED=false",
+      "APPLE_PURCHASE_ENABLED=false",
+      "STRIPE_TAX_MODE=not_collecting",
+      "DATA_RETENTION_POLICY_APPROVED=true",
+      "INCIDENT_RESPONSE_PLAN_APPROVED=true",
+      "LEGAL_REVIEW_APPROVED=true",
+      "BILLING_POLICY_APPROVED=true",
+      "BILLING_TAX_REVIEW_APPROVED=true",
+      "STRIPE_LIVE_RESTRICTED_KEY=rk_live_synthetic",
+      "STRIPE_LIVE_WEBHOOK_SECRET=whsec_synthetic",
+      "",
+    ].join("\n");
+    await writeFile(envFile, initial, { mode: 0o600 });
+    await chmod(envFile, 0o600);
+    const authorizedAt = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+
+    await execFileAsync(
+      "bash",
+      [helper, "open", "us-web-global", authorizedAt],
+      { env: { ...process.env, LOSTTOFOUND_ENV_FILE: envFile } }
+    );
+
+    const configured = await readFile(envFile, "utf8");
+    expect(configured).toContain("BILLING_MODE=live");
+    expect(configured).toContain("BILLING_CHECKOUT_ENABLED=true");
+    expect(configured).toContain("LIVE_BILLING_APPROVED=true");
+    expect(configured).toContain("BILLING_LIVE_ACTIVATION_AUTHORIZED=true");
+    expect(configured).toContain("APPLE_PURCHASE_ENABLED=false");
+
+    await execFileAsync("bash", [helper, "close"], {
+      env: { ...process.env, LOSTTOFOUND_ENV_FILE: envFile },
+    });
+    expect(await readFile(envFile, "utf8")).toBe(initial);
+  });
+
   it("limits the deployment override to documented approval-only blockers", async () => {
     const [smoke, classification, readinessRoute] = await Promise.all([
       source("../deploy/production/smoke-test.sh"),
