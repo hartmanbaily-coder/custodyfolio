@@ -152,13 +152,29 @@ open_release() {
   next_env="$(mktemp "${app_env_file}.next.XXXXXX")"
   trap 'rm -f "${next_env}"' RETURN
   awk '
-    BEGIN { mode = 0; checkout = 0; approved = 0; authorized = 0 }
-    /^BILLING_MODE=/ { print "BILLING_MODE=live"; mode += 1; next }
-    /^BILLING_CHECKOUT_ENABLED=/ { print "BILLING_CHECKOUT_ENABLED=true"; checkout += 1; next }
-    /^LIVE_BILLING_APPROVED=/ { print "LIVE_BILLING_APPROVED=true"; approved += 1; next }
-    /^BILLING_LIVE_ACTIVATION_AUTHORIZED=/ { print "BILLING_LIVE_ACTIVATION_AUTHORIZED=true"; authorized += 1; next }
-    { print }
-    END { if (mode != 1 || checkout != 1 || approved != 1 || authorized != 1) exit 42 }
+    BEGIN {
+      keys["BILLING_MODE"] = "live"
+      keys["BILLING_CHECKOUT_ENABLED"] = "true"
+      keys["LIVE_BILLING_APPROVED"] = "true"
+      keys["BILLING_LIVE_ACTIVATION_AUTHORIZED"] = "true"
+    }
+    {
+      separator = index($0, "=")
+      key = separator > 0 ? substr($0, 1, separator - 1) : ""
+      if (key in keys) {
+        seen[key] += 1
+        print key "=" keys[key]
+        next
+      }
+      print
+    }
+    END {
+      if (seen["BILLING_MODE"] != 1 || seen["BILLING_CHECKOUT_ENABLED"] != 1) exit 42
+      for (key in keys) {
+        if (seen[key] > 1) exit 42
+        if (seen[key] == 0) print key "=" keys[key]
+      }
+    }
   ' "${app_env_file}" >"${next_env}"
   chmod 0600 "${next_env}"
   mv -f "${next_env}" "${app_env_file}"
