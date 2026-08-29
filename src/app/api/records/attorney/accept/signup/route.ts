@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { createServerSupabaseAuthClient } from "@/lib/supabaseClient";
 import {
   isSupabaseRecordsMode,
@@ -27,6 +28,17 @@ function unavailableInvitation() {
     { error: "Invitation is invalid, expired, already used, or does not match that email." },
     { status: 404, headers: { "Cache-Control": "no-store" } }
   );
+}
+
+function isExistingSupabaseIdentity(error: { code?: string; status?: number; message?: string }) {
+  if (error.code === "email_exists" || error.code === "user_already_exists") return true;
+  return error.status === 422 && /already (?:been )?registered|already exists/i.test(error.message || "");
+}
+
+function authErrorCode(error: { code?: string } | null) {
+  return error?.code && /^[a-z0-9_]{1,80}$/i.test(error.code)
+    ? error.code
+    : "provider_error";
 }
 
 export async function POST(request: NextRequest) {
@@ -80,24 +92,36 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const authClient = createServerSupabaseAuthClient();
   const redirectUrl = new URL("/records", recordsAppBaseUrl(request));
   redirectUrl.searchParams.set("auth", "attorney-invite");
-  const created = await authClient.auth.signInWithOtp({
-    email,
-    options: {
-      shouldCreateUser: true,
-      emailRedirectTo: redirectUrl.toString(),
-      data: legalAcceptanceMetadata("attorney_signup"),
-    },
+  const acceptanceMetadata = legalAcceptanceMetadata("attorney_signup");
+  const adminClient = createSupabaseAdminClient();
+  const invited = await adminClient.auth.admin.inviteUserByEmail(email, {
+    redirectTo: redirectUrl.toString(),
+    data: acceptanceMetadata,
   });
-  if (created.error) {
+
+  let deliveryError = invited.error;
+  if (deliveryError && isExistingSupabaseIdentity(deliveryError)) {
+    const authClient = createServerSupabaseAuthClient();
+    const sent = await authClient.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: false,
+        emailRedirectTo: redirectUrl.toString(),
+        data: acceptanceMetadata,
+      },
+    });
+    deliveryError = sent.error;
+  }
+
+  if (deliveryError) {
     await recordSecurityEvent({
       type: "auth_signup_failed",
       severity: "warning",
       request,
       status: 503,
-      detail: "Invited-attorney mailbox verification could not be sent.",
+      detail: `Invited-attorney mailbox verification could not be sent (${authErrorCode(deliveryError)}).`,
     });
     return NextResponse.json(
       { error: "Unable to send the secure account verification email. Try again shortly." },
