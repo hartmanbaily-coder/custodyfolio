@@ -1109,7 +1109,7 @@ test("attorney health-data consent uses a clearly visible checkbox", async ({ pa
   expect(box?.height).toBeGreaterThanOrEqual(24);
 });
 
-test("date-range values are centered inside their native date controls", async ({ page }) => {
+test("date-range values are visibly centered inside their controls", async ({ page }) => {
   await page.goto("/records");
   await enterDemoWorkspace(page);
   await revealDateRangeControls(page);
@@ -1118,10 +1118,16 @@ test("date-range values are centered inside their native date controls", async (
     const input = page.getByLabel(label);
     await expect(input).toBeVisible();
     await expect(input).toHaveClass(/range-date-input/);
-    const alignment = await input.evaluate((element) =>
-      window.getComputedStyle(element).textAlign
-    );
-    expect(alignment).toBe("center");
+    const control = input.locator("..");
+    const visibleValue = control.getByTestId("range-date-value");
+    await expect(visibleValue).toHaveText(/^\d{2}\/\d{2}\/\d{4}$/);
+    const [controlBox, valueBox] = await Promise.all([
+      control.boundingBox(),
+      visibleValue.boundingBox(),
+    ]);
+    const horizontalCenter = (box: { x: number; width: number } | null) =>
+      box ? box.x + box.width / 2 : Number.NaN;
+    expect(Math.abs(horizontalCenter(controlBox) - horizontalCenter(valueBox))).toBeLessThanOrEqual(1);
   }
 });
 
@@ -1153,7 +1159,11 @@ test("child support entry tiles share full width without changing half-screen ta
   await page.goto("/records");
   await enterDemoWorkspace(page);
   await openWorkspaceView(page, "Child support");
-  await page.getByRole("button", { name: "Order details" }).click();
+  const combinedTab = page.getByRole("button", { name: "Order & payments" });
+  await expect(combinedTab).toBeVisible();
+  await expect(page.getByRole("button", { name: "Order details" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Record a payment" })).toBeHidden();
+  await combinedTab.click();
 
   const orderForm = page.locator("#child-support-order-form");
   const paymentForm = page.locator("#child-support-payment-form");
@@ -1167,6 +1177,9 @@ test("child support entry tiles share full width without changing half-screen ta
   expect(Math.abs((orderBox?.y || 0) - (paymentBox?.y || 0))).toBeLessThanOrEqual(1);
 
   await page.setViewportSize({ width: 800, height: 1000 });
+  await expect(combinedTab).toBeHidden();
+  await expect(page.getByRole("button", { name: "Order details" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Record a payment" })).toBeVisible();
   await expect(orderForm).toBeVisible();
   await expect(paymentForm).toBeHidden();
   await page.getByRole("button", { name: "Record a payment" }).click();

@@ -127,6 +127,8 @@ final result: passed
 - Date comparison: `/private/tmp/custodyfolio-design-qa/date-comparison.png`
 - Timeline comparison: `/private/tmp/custodyfolio-design-qa/timeline-comparison.png`
 - Child-support comparison: `/private/tmp/custodyfolio-design-qa/child-support-comparison.png`
+- Corrected visible date and full-width combined-tab state: `/private/tmp/custodyfolio-design-qa/date-and-combined-tab-corrected.png`
+- Corrected half-width separate-tab state: `/private/tmp/custodyfolio-design-qa/half-width-tabs-corrected.png`
 - Desktop viewport: 1440 × 1000 CSS pixels, device scale factor 1.
 - Half-width viewport: 800 × 1000 CSS pixels, device scale factor 1.
 - State: light appearance, demo records workspace, current-month range, Timeline and Child support / Order details views.
@@ -139,8 +141,10 @@ final result: passed
    - Verification: production-mode Playwright check measured 24 × 24 and passed.
 2. Date range values
    - Before: the shared WebKit date-value rule forced left alignment.
-   - Fix: added a records-header-only date class and centered its WebKit value without changing other date fields.
-   - Verification: WebKit computed-style and geometry check passed.
+   - First fix: added a records-header-only native WebKit alignment override.
+   - Validation correction: the device-visible numbers still appeared offset because Safari centers native date text within its editable sub-region, not the whole control.
+   - Final fix: rendered the visible `MM/DD/YYYY` value at the exact geometric center, retained the native date input as the full clickable picker layer, and used the existing calendar icon library for the visual affordance.
+   - Verification: Chromium and iPhone WebKit measured the rendered value center against the control center and passed within one CSS pixel.
 3. Timeline toolbar
    - Before: the filter and export button appeared below the `Case timeline` title.
    - Fix: moved both controls into the panel header with responsive wrapping.
@@ -148,9 +152,11 @@ final result: passed
    - Verification: Chromium and WebKit exact vertical-center checks passed.
 4. Child-support entry tiles
    - Before: full width showed one narrow form and unused space.
-   - Fix: desktop widths show Child support order and Log payment record as equal side-by-side cards; narrower widths still show only the selected tab.
+   - First fix: desktop widths showed Child support order and Log payment record as equal side-by-side cards, while narrower widths retained selected-tab behavior.
+   - Validation correction: retaining both entry tabs at full width made them duplicate controls because each displayed the same combined view.
+   - Final fix: full width now has one `Order & payments` tab; narrower widths retain the separate `Order details` and `Record a payment` tabs and their original selected-form behavior.
    - Iteration: the first desktop pass retained a 16-pixel inherited vertical offset; the desktop-only spacing override removed it.
-   - Verification: 1440-pixel side-by-side geometry and 800-pixel tab-behavior checks passed.
+   - Verification: Chromium and iPhone WebKit confirmed one entry tab plus both forms at 1440 pixels, and two entry tabs plus one selected form at 800 pixels.
 
 ## Surface review
 

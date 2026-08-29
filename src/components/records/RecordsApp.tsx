@@ -6498,19 +6498,52 @@ function ChildSupportView({
   }
 
   const supportEntryTab = supportTab === "order" || supportTab === "payment";
+  const supportTabClass = (active: boolean) =>
+    `rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
+      active
+        ? "bg-teal-700 text-white"
+        : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+    }`;
 
   return (
     <div className="space-y-4">
       <section className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm" aria-label="Child support sections">
-        <div className="grid gap-2 sm:grid-cols-4">
-          {([
-            ["overview", "Overview"],
-            ["order", orders.length ? "Order details" : "Set up an order"],
-            ["payment", "Record a payment"],
-            ["history", "History"],
-          ] as const).map(([value, label]) => (
-            <button key={value} type="button" onClick={() => setSupportTab(value)} className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${supportTab === value ? "bg-teal-700 text-white" : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"}`}>{label}</button>
-          ))}
+        <div className="grid gap-2 sm:grid-cols-4 xl:grid-cols-3">
+          <button
+            type="button"
+            onClick={() => setSupportTab("overview")}
+            className={supportTabClass(supportTab === "overview")}
+          >
+            Overview
+          </button>
+          <button
+            type="button"
+            onClick={() => setSupportTab("order")}
+            className={`${supportTabClass(supportTab === "order")} xl:hidden`}
+          >
+            {orders.length ? "Order details" : "Set up an order"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setSupportTab("order")}
+            className={`${supportTabClass(supportEntryTab)} hidden xl:block`}
+          >
+            Order &amp; payments
+          </button>
+          <button
+            type="button"
+            onClick={() => setSupportTab("payment")}
+            className={`${supportTabClass(supportTab === "payment")} xl:hidden`}
+          >
+            Record a payment
+          </button>
+          <button
+            type="button"
+            onClick={() => setSupportTab("history")}
+            className={supportTabClass(supportTab === "history")}
+          >
+            History
+          </button>
         </div>
       </section>
 
@@ -8314,17 +8347,31 @@ function CenteredRangeDateInput({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const [year = "", month = "", day = ""] = value.split("-");
+  const visibleValue = year && month && day ? `${month}/${day}/${year}` : "mm/dd/yyyy";
+
   return (
     <div
       className="relative h-10 w-full min-w-0 max-w-full rounded-md border border-slate-200 bg-white text-slate-900 focus-within:border-teal-600 focus-within:ring-2 focus-within:ring-teal-100 sm:w-36"
       data-testid="range-date-control"
     >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-sm tabular-nums text-slate-900"
+        data-testid="range-date-value"
+      >
+        {visibleValue}
+      </span>
+      <CalendarIcon
+        aria-hidden="true"
+        className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500"
+      />
       <input
         aria-label={label}
         type="date"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="range-date-input h-full w-full cursor-pointer rounded-md bg-transparent px-2 text-center text-sm tabular-nums text-slate-900 outline-none [color-scheme:light]"
+        className="range-date-input absolute inset-0 z-10 h-full w-full cursor-pointer rounded-md border-0 bg-transparent p-0 outline-none [color-scheme:light]"
       />
     </div>
   );
