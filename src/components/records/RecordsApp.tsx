@@ -8357,7 +8357,7 @@ function CenteredRangeDateInput({
     >
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-sm tabular-nums text-slate-900"
+        className="pointer-events-none absolute inset-0 flex items-center justify-center px-7 text-center text-sm leading-none tabular-nums text-slate-900"
         data-testid="range-date-value"
       >
         {visibleValue}

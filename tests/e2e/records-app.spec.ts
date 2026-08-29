@@ -1110,6 +1110,7 @@ test("attorney health-data consent uses a clearly visible checkbox", async ({ pa
 });
 
 test("date-range values are visibly centered inside their controls", async ({ page }) => {
+  await page.setViewportSize({ width: 402, height: 874 });
   await page.goto("/records");
   await enterDemoWorkspace(page);
   await revealDateRangeControls(page);
@@ -1127,7 +1128,10 @@ test("date-range values are visibly centered inside their controls", async ({ pa
     ]);
     const horizontalCenter = (box: { x: number; width: number } | null) =>
       box ? box.x + box.width / 2 : Number.NaN;
+    const verticalCenter = (box: { y: number; height: number } | null) =>
+      box ? box.y + box.height / 2 : Number.NaN;
     expect(Math.abs(horizontalCenter(controlBox) - horizontalCenter(valueBox))).toBeLessThanOrEqual(1);
+    expect(Math.abs(verticalCenter(controlBox) - verticalCenter(valueBox))).toBeLessThanOrEqual(1);
   }
 });
 
