@@ -58,3 +58,13 @@ export function parseRecordsAuthFragment(
 
   return { kind: "error" };
 }
+
+export function isExplicitAttorneyInviteCallback(
+  rawSearch: string,
+  rawHash: string
+) {
+  const params = new URLSearchParams(rawSearch);
+  if (params.get("auth") !== "attorney-invite") return false;
+
+  return parseRecordsAuthFragment(rawHash, "attorney-invite").kind === "attorney_invite";
+}

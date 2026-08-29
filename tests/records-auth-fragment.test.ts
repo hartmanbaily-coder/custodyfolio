@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { parseRecordsAuthFragment } from "@/lib/records/authClient";
+import {
+  isExplicitAttorneyInviteCallback,
+  parseRecordsAuthFragment,
+} from "@/lib/records/authClient";
 
 describe("records auth URL fragments", () => {
   it("accepts recovery tokens only for a recovery callback", () => {
@@ -59,5 +62,35 @@ describe("records auth URL fragments", () => {
 
   it("leaves ordinary records URLs alone", () => {
     expect(parseRecordsAuthFragment("", null)).toEqual({ kind: "none" });
+  });
+
+  it("recognizes the attorney email callback without a separate attorney token query parameter", () => {
+    expect(
+      isExplicitAttorneyInviteCallback(
+        "?auth=attorney-invite",
+        "#access_token=access-value&refresh_token=refresh-value&type=invite&expires_in=3600"
+      )
+    ).toBe(true);
+    expect(
+      isExplicitAttorneyInviteCallback(
+        "?auth=attorney-invite",
+        "#access_token=access-value&refresh_token=refresh-value&type=magiclink"
+      )
+    ).toBe(true);
+  });
+
+  it("does not treat ordinary or incomplete URLs as attorney email callbacks", () => {
+    expect(
+      isExplicitAttorneyInviteCallback(
+        "",
+        "#access_token=access-value&refresh_token=refresh-value&type=invite"
+      )
+    ).toBe(false);
+    expect(
+      isExplicitAttorneyInviteCallback(
+        "?auth=attorney-invite",
+        "#access_token=access-value&type=invite"
+      )
+    ).toBe(false);
   });
 });

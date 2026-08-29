@@ -86,7 +86,10 @@ import {
   type RecordsMfaEnrollment,
   type RecordsSession,
 } from "@/lib/records/clientStore";
-import { parseRecordsAuthFragment } from "@/lib/records/authClient";
+import {
+  isExplicitAttorneyInviteCallback,
+  parseRecordsAuthFragment,
+} from "@/lib/records/authClient";
 import { buildEvidencePrintHtml } from "@/lib/records/evidencePrint";
 import {
   buildReportPreview,
@@ -316,11 +319,10 @@ function pendingAttorneyNextPath() {
 
 function hasExplicitAttorneyInviteCallback() {
   if (typeof window === "undefined") return false;
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("auth") !== "attorney-invite" || !params.get("attorney_token")) {
-    return false;
-  }
-  return parseRecordsAuthFragment(window.location.hash, "attorney-invite").kind === "attorney_invite";
+  return isExplicitAttorneyInviteCallback(
+    window.location.search,
+    window.location.hash
+  );
 }
 
 const defaultRangePreset: DateRangePreset = "currentMonth";
