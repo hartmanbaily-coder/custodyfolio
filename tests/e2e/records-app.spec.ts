@@ -1,5 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
+import {
+  createRecordsSeed,
+  demoCaseId,
+  demoUserId,
+} from "../../src/lib/records/seed";
 
 function pad2(value: number) {
   return String(value).padStart(2, "0");
@@ -1049,6 +1054,124 @@ test("an attorney invitation starts mailbox-verified account access", async ({ p
   await expect(page).toHaveURL(/\/attorney\/accept$/);
   expect(await page.evaluate(() => window.sessionStorage.getItem("l2f.attorney.access")))
     .toBeNull();
+});
+
+test("attorney health-data consent uses a clearly visible checkbox", async ({ page }) => {
+  test.skip(
+    process.env.NEXT_PUBLIC_RECORDS_STORAGE_MODE !== "supabase",
+    "Attorney sharing controls require the production storage mode."
+  );
+  const dataset = createRecordsSeed();
+  await page.route("**/api/records/auth/session", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        session: {
+          userId: demoUserId,
+          caseId: demoCaseId,
+          email: "parent-a@example.test",
+          authMode: "supabase",
+        },
+      }),
+    })
+  );
+  await page.route("**/api/records/dataset**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ dataset, updatedAt: "2026-08-29T18:00:00.000Z" }),
+    })
+  );
+  await page.route("**/api/records/attorney/invitations", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        invitations: [],
+        grants: [],
+        events: [],
+        delivery: "owner_share",
+        featureEnabled: true,
+      }),
+    })
+  );
+  await page.goto("/records");
+  await expect(page.getByRole("heading", { name: "Home", exact: true })).toBeVisible();
+  await openWorkspaceView(page, "Attorney access");
+
+  const consent = page.getByRole("checkbox", {
+    name: /I authorize Custody Folio to share this selected case/,
+  });
+  await expect(consent).toBeVisible();
+  const box = await consent.boundingBox();
+  expect(box?.width).toBeGreaterThanOrEqual(24);
+  expect(box?.height).toBeGreaterThanOrEqual(24);
+});
+
+test("date-range values are centered inside their native date controls", async ({ page }) => {
+  await page.goto("/records");
+  await enterDemoWorkspace(page);
+  await revealDateRangeControls(page);
+
+  for (const label of ["From date", "To date"]) {
+    const input = page.getByLabel(label);
+    await expect(input).toBeVisible();
+    await expect(input).toHaveClass(/range-date-input/);
+    const alignment = await input.evaluate((element) =>
+      window.getComputedStyle(element).textAlign
+    );
+    expect(alignment).toBe("center");
+  }
+});
+
+test("full-width timeline controls align with the Case timeline heading", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/records");
+  await enterDemoWorkspace(page);
+  await openWorkspaceView(page, /^Timeline/);
+
+  const panel = page.locator("section").filter({
+    has: page.getByRole("heading", { name: "Case timeline", exact: true }),
+  });
+  const heading = panel.getByRole("heading", { name: "Case timeline", exact: true });
+  const filter = panel.getByLabel("Type or status");
+  const exportButton = panel.getByRole("button", { name: "Export timeline" });
+  const [headingBox, filterBox, exportBox] = await Promise.all([
+    heading.boundingBox(),
+    filter.boundingBox(),
+    exportButton.boundingBox(),
+  ]);
+  const verticalCenter = (box: { y: number; height: number } | null) =>
+    box ? box.y + box.height / 2 : Number.NaN;
+  expect(Math.abs(verticalCenter(headingBox) - verticalCenter(filterBox))).toBeLessThanOrEqual(1);
+  expect(Math.abs(verticalCenter(headingBox) - verticalCenter(exportBox))).toBeLessThanOrEqual(1);
+});
+
+test("child support entry tiles share full width without changing half-screen tabs", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/records");
+  await enterDemoWorkspace(page);
+  await openWorkspaceView(page, "Child support");
+  await page.getByRole("button", { name: "Order details" }).click();
+
+  const orderForm = page.locator("#child-support-order-form");
+  const paymentForm = page.locator("#child-support-payment-form");
+  await expect(orderForm).toBeVisible();
+  await expect(paymentForm).toBeVisible();
+  const [orderBox, paymentBox] = await Promise.all([
+    orderForm.boundingBox(),
+    paymentForm.boundingBox(),
+  ]);
+  expect(orderBox?.x).toBeLessThan(paymentBox?.x || 0);
+  expect(Math.abs((orderBox?.y || 0) - (paymentBox?.y || 0))).toBeLessThanOrEqual(1);
+
+  await page.setViewportSize({ width: 800, height: 1000 });
+  await expect(orderForm).toBeVisible();
+  await expect(paymentForm).toBeHidden();
+  await page.getByRole("button", { name: "Record a payment" }).click();
+  await expect(orderForm).toBeHidden();
+  await expect(paymentForm).toBeVisible();
 });
 
 test("mobile create flows stay visible across every record tab and reload with a stale case session", async ({ page }) => {

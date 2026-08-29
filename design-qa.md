@@ -106,3 +106,67 @@ An additional crop was not needed. At the normalized 786 x 852 side-by-side size
 2. The comparison found no P0, P1, or P2 visual defects. The remaining structural differences were classified as intentional preservation of existing case controls, attorney access, and overview functionality; no post-comparison visual fix was required.
 
 final result: passed
+
+---
+
+# Design QA — August 29 validation fixes
+
+## Visual truth and scope
+
+- Source validation packet: `/Users/BailyHartman/Downloads/TEST NOTES FROM AUGUST 29TH.pdf`
+- Rendered source pages: `/private/tmp/pdfs/custodyfolio-aug29/page-1.png`, `/private/tmp/pdfs/custodyfolio-aug29/page-2.png`
+- Source type: annotated before-state screenshots and written acceptance notes, not a target mockup.
+- Scope: attorney health-data consent checkbox, records date range, timeline toolbar, and child-support entry layout.
+- Out of scope: Stripe cancellation behavior, which the operator reported as already verified.
+
+## Implementation evidence
+
+- Timeline, full width: `/private/tmp/custodyfolio-design-qa/timeline-full-width-viewport.png`
+- Child support, full width: `/private/tmp/custodyfolio-design-qa/child-support-full-width-viewport.png`
+- Child support, half width: `/private/tmp/custodyfolio-design-qa/child-support-half-width-viewport.png`
+- Date comparison: `/private/tmp/custodyfolio-design-qa/date-comparison.png`
+- Timeline comparison: `/private/tmp/custodyfolio-design-qa/timeline-comparison.png`
+- Child-support comparison: `/private/tmp/custodyfolio-design-qa/child-support-comparison.png`
+- Desktop viewport: 1440 × 1000 CSS pixels, device scale factor 1.
+- Half-width viewport: 800 × 1000 CSS pixels, device scale factor 1.
+- State: light appearance, demo records workspace, current-month range, Timeline and Child support / Order details views.
+
+## Comparison history
+
+1. Attorney consent checkbox
+   - Before: browser-default control was visually small.
+   - Fix: scoped the control to 24 × 24 CSS pixels while preserving the full clickable label and the existing authorization logic.
+   - Verification: production-mode Playwright check measured 24 × 24 and passed.
+2. Date range values
+   - Before: the shared WebKit date-value rule forced left alignment.
+   - Fix: added a records-header-only date class and centered its WebKit value without changing other date fields.
+   - Verification: WebKit computed-style and geometry check passed.
+3. Timeline toolbar
+   - Before: the filter and export button appeared below the `Case timeline` title.
+   - Fix: moved both controls into the panel header with responsive wrapping.
+   - Iteration: WebKit initially rendered the native select taller than the button, producing a 6.734-pixel center offset; a fixed 40-pixel control height removed the offset.
+   - Verification: Chromium and WebKit exact vertical-center checks passed.
+4. Child-support entry tiles
+   - Before: full width showed one narrow form and unused space.
+   - Fix: desktop widths show Child support order and Log payment record as equal side-by-side cards; narrower widths still show only the selected tab.
+   - Iteration: the first desktop pass retained a 16-pixel inherited vertical offset; the desktop-only spacing override removed it.
+   - Verification: 1440-pixel side-by-side geometry and 800-pixel tab-behavior checks passed.
+
+## Surface review
+
+- Typography: unchanged; hierarchy remains consistent.
+- Spacing and layout: corrected only in the four validated areas.
+- Color and imagery: unchanged.
+- Copy: unchanged.
+- Accessibility: consent target enlarged; timeline select retains an accessible name; responsive tab behavior remains intact.
+- Browser console: no warnings or errors during the final Timeline and Child support visual pass.
+
+## Severity review
+
+- P0 issues: none.
+- P1 issues: none.
+- P2 issues: none after the final comparison pass.
+
+## Final result
+
+passed

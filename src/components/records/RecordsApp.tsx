@@ -3843,24 +3843,42 @@ function TimelineView({
 
   return (
     <div className="space-y-4">
-      <Panel title="Case timeline" action={`${filteredEvents.length} shown`}>
-        <div className="mb-4 flex flex-wrap items-end gap-2">
-          <Field label="Type or status">
-            <select value={filter} onChange={(event) => setFilter(event.target.value as TimelineFilter)} className="input min-w-52">
-              {timelineFilterOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </Field>
-          <button type="button" onClick={downloadTimelineCsv} disabled={filteredEvents.length === 0} className="btn-secondary disabled:cursor-not-allowed disabled:opacity-50">
-            Export timeline
-          </button>
-        </div>
-          <Timeline
-            events={filteredEvents}
-            emptyLabel="No timeline records match this filter."
-            onDeleteEvent={deleteTimelineEvent}
-            onChangeDesignation={changeTimelineDesignation}
-            designationSavingId={designationSavingId}
-          />
+      <Panel
+        title="Case timeline"
+        action={`${filteredEvents.length} shown`}
+        headerContent={(
+          <div
+            className="grid w-full gap-2 sm:grid-cols-[minmax(13rem,1fr)_auto] lg:w-auto"
+            data-testid="timeline-header-controls"
+          >
+            <label className="block">
+              <span className="sr-only">Type or status</span>
+              <select
+                aria-label="Type or status"
+                value={filter}
+                onChange={(event) => setFilter(event.target.value as TimelineFilter)}
+                className="input h-10 min-w-52"
+              >
+                {timelineFilterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="button" onClick={downloadTimelineCsv} disabled={filteredEvents.length === 0} className="btn-secondary disabled:cursor-not-allowed disabled:opacity-50">
+              Export timeline
+            </button>
+          </div>
+        )}
+      >
+        <Timeline
+          events={filteredEvents}
+          emptyLabel="No timeline records match this filter."
+          onDeleteEvent={deleteTimelineEvent}
+          onChangeDesignation={changeTimelineDesignation}
+          designationSavingId={designationSavingId}
+        />
       </Panel>
       <details className="rounded-lg border border-slate-200 bg-white">
         <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-slate-700">How timeline status works</summary>
@@ -6479,6 +6497,8 @@ function ChildSupportView({
     flash("Payment record deleted.");
   }
 
+  const supportEntryTab = supportTab === "order" || supportTab === "payment";
+
   return (
     <div className="space-y-4">
       <section className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm" aria-label="Child support sections">
@@ -6518,18 +6538,22 @@ function ChildSupportView({
       </>
       ) : null}
 
-      <section className="grid min-w-0 gap-4 xl:grid-cols-[420px_1fr]">
-        <div className="min-w-0 space-y-4">
-          {supportTab === "order" ? (
-          <Panel
-            title={editingOrder ? "Edit child support order" : "Child support order"}
-            action={editingOrder ? "Editing saved record" : "Documentation only"}
-          >
-            <form
-              id="child-support-order-form"
-              key={editingOrder?.id || "new-support-order"}
-              onSubmit={saveOrder}
-              className="grid gap-3"
+      <section
+        className={`grid min-w-0 gap-4 ${supportEntryTab ? "xl:grid-cols-2" : "xl:grid-cols-[420px_1fr]"}`}
+        data-testid="child-support-content-grid"
+      >
+        <div className={`min-w-0 space-y-4 ${supportEntryTab ? "xl:contents xl:space-y-0" : ""}`}>
+          {supportEntryTab ? (
+            <div className={supportTab === "payment" ? "hidden xl:block" : ""}>
+              <Panel
+                title={editingOrder ? "Edit child support order" : "Child support order"}
+                action={editingOrder ? "Editing saved record" : "Documentation only"}
+              >
+                <form
+                  id="child-support-order-form"
+                  key={editingOrder?.id || "new-support-order"}
+                  onSubmit={saveOrder}
+                  className="grid gap-3"
             >
               <Field label="Order nickname">
                 <input name="orderNickname" className="input" defaultValue={editingOrder?.orderNickname || "Current support order"} />
@@ -6610,8 +6634,9 @@ function ChildSupportView({
                   </button>
                 )}
               </div>
-            </form>
-          </Panel>
+                </form>
+              </Panel>
+            </div>
           ) : null}
 
           {supportTab === "history" ? <SupportOrdersPanel
@@ -6622,16 +6647,17 @@ function ChildSupportView({
             onDelete={deleteSupportOrder}
           /> : null}
 
-          {supportTab === "payment" ? (
-          <Panel
-            title={editingPayment ? "Edit payment record" : "Log payment record"}
-            action={editingPayment ? "Editing saved record" : "No payment processing"}
-          >
-            <form
-              id="child-support-payment-form"
-              key={editingPayment?.id || `new-support-payment-${activePaymentOrderId || "none"}`}
-              onSubmit={savePayment}
-              className="grid gap-3"
+          {supportEntryTab ? (
+            <div className={supportTab === "order" ? "hidden xl:block" : ""}>
+              <Panel
+                title={editingPayment ? "Edit payment record" : "Log payment record"}
+                action={editingPayment ? "Editing saved record" : "No payment processing"}
+              >
+                <form
+                  id="child-support-payment-form"
+                  key={editingPayment?.id || `new-support-payment-${activePaymentOrderId || "none"}`}
+                  onSubmit={savePayment}
+                  className="grid gap-3"
             >
               <Field label="Order">
                 <select
@@ -6726,8 +6752,9 @@ function ChildSupportView({
                   </button>
                 )}
               </div>
-            </form>
-          </Panel>
+                </form>
+              </Panel>
+            </div>
           ) : null}
 
           {supportTab === "history" ? <SupportPaymentsPanel
@@ -6739,35 +6766,37 @@ function ChildSupportView({
           /> : null}
         </div>
 
-        <div className="min-w-0 space-y-4">
-          {supportTab === "history" ? <SupportOrdersPanel
-            className="hidden xl:block"
-            orders={orders}
-            onEdit={(orderId) => { setEditingOrderId(orderId); setSupportTab("order"); }}
-            onDelete={deleteSupportOrder}
-          /> : null}
+        {!supportEntryTab ? (
+          <div className="min-w-0 space-y-4">
+            {supportTab === "history" ? <SupportOrdersPanel
+              className="hidden xl:block"
+              orders={orders}
+              onEdit={(orderId) => { setEditingOrderId(orderId); setSupportTab("order"); }}
+              onDelete={deleteSupportOrder}
+            /> : null}
 
-          {supportTab === "overview" && supportRows.length > 0 ? (
-            <Panel title="Payment history by month" action="Due vs paid">
-              <p className="mb-3 text-xs leading-5 text-slate-500">
-                Full order history through today or the latest saved payment month. Scheduled months
-                without a recorded payment remain visible.
-              </p>
-              <SupportTrendLine rows={supportRows} />
-            </Panel>
-          ) : null}
-          {supportTab === "overview" || supportTab === "history" ? (
-            <SupportObligationsPanel
-              obligations={supportTab === "history" ? historyObligations : obligations}
-            />
-          ) : null}
-          {supportTab === "history" ? <SupportPaymentsPanel
-            className="hidden xl:block"
-            payments={payments}
-            onEdit={(paymentId) => { setEditingPaymentId(paymentId); setSupportTab("payment"); }}
-            onDelete={deleteSupportPayment}
-          /> : null}
-        </div>
+            {supportTab === "overview" && supportRows.length > 0 ? (
+              <Panel title="Payment history by month" action="Due vs paid">
+                <p className="mb-3 text-xs leading-5 text-slate-500">
+                  Full order history through today or the latest saved payment month. Scheduled months
+                  without a recorded payment remain visible.
+                </p>
+                <SupportTrendLine rows={supportRows} />
+              </Panel>
+            ) : null}
+            {supportTab === "overview" || supportTab === "history" ? (
+              <SupportObligationsPanel
+                obligations={supportTab === "history" ? historyObligations : obligations}
+              />
+            ) : null}
+            {supportTab === "history" ? <SupportPaymentsPanel
+              className="hidden xl:block"
+              payments={payments}
+              onEdit={(paymentId) => { setEditingPaymentId(paymentId); setSupportTab("payment"); }}
+              onDelete={deleteSupportPayment}
+            /> : null}
+          </div>
+        ) : null}
       </section>
     </div>
   );
@@ -8295,7 +8324,7 @@ function CenteredRangeDateInput({
         type="date"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-full w-full cursor-pointer rounded-md bg-transparent px-2 text-center text-sm tabular-nums text-slate-900 outline-none [color-scheme:light]"
+        className="range-date-input h-full w-full cursor-pointer rounded-md bg-transparent px-2 text-center text-sm tabular-nums text-slate-900 outline-none [color-scheme:light]"
       />
     </div>
   );
@@ -8304,18 +8333,27 @@ function CenteredRangeDateInput({
 function Panel({
   title,
   action,
+  headerContent,
   children,
   className = "",
 }: {
   title: string;
   action?: string;
+  headerContent?: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
   return (
     <section className={`min-w-0 rounded-lg border border-slate-200/90 bg-white p-4 shadow-[0_5px_18px_rgba(15,23,42,0.07)] sm:p-5 ${className}`}>
       <div className="mb-4 flex min-w-0 flex-wrap items-start justify-between gap-2">
-        <h2 className="min-w-0 text-base font-semibold text-slate-950 [overflow-wrap:anywhere]">{title}</h2>
+        {headerContent ? (
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+            <h2 className="min-w-0 text-base font-semibold text-slate-950 [overflow-wrap:anywhere]">{title}</h2>
+            <div className="w-full lg:w-auto">{headerContent}</div>
+          </div>
+        ) : (
+          <h2 className="min-w-0 text-base font-semibold text-slate-950 [overflow-wrap:anywhere]">{title}</h2>
+        )}
         {action && <span className="min-w-0 max-w-full text-xs font-medium text-slate-500 [overflow-wrap:anywhere]">{action}</span>}
       </div>
       {children}

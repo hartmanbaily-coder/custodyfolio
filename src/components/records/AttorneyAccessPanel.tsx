@@ -283,7 +283,7 @@ export default function AttorneyAccessPanel({
           type="checkbox"
           checked={sharingAuthorized}
           onChange={(event) => setSharingAuthorized(event.target.checked)}
-          className="mt-1"
+          className="mt-0.5 h-6 w-6 shrink-0 cursor-pointer accent-teal-700 disabled:cursor-not-allowed"
           disabled={!profileReady || !newInvitationsEnabled || activeGrant}
         />
         <span>

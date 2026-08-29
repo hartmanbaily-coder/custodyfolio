@@ -94,6 +94,10 @@ body {
   overflow: hidden;
 }
 
+.records-workspace input.range-date-input::-webkit-date-and-time-value {
+  text-align: center;
+}
+
 @media (max-width: 639px) {
   .records-workspace :where(input[type="date"], input[type="time"], input[type="datetime-local"]) {
     inline-size: 100%;
