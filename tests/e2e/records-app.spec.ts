@@ -70,8 +70,10 @@ async function openWorkspaceView(page: Page, name: string | RegExp) {
     exact: typeof name === "string",
   };
   const mobileNavigation = page.getByRole("navigation", { name: "Mobile workspace" });
+  const mobileViewport = (page.viewportSize()?.width || 1280) < 1024;
 
-  if (await mobileNavigation.isVisible()) {
+  if (mobileViewport) {
+    await expect(mobileNavigation).toBeVisible();
     const directButton = mobileNavigation.getByRole("button", roleOptions);
     if (await directButton.isVisible()) {
       await directButton.click();
@@ -86,10 +88,9 @@ async function openWorkspaceView(page: Page, name: string | RegExp) {
     return;
   }
 
-  await page
-    .getByRole("navigation", { name: "Records workspace" })
-    .getByRole("button", roleOptions)
-    .click();
+  const desktopNavigation = page.getByRole("navigation", { name: "Records workspace" });
+  await expect(desktopNavigation).toBeVisible();
+  await desktopNavigation.getByRole("button", roleOptions).click();
 }
 
 test("records login and report workflow", async ({ page }) => {
@@ -1673,7 +1674,6 @@ test("records account recovery and deletion paths are reachable", async ({ page 
   await expect(page.getByRole("heading", { name: "Delete Account", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Permanently delete account" })).toBeVisible();
   await expect(page.getByText("Signed in as synthetic-reviewer@example.test.")).toBeVisible();
-  await page.waitForLoadState("networkidle");
   await expect(page.getByRole("link", { name: "Email support instead" })).toHaveAttribute(
     "href",
     "mailto:support@custodyfolio.com?subject=Custody%20Folio%20account%20deletion%20request"
