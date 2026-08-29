@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { downloadBlobFile } from "@/lib/records/clientStore";
 import type {
   ExhibitSaveRequest,
@@ -52,6 +52,8 @@ export default function ExhibitBuilder({
   const [busy, setBusy] = useState<"select" | "generate" | "save" | "share" | "">("");
   const [message, setMessage] = useState("");
   const sourcesRef = useRef(sources);
+  const screenshotInputId = useId();
+  const screenshotSelectionSummaryId = useId();
 
   useEffect(() => {
     sourcesRef.current = sources;
@@ -286,20 +288,45 @@ export default function ExhibitBuilder({
 
       <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-[360px_1fr]">
         <div className="min-w-0 space-y-3">
-          <label className="grid min-w-0 max-w-full gap-1.5 text-sm font-medium text-slate-700">
-            Screenshots
+          <div className="grid min-w-0 max-w-full gap-1.5 text-sm font-medium text-slate-700">
+            <span>Screenshots</span>
             <input
+              id={screenshotInputId}
+              aria-label="Screenshots"
+              aria-describedby={screenshotSelectionSummaryId}
               type="file"
               multiple
               accept=".png,.jpg,.jpeg,.heic,.heif,image/png,image/jpeg,image/heic,image/heif"
-              className="input"
+              className="sr-only"
               disabled={Boolean(busy)}
               onChange={(event) => {
                 void selectScreenshots(event.currentTarget.files);
                 event.currentTarget.value = "";
               }}
             />
-          </label>
+            <div className="flex min-w-0 max-w-full items-center gap-3 rounded-md border border-slate-300 bg-white p-2">
+              <label
+                htmlFor={screenshotInputId}
+                className={`shrink-0 rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-teal-500 hover:text-slate-950 ${
+                  busy ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                }`}
+              >
+                Choose screenshots
+              </label>
+              <span
+                id={screenshotSelectionSummaryId}
+                data-testid="screenshot-selection-summary"
+                aria-live="polite"
+                className="min-w-0 break-words text-sm font-normal text-slate-600 [overflow-wrap:anywhere]"
+              >
+                {sources.length === 0
+                  ? "No screenshots selected"
+                  : `${sources.length} screenshot${sources.length === 1 ? "" : "s"} selected${
+                      sources.length === 1 ? `: ${sources[0].originalFileName}` : ""
+                    }`}
+              </span>
+            </div>
+          </div>
           <p className="text-xs leading-5 text-slate-500">
             Up to 12 screenshots, 24 MB total, 25 megapixels each, and 60 megapixels combined.
             HEIC/HEIF photos are converted to JPEG on this device before PDF generation.

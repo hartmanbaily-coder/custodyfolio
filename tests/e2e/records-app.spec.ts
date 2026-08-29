@@ -621,11 +621,26 @@ test("mobile screenshot exhibit builder preserves order and generates a protecte
     { name: "first.png", mimeType: "image/png", buffer: png },
     { name: "second.png", mimeType: "image/png", buffer: png },
   ]);
+  await expect(builder.getByTestId("screenshot-selection-summary")).toHaveText(
+    "2 screenshots selected"
+  );
   await expect(builder.getByText("1. first.png")).toBeVisible();
   await expect(builder.getByText("2. second.png")).toBeVisible();
   await builder.getByRole("button", { name: "Move first.png down" }).click();
   await expect(builder.getByText("1. second.png")).toBeVisible();
   await expect(builder.getByText("2. first.png")).toBeVisible();
+  await builder.getByRole("button", { name: "Remove first.png" }).click();
+  await expect(builder.getByTestId("screenshot-selection-summary")).toHaveText(
+    "1 screenshot selected: second.png"
+  );
+  await builder.getByLabel("Screenshots").setInputFiles({
+    name: "first.png",
+    mimeType: "image/png",
+    buffer: png,
+  });
+  await expect(builder.getByTestId("screenshot-selection-summary")).toHaveText(
+    "2 screenshots selected"
+  );
   await builder.getByLabel("Exhibit label").fill("Exhibit A");
   const builderCheckboxes = builder.locator('input[type="checkbox"]');
   await expect(builderCheckboxes).toHaveCount(4);
