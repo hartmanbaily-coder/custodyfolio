@@ -1852,9 +1852,10 @@ test("records account recovery and deletion paths are reachable", async ({ page 
 
   await page.getByRole("link", { name: "Return to home page" }).click();
   await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("heading", { name: "A calmer way to keep custody records organized." })).toBeVisible();
   await Promise.all([
     page.waitForURL(/\/records$/, { timeout: 15_000 }),
-    page.getByRole("link", { name: "Open records workspace" }).first().click(),
+    page.getByRole("link", { name: "Sign in", exact: true }).click(),
   ]);
   const workspaceNavigation = page.getByRole("navigation", { name: "Records workspace" });
   await expect(workspaceNavigation).toBeVisible();
