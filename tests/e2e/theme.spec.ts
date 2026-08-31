@@ -74,3 +74,18 @@ test("public pages expose route-specific canonicals and the complete policy set"
     await expect(page.locator(`a[href="${path}"]`).first()).toBeAttached();
   }
 });
+
+test("public checklist is discoverable and points directly to account creation", async ({ page }) => {
+  await page.goto("/guides/factual-custody-record-checklist");
+
+  await expect(
+    page.getByRole("heading", { name: "The factual custody record checklist" })
+  ).toBeVisible();
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    "https://custodyfolio.com/guides/factual-custody-record-checklist"
+  );
+  await expect(
+    page.getByRole("link", { name: "Start 30 days free" })
+  ).toHaveAttribute("href", "/records?mode=signup");
+});

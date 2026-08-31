@@ -86,6 +86,7 @@ import {
   type RecordsMfaEnrollment,
   type RecordsSession,
 } from "@/lib/records/clientStore";
+import { recordsSignupRoute } from "@/lib/records/signupRouting";
 import {
   isExplicitAttorneyInviteCallback,
   parseRecordsAuthFragment,
@@ -1435,14 +1436,15 @@ function LoginScreen({
 
   useEffect(() => {
     if (recordsStorageMode !== "supabase" || typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const isInvitedAttorney =
-      params.get("next") === "/attorney/accept" && params.get("invite") === "1";
-    setInvitedAttorneySignup(isInvitedAttorney);
-    if (isInvitedAttorney && params.get("mode") === "signup") {
+    const route = recordsSignupRoute(
+      window.location.search,
+      publicSignupsEnabled
+    );
+    setInvitedAttorneySignup(route.invitedAttorney);
+    if (route.openSignup) {
       setMode("signup");
     }
-  }, [recordsStorageMode]);
+  }, [publicSignupsEnabled, recordsStorageMode]);
 
   useEffect(() => {
     if (!mfaResumeRequired || typeof window === "undefined") return;
@@ -1839,7 +1841,7 @@ function LoginScreen({
             </p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{heading}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Organize your custody data into clear records so you can understand patterns, work toward your desired outcomes, and protect yourself with better documentation.
+              Organize custody information into clear records for personal review or a conversation with an attorney.
             </p>
 
             {invitedAttorneySignup ? (

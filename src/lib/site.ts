@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const siteName = "Custody Folio";
-export const recordsTagline = "Remove the emotion. Track the data.";
+export const recordsTagline = "Keep the facts clear. Keep your records together.";
 export const siteDescription =
   "Privately organize custody events, parenting time, expenses, notes, and evidence, then create clear reports for personal review or your attorney.";
 export const legalDisclaimer =

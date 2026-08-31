@@ -64,13 +64,16 @@ export default function HomePage() {
         </Link>
 
         <nav className="hidden items-center gap-1 text-sm font-medium md:flex">
-          <Link href="/records" className="rounded-md bg-slate-950 px-4 py-2 text-white shadow-sm transition hover:bg-slate-800">
-            Open workspace
+          <Link href="/records" className="rounded-md px-4 py-2 text-slate-700 transition hover:bg-slate-100 hover:text-slate-950">
+            Sign in
+          </Link>
+          <Link href="/records?mode=signup" className="rounded-md bg-slate-950 px-4 py-2 text-white shadow-sm transition hover:bg-slate-800">
+            Start 30 days free
           </Link>
         </nav>
 
-        <Link href="/records" className="rounded-md bg-slate-950 px-3 py-2 text-sm font-semibold text-white shadow-sm md:hidden">
-          Workspace
+        <Link href="/records?mode=signup" className="rounded-md bg-slate-950 px-3 py-2 text-sm font-semibold text-white shadow-sm md:hidden">
+          Start free
         </Link>
       </header>
 
@@ -90,17 +93,17 @@ export default function HomePage() {
                 <span>What would you like to add?</span>
               </div>
               <Link
-                href="/records"
+                href="/records?mode=signup"
                 className="inline-flex min-h-12 items-center justify-center rounded-lg bg-teal-700 px-5 text-sm font-semibold text-white transition hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-200"
               >
-                Open records workspace
+                Start 30 days free
               </Link>
             </div>
             <div className="mt-2 flex flex-wrap gap-2 px-1 pb-1">
               {quickActions.map((action) => (
                 <Link
                   key={action}
-                  href="/records"
+                  href="/records?mode=signup"
                   className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-teal-500 hover:text-slate-950"
                 >
                   {action}
@@ -109,6 +112,9 @@ export default function HomePage() {
             </div>
           </div>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600">
+            No card required. No other parent account required. Custody Folio helps organize records and does not provide legal advice.
+          </p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
             Health-related records are optional. Review how they are handled in the{" "}
             <Link href="/consumer-health-data" className="font-semibold text-teal-700 underline underline-offset-2">
               Consumer Health Data Privacy Policy
@@ -174,6 +180,44 @@ export default function HomePage() {
             <p className="mt-2 text-sm leading-6 text-slate-600">{step.detail}</p>
           </div>
         ))}
+      </section>
+
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:px-8">
+        <div className="rounded-2xl bg-slate-950 p-6 text-white sm:p-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-300">
+            Free organization guide
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight">
+            Start with a factual record routine.
+          </h2>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300">
+            Use a simple checklist for dates, observable details, original sources, parenting time, expenses, weekly review, and privacy.
+          </p>
+          <Link
+            href="/guides/factual-custody-record-checklist"
+            className="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg bg-white px-5 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+          >
+            Read the free checklist
+          </Link>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">
+            One complete plan
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
+            Try every core feature for 30 days.
+          </h2>
+          <p className="mt-4 text-base leading-7 text-slate-600">
+            No card is required during the account trial. Web access is $5.99 monthly or $59.99 annually after the trial. App Store prices are shown by Apple.
+          </p>
+          <Link
+            href="/records?mode=signup"
+            className="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg bg-teal-700 px-5 text-sm font-semibold text-white transition hover:bg-teal-800"
+          >
+            Create your account
+          </Link>
+        </div>
       </section>
 
       <PolicyFooter />

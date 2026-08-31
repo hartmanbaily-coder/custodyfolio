@@ -106,11 +106,13 @@ test("records login and report workflow", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "A calmer way to keep custody records organized." })).toBeVisible();
-  const openRecordsWorkspace = page.getByRole("link", { name: "Open records workspace" });
-  await expect(openRecordsWorkspace).toHaveAttribute("href", "/records");
+  const startFree = page.getByRole("link", { name: "Start 30 days free" }).first();
+  await expect(startFree).toHaveAttribute("href", "/records?mode=signup");
+  const signIn = page.getByRole("link", { name: "Sign in", exact: true });
+  await expect(signIn).toHaveAttribute("href", "/records");
   await Promise.all([
     page.waitForURL(/\/records$/),
-    openRecordsWorkspace.click(),
+    signIn.click(),
   ]);
   const loginPassword = page.getByLabel("Password", { exact: true });
   await expect(loginPassword).toHaveAttribute("type", "password");

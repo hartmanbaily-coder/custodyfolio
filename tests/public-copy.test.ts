@@ -12,6 +12,7 @@ const customerFacingFiles = [
   "src/app/subprocessors/page.tsx",
   "src/app/open-source/page.tsx",
   "src/app/contact/page.tsx",
+  "src/app/guides/factual-custody-record-checklist/page.tsx",
   "src/app/account/delete/page.tsx",
   "src/app/account/delete/AccountDeletionRequest.tsx",
   "src/components/records/AttorneyAccessPanel.tsx",
@@ -39,7 +40,7 @@ describe("customer facing copy", () => {
   it("preserves the Custody Folio brand statement", () => {
     const site = readFileSync(resolve(process.cwd(), "src/lib/site.ts"), "utf8");
     expect(site).toContain(
-      'recordsTagline = "Remove the emotion. Track the data."'
+      'recordsTagline = "Keep the facts clear. Keep your records together."'
     );
   });
 
@@ -112,6 +113,30 @@ describe("customer facing copy", () => {
     const home = readFileSync(resolve(process.cwd(), "src/app/page.tsx"), "utf8");
     expect(home).toContain('href="/consumer-health-data"');
     expect(home).toContain("Consumer Health Data Privacy Policy");
+  });
+
+  it("provides a direct trial signup path and factual public checklist", () => {
+    const home = readFileSync(resolve(process.cwd(), "src/app/page.tsx"), "utf8");
+    const checklist = readFileSync(
+      resolve(
+        process.cwd(),
+        "src/app/guides/factual-custody-record-checklist/page.tsx"
+      ),
+      "utf8"
+    );
+    const records = readFileSync(
+      resolve(process.cwd(), "src/components/records/RecordsApp.tsx"),
+      "utf8"
+    );
+
+    expect(home).toContain('href="/records?mode=signup"');
+    expect(home).toContain("Read the free checklist");
+    expect(records).toContain("recordsSignupRoute(");
+    expect(checklist).toContain("The factual custody record checklist");
+    expect(checklist).toContain("This guide provides general organization information");
+    expect([home, checklist].join("\n")).not.toMatch(
+      /win custody|beat your ex|court approved|legally admissible|guaranteed evidence|tamper proof/i
+    );
   });
 
   it("does not expose the retired product name in export filenames", () => {
