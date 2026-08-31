@@ -20,7 +20,7 @@ This means a customer who starts today cannot become paid until the target date.
 
 3. Reach 100 paid subscribers by October 29 using a planning assumption of 20 percent trial conversion.
 
-4. If the CEO requires 100 paid subscribers by September 29, approve a separate billing decision that lets a customer voluntarily choose a paid plan before the account trial ends.
+4. The CEO authorized a voluntary billing choice during the account trial so customers who are ready can become paid subscribers before September 29.
 
 The billing decision requires product, policy, provider, and App Store review. It is not a marketing setting.
 

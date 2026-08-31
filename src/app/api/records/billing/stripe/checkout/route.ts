@@ -11,6 +11,7 @@ import {
   ensureBillingAccount,
   getBillingStatus,
 } from "@/lib/billing/repository";
+import { subscriptionPurchaseEligible } from "@/lib/billing/policy";
 import {
   createStripeClient,
   ensureStripeCustomer,
@@ -77,17 +78,7 @@ export async function POST(request: NextRequest) {
       supabase: context.supabase,
       userId: context.userId,
     });
-    if (status.entitlement.mode === "trial") {
-      return NextResponse.json(
-        {
-          error: "Your no-card trial is still active. Billing choices open after the trial ends.",
-          code: "trial_still_active",
-          trialEndsAt: status.trial.endsAt,
-        },
-        { status: 409, headers: { "Cache-Control": "no-store" } }
-      );
-    }
-    if (status.entitlement.mode !== "export_only") {
+    if (!subscriptionPurchaseEligible(status.entitlement.mode)) {
       const managedBy =
         status.entitlement.source === "apple"
           ? "App Store"

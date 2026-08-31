@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { BillingStatus } from "@/lib/billing/types";
+import { subscriptionPurchaseEligible } from "@/lib/billing/policy";
 import { getRecordsCsrfToken } from "@/lib/records/attorneyClient";
 
 interface StoreProduct {
@@ -242,7 +243,7 @@ export default function SubscriptionPanel({
   const appleMonthly = productsById.get(status.pricing.ios.monthlyProductId);
   const appleAnnual = productsById.get(status.pricing.ios.annualProductId);
   const canPurchase =
-    status.checkoutEnabled && status.entitlement.mode === "export_only";
+    status.checkoutEnabled && subscriptionPurchaseEligible(status.entitlement.mode);
   const renewalDate = readableDate(
     status.subscription?.currentPeriodEnd || status.entitlement.effectiveUntil
   );
@@ -266,7 +267,7 @@ export default function SubscriptionPanel({
           <div className="mt-5 rounded-lg border border-teal-200 bg-teal-50 p-4">
             <h3 className="font-semibold text-teal-950">Your no-card trial is active</h3>
             <p className="mt-1 text-sm leading-6 text-teal-900">
-              {status.trial.daysRemaining} {status.trial.daysRemaining === 1 ? "day" : "days"} remaining. No payment method is needed during the 30-day trial. Billing choices open after {readableDate(status.trial.endsAt)}.
+              {status.trial.daysRemaining} {status.trial.daysRemaining === 1 ? "day" : "days"} remaining. No payment method is required to continue. If you choose a plan below, billing begins immediately after the provider confirms the purchase and paid access takes priority during the remaining trial.
             </p>
           </div>
         ) : status.entitlement.mode === "grace_period" ? (
@@ -311,7 +312,9 @@ export default function SubscriptionPanel({
         <PlanCard
           title="Monthly"
           price={status.nativeIos ? appleMonthly?.displayPrice || "App Store price" : status.pricing.web.monthly}
-          detail="Renews each month until cancelled. No provider trial is added because the account trial is managed by Custody Folio."
+          detail={status.entitlement.mode === "trial"
+            ? "Choosing this plan starts paid monthly billing immediately. It renews each month until cancelled."
+            : "Renews each month until cancelled. No provider trial is added because the account trial is managed by Custody Folio."}
           action={canPurchase ? (status.nativeIos ? "Choose monthly in App Store" : "Choose monthly") : null}
           busy={busy === "monthly"}
           onAction={() => {
@@ -324,7 +327,9 @@ export default function SubscriptionPanel({
           price={status.nativeIos ? appleAnnual?.displayPrice || "App Store price" : status.pricing.web.annual}
           detail={status.nativeIos
             ? `${appleAnnual?.periodDescription || "Renews yearly"}. The App Store shows the localized total before purchase.`
-            : `${status.pricing.web.annualEffectiveMonthly} effective monthly; 16.5% less than paying monthly for 12 months.`}
+            : status.entitlement.mode === "trial"
+              ? `Choosing this plan starts paid annual billing immediately. ${status.pricing.web.annualEffectiveMonthly} effective monthly; 16.5% less than paying monthly for 12 months.`
+              : `${status.pricing.web.annualEffectiveMonthly} effective monthly; 16.5% less than paying monthly for 12 months.`}
           action={canPurchase ? (status.nativeIos ? "Choose annual in App Store" : "Choose annual") : null}
           busy={busy === "annual"}
           featured

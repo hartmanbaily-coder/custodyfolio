@@ -28,3 +28,7 @@ export function capabilitiesForEntitlementMode(
     ])
   ) as RecordsCapabilityMap;
 }
+
+export function subscriptionPurchaseEligible(mode: EntitlementMode) {
+  return mode === "trial" || mode === "export_only";
+}

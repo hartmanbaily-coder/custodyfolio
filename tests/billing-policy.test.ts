@@ -27,7 +27,10 @@ import {
   configuredStaleToleranceHours,
   webPriceCatalog,
 } from "@/lib/billing/config";
-import { capabilitiesForEntitlementMode } from "@/lib/billing/policy";
+import {
+  capabilitiesForEntitlementMode,
+  subscriptionPurchaseEligible,
+} from "@/lib/billing/policy";
 import { evaluateLiveBillingReadiness } from "@/lib/billing/readiness";
 import {
   createBillingReturnState,
@@ -88,6 +91,13 @@ function appleTransaction(
 }
 
 describe("billing capability policy", () => {
+  it("allows a voluntary purchase during trial or export-only access", () => {
+    expect(subscriptionPurchaseEligible("trial")).toBe(true);
+    expect(subscriptionPurchaseEligible("export_only")).toBe(true);
+    expect(subscriptionPurchaseEligible("active")).toBe(false);
+    expect(subscriptionPurchaseEligible("grace_period")).toBe(false);
+  });
+
   it.each(["trial", "active", "grace_period"] as const)(
     "provides the complete tier for %s",
     (mode) => {

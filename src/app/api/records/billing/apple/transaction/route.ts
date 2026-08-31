@@ -11,6 +11,7 @@ import {
   appleReviewSandboxEnabledForUser,
   isNativeIosUserAgent,
 } from "@/lib/billing/config";
+import { subscriptionPurchaseEligible } from "@/lib/billing/policy";
 import { ensureBillingAccount, getBillingStatus } from "@/lib/billing/repository";
 import { getRecordsAuthContext } from "@/lib/records/authServer";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
   });
   if (!capability.ok) return capability.error;
   if (
-    capability.status.entitlement.mode !== "export_only" &&
+    !subscriptionPurchaseEligible(capability.status.entitlement.mode) &&
     capability.status.entitlement.source !== "apple"
   ) {
     return NextResponse.json(

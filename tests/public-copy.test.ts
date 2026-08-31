@@ -182,6 +182,7 @@ describe("customer facing copy", () => {
       readFileSync(resolve(process.cwd(), "src/app/privacy/page.tsx"), "utf8"),
     ].join("\n");
     expect(subscription).toContain("Your no-card trial is active");
+    expect(subscription).toContain("billing begins immediately");
     expect(subscription).toContain("Export-only access");
     expect(subscription).toContain("Cancellation never prevents record export");
     expect(billingPolicyCopy).not.toMatch(/hardship fee waiver|fee-waiver request/i);

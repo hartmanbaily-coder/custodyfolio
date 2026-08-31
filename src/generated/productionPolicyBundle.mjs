@@ -16,7 +16,7 @@ export const productionPolicyDocumentPaths = {
 
 export const productionPolicyDocumentDigests = {
   "privacy": "sha256:d4bdc99a711f547f3d2af39bcda5c45a679eb0d6403922a6baeb640f4406b0ba",
-  "terms": "sha256:dcb79187a72e3aaf6624dc4d861c622c8dd3fdc45bfcc973a8fbafd52b9aa6a2",
+  "terms": "sha256:298ff8ca728c05d1956d87bf96275c23a738ba8edb39c3f21c38be8b7d998b87",
   "consumerHealthData": "sha256:7fb8fba2fb6537a57fdca7a2bb5102f77b9d1bce18e33ce0845bb9b8438793de",
   "subprocessors": "sha256:2861f4f613d207d01d0b69ef75018af8da73c6404fdca7206b012b900614c60f",
   "dataRetentionRunbook": "sha256:95299d5e1e205de2a03d416ea08bf2b9ec1776851d7d04268116a17de0cb2c3b",
@@ -28,4 +28,4 @@ export const productionPolicyDocumentDigests = {
   "billingLaunchChecklist": "sha256:2dfff7337624c1f5b562c6d23e474795183727e2845cecc5814ac0341a3eeb9f"
 };
 
-export const productionPolicyBundleSha256 = "sha256:43ebfe38e41fb8d1f852036b3c9ed6bee6ad5326178df41c3024c0f8420cd146";
+export const productionPolicyBundleSha256 = "sha256:72d8e08ab782c1867a45e9fcad42344a9e2a965c20f613bf672b6a8f86b0ea16";
