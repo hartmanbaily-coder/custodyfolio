@@ -169,6 +169,7 @@ import {
 } from "./RecordsCharts";
 import ExhibitBuilder from "./ExhibitBuilder";
 import AttorneyAccessPanel from "./AttorneyAccessPanel";
+import CustomerValuePulse from "./CustomerValuePulse";
 import {
   saveScreenshotExhibitToFiles,
   type ExhibitSaveRequest,
@@ -998,15 +999,28 @@ export default function RecordsApp() {
               </div>
             )}
             {activeView === "Dashboard" && (
-              <DashboardView
-                range={range}
-                calendarEvents={timelineEvents}
-                evidenceCount={selected.evidenceItems.length}
-                financialCount={selected.expenseItems.length + selected.childSupportPayments.length}
-                onOpen={openView}
-                terminology={terminology}
-                timezone={caseTimezone}
-              />
+              <>
+                <DashboardView
+                  range={range}
+                  calendarEvents={timelineEvents}
+                  evidenceCount={selected.evidenceItems.length}
+                  financialCount={selected.expenseItems.length + selected.childSupportPayments.length}
+                  onOpen={openView}
+                  terminology={terminology}
+                  timezone={caseTimezone}
+                />
+                {recordsStorageMode === "supabase" &&
+                selected.custodyDayAssignments.length +
+                  selected.exchangeLogs.length +
+                  selected.dateNotes.length +
+                  selected.evidenceItems.length +
+                  selected.childSupportOrders.length +
+                  selected.childSupportPayments.length +
+                  selected.expenseItems.length >=
+                  3 ? (
+                  <CustomerValuePulse />
+                ) : null}
+              </>
             )}
             {activeView === "Calendar" && (
               <CalendarView

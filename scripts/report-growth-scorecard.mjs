@@ -99,7 +99,16 @@ async function main() {
     "records_case_snapshots",
     "user_id,dataset"
   );
-  const satisfactionResponses = await loadSatisfactionResponses();
+  const savedSatisfactionResponses = await loadRows(
+    client,
+    "custody_folio_customer_value_responses",
+    "responded_at,score"
+  );
+  const manualSatisfactionResponses = await loadSatisfactionResponses();
+  const satisfactionResponses = [
+    ...savedSatisfactionResponses,
+    ...manualSatisfactionResponses,
+  ];
 
   const report = summarizeGrowth({
     accounts,
