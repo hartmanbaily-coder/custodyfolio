@@ -8,6 +8,13 @@ const migration = readFileSync(
   ),
   "utf8"
 );
+const permissionMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260901052100_restrict_growth_function_execution.sql",
+    import.meta.url
+  ),
+  "utf8"
+);
 const consentStorage = migration.split(
   "create table public.custody_folio_customer_feedback_consents"
 )[1];
@@ -40,5 +47,11 @@ describe("customer feedback consent storage", () => {
     );
     expect(consentStorage).toContain("security invoker");
     expect(consentStorage).not.toContain("security definer");
+    expect(permissionMigration).toContain(
+      "custody_folio_record_feedback_choice(uuid, text, timestamptz)"
+    );
+    expect(permissionMigration).toContain(
+      "from public, anon, authenticated"
+    );
   });
 });

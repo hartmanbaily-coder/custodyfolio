@@ -8,21 +8,25 @@ function source(path: string) {
 }
 
 const packet = source("marketing/PRODUCTION_RELEASE_PACKET_V2.md");
-const migrationPath =
-  "supabase/migrations/20260831120000_add_growth_events_and_feedback_consents.sql";
+const migrationPaths = [
+  "supabase/migrations/20260831120000_add_growth_events_and_feedback_consents.sql",
+  "supabase/migrations/20260901052100_restrict_growth_function_execution.sql",
+];
 
 describe("marketing production release packet", () => {
   it("binds the packet to the current migration and policy bundle", () => {
-    const migrationDigest = createHash("sha256")
-      .update(source(migrationPath))
-      .digest("hex");
+    const migrationDigests = migrationPaths.map((migrationPath) =>
+      createHash("sha256").update(source(migrationPath)).digest("hex")
+    );
     const policyBundle = source("src/generated/productionPolicyBundle.mjs");
     const policyDigest = policyBundle.match(
       /productionPolicyBundleSha256 = "(sha256:[a-f0-9]{64})"/
     )?.[1];
 
     expect(policyDigest).toBeTruthy();
-    expect(packet).toContain(migrationDigest);
+    for (const migrationDigest of migrationDigests) {
+      expect(packet).toContain(migrationDigest);
+    }
     expect(packet).toContain(policyDigest);
   });
 

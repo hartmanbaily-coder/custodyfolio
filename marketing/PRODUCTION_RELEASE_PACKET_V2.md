@@ -20,6 +20,10 @@ The growth and feedback migration file digest is:
 
 `5ead501e1b91a0a775ec6549382bb7a275e7830f323063cb35ab8cdd1a398a1d`
 
+The function permission hardening migration file digest is:
+
+`596fd7336158b49c4d34fd901f59ddda309aaf8b81bbe7b622186d0d54d30af6`
+
 The current worktree contains uncommitted work and unrelated local artifacts. It must not be deployed directly. The authorized release must use a scoped commit containing only reviewed source, migration, policy, operations, and test files.
 
 ## Included product behavior
@@ -48,11 +52,13 @@ The current worktree contains uncommitted work and unrelated local artifacts. It
 
 ## Database change
 
-The release depends on this additive migration:
+The release depends on these additive migrations:
 
 `supabase/migrations/20260831120000_add_growth_events_and_feedback_consents.sql`
 
-The current deployment workflow does not apply Supabase migrations automatically. The application release must not proceed until an authorized operator applies this exact migration to the intended production project and verifies all of the following:
+`supabase/migrations/20260901052100_restrict_growth_function_execution.sql`
+
+The current deployment workflow does not apply Supabase migrations automatically. The application release must not proceed until an authorized operator applies both exact migrations to the intended production project and verifies all of the following:
 
 1. `custody_folio_growth_events` exists.
 
@@ -72,7 +78,11 @@ The current deployment workflow does not apply Supabase migrations automatically
 
 9. The feedback cohort cap is exactly ten.
 
-10. The migration digest matches the digest recorded in this packet.
+10. Both migration digests match the digests recorded in this packet.
+
+11. Public, anonymous, and authenticated roles cannot execute either database function.
+
+12. The service role can execute both database functions.
 
 Only after these checks pass may the operator set `CUSTOMER_GROWTH_SCHEMA_VERIFIED_AT` to the real verification date.
 

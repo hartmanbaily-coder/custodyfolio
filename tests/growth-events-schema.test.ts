@@ -8,6 +8,13 @@ const migration = readFileSync(
   ),
   "utf8"
 );
+const permissionMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260901052100_restrict_growth_function_execution.sql",
+    import.meta.url
+  ),
+  "utf8"
+);
 const growthTable = migration.split(
   "create table public.custody_folio_customer_feedback_consents"
 )[0];
@@ -39,5 +46,8 @@ describe("growth event storage", () => {
     );
     expect(growthTable).toContain("security invoker");
     expect(growthTable).not.toContain("security definer");
+    expect(permissionMigration).toContain(
+      "from public, anon, authenticated"
+    );
   });
 });
