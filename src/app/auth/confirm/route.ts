@@ -11,6 +11,8 @@ import {
 import { defaultCaseIdForUser } from "@/lib/records/accountBoundary";
 import { recordsProfileIsAuthorized, upsertRecordsProfile } from "@/lib/records/profileServer";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
+import { growthAnalyticsEnabled, recordGrowthEvent } from "@/lib/marketing/growthEvents";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 
@@ -114,6 +116,19 @@ export async function GET(request: NextRequest) {
   }
 
   await upsertRecordsProfile({ userId: data.user.id, email: data.user.email || "" });
+  if (!isRecovery && growthAnalyticsEnabled()) {
+    try {
+      await recordGrowthEvent({
+        supabase: createSupabaseAdminClient(),
+        eventName: "account_signup_confirmed",
+        request,
+        userId: data.user.id,
+        platform: "web",
+      });
+    } catch {
+      // Growth measurement never blocks account confirmation.
+    }
+  }
   await recordSecurityEvent({
     type: isRecovery ? "auth_recovery_session_accepted" : "auth_email_confirmed",
     severity: "info",

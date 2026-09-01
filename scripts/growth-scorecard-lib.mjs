@@ -1,14 +1,5 @@
 const paidStatuses = new Set(["active"]);
-
-const recordCollections = [
-  "custodyDayAssignments",
-  "exchangeLogs",
-  "dateNotes",
-  "evidenceItems",
-  "childSupportOrders",
-  "childSupportPayments",
-  "expenseItems",
-];
+const minimumReportableSourceCount = 5;
 
 function validDate(value) {
   const time = Date.parse(String(value || ""));
@@ -26,51 +17,6 @@ function percentage(numerator, denominator) {
     : 0;
 }
 
-function userActivity(dataset) {
-  const records = [];
-  for (const collection of recordCollections) {
-    const rows = Array.isArray(dataset?.[collection]) ? dataset[collection] : [];
-    for (const row of rows) {
-      records.push({
-        id: String(row?.id || ""),
-        createdAt: row?.createdAt,
-        updatedAt: row?.updatedAt,
-      });
-    }
-  }
-
-  const exports = (Array.isArray(dataset?.auditLogs) ? dataset.auditLogs : [])
-    .filter((row) => row?.action === "exported")
-    .map((row) => row?.timestamp)
-    .filter(Boolean);
-
-  return { records, exports };
-}
-
-function activityBins(activity, startTime) {
-  const bins = new Set();
-  const activityTimes = [
-    ...activity.records.flatMap((row) => [row.createdAt, row.updatedAt]),
-    ...activity.exports,
-  ];
-
-  for (const value of activityTimes) {
-    const time = validDate(value);
-    if (time === null) continue;
-    const day = Math.floor((time - startTime) / 86_400_000);
-    if (day >= 8 && day <= 28) bins.add(Math.floor((day - 8) / 7));
-  }
-  return bins;
-}
-
-function earliestRecordTime(activity, startTime, endTime) {
-  const times = activity.records
-    .map((row) => validDate(row.createdAt))
-    .filter((time) => time !== null && time >= startTime && time <= endTime)
-    .sort((a, b) => a - b);
-  return times[0] ?? null;
-}
-
 function median(values) {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
@@ -80,6 +26,65 @@ function median(values) {
     : Number(sorted[middle].toFixed(1));
 }
 
+function eventCohorts(events, eventName) {
+  return new Set(
+    events
+      .filter((event) => event.event_name === eventName)
+      .map((event) => event.cohort_identifier)
+      .filter(Boolean)
+  );
+}
+
+function intersection(...sets) {
+  if (sets.length === 0) return new Set();
+  return new Set([...sets[0]].filter((value) => sets.every((set) => set.has(value))));
+}
+
+function union(...sets) {
+  return new Set(sets.flatMap((set) => [...set]));
+}
+
+function firstEventTimeByCohort(events, eventName) {
+  const result = new Map();
+  for (const event of events) {
+    if (event.event_name !== eventName || !event.cohort_identifier) continue;
+    const time = validDate(event.occurred_at);
+    if (time === null) continue;
+    const current = result.get(event.cohort_identifier);
+    if (current === undefined || time < current) {
+      result.set(event.cohort_identifier, time);
+    }
+  }
+  return result;
+}
+
+function sourceForCohort(events) {
+  const sorted = [...events].sort(
+    (left, right) => (validDate(left.occurred_at) || 0) - (validDate(right.occurred_at) || 0)
+  );
+  const result = new Map();
+  for (const event of sorted) {
+    if (!event.cohort_identifier || result.has(event.cohort_identifier)) continue;
+    if (event.source) result.set(event.cohort_identifier, event.source);
+  }
+  return result;
+}
+
+function suppressedSourceBreakdown(cohorts, sourceByCohort) {
+  const counts = new Map();
+  for (const cohort of cohorts) {
+    const source = sourceByCohort.get(cohort) || "unattributed";
+    counts.set(source, (counts.get(source) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([source, count]) => ({
+      source,
+      count: count >= minimumReportableSourceCount ? count : null,
+      suppressed: count < minimumReportableSourceCount,
+    }));
+}
+
 export function summarizeGrowth(input) {
   const fromTime = validDate(input.from);
   const toTime = validDate(input.to);
@@ -87,51 +92,63 @@ export function summarizeGrowth(input) {
     throw new Error("Growth window is invalid.");
   }
 
-  const excluded = new Set(input.excludedUserIds || []);
+  const excludedUserIds = new Set(input.excludedUserIds || []);
+  const excludedCohorts = new Set(input.excludedCohortIdentifiers || []);
   const accountUsers = new Map(
     input.accounts
-      .filter((row) => row?.user_id && !excluded.has(row.user_id))
+      .filter((row) => row?.user_id && !excludedUserIds.has(row.user_id))
       .map((row) => [row.id, row.user_id])
   );
-  const snapshotByUser = new Map(
-    input.snapshots
-      .filter((row) => row?.user_id && !excluded.has(row.user_id))
-      .map((row) => [row.user_id, row.dataset || {}])
+  const cohortByBillingAccount = new Map(
+    (input.accountCohorts || [])
+      .filter((row) => row?.billing_account_id && row?.cohort_identifier)
+      .map((row) => [row.billing_account_id, row.cohort_identifier])
   );
+  const events = (input.growthEvents || []).filter(
+    (event) =>
+      event?.cohort_identifier &&
+      !excludedCohorts.has(event.cohort_identifier) &&
+      inWindow(event.occurred_at, fromTime, toTime)
+  );
+  const sourceByCohort = sourceForCohort(events);
 
   const windowTrials = input.trials.filter((trial) => {
     const userId = accountUsers.get(trial.billing_account_id);
     return userId && inWindow(trial.started_at, fromTime, toTime);
   });
+  const trialCohorts = new Set(
+    windowTrials
+      .map((trial) => cohortByBillingAccount.get(trial.billing_account_id))
+      .filter(Boolean)
+  );
 
-  let activated = 0;
-  let firstReport = 0;
-  let repeatValue = 0;
+  const pageViewCohorts = eventCohorts(events, "marketing_page_viewed");
+  const signupSelectedCohorts = eventCohorts(events, "marketing_signup_selected");
+  const signupConfirmedCohorts = eventCohorts(events, "account_signup_confirmed");
+  const matterCohorts = eventCohorts(events, "customer_first_matter_created");
+  const recordCohorts = eventCohorts(events, "customer_first_record_saved");
+  const timelineCohorts = eventCohorts(events, "customer_first_timeline_viewed");
+  const reportCohorts = eventCohorts(events, "customer_first_report_created");
+  const feedbackPromptCohorts = eventCohorts(events, "customer_feedback_prompt_viewed");
+  const feedbackOptInCohorts = eventCohorts(events, "customer_feedback_opted_in");
+  const cancelledCohorts = eventCohorts(events, "customer_subscription_cancelled");
+  const refundCohorts = eventCohorts(events, "customer_refund_requested");
+  const activatedCohorts = intersection(
+    matterCohorts,
+    recordCohorts,
+    union(timelineCohorts, reportCohorts)
+  );
+  const eligibleActivatedCohorts = trialCohorts.size
+    ? intersection(activatedCohorts, trialCohorts)
+    : activatedCohorts;
+
+  const signupTimes = firstEventTimeByCohort(events, "account_signup_confirmed");
+  const firstRecordTimes = firstEventTimeByCohort(events, "customer_first_record_saved");
   const timeToFirstRecordMinutes = [];
-
-  for (const trial of windowTrials) {
-    const userId = accountUsers.get(trial.billing_account_id);
-    const startTime = validDate(trial.started_at);
-    if (!userId || startTime === null) continue;
-    const sevenDayEnd = startTime + 7 * 86_400_000;
-    const activity = userActivity(snapshotByUser.get(userId) || {});
-    const recordsInSevenDays = activity.records.filter((row) =>
-      inWindow(row.createdAt, startTime, sevenDayEnd)
-    ).length;
-    const exportedInSevenDays = activity.exports.some((value) =>
-      inWindow(value, startTime, sevenDayEnd)
-    );
-    const meaningfulActivation =
-      recordsInSevenDays >= 3 ||
-      (recordsInSevenDays >= 2 && exportedInSevenDays);
-
-    if (meaningfulActivation) activated += 1;
-    if (exportedInSevenDays) firstReport += 1;
-    if (activityBins(activity, startTime).size >= 2) repeatValue += 1;
-
-    const firstRecordTime = earliestRecordTime(activity, startTime, sevenDayEnd);
-    if (firstRecordTime !== null) {
-      timeToFirstRecordMinutes.push((firstRecordTime - startTime) / 60_000);
+  for (const [cohort, signupTime] of signupTimes.entries()) {
+    const recordTime = firstRecordTimes.get(cohort);
+    if (recordTime !== undefined && recordTime >= signupTime) {
+      timeToFirstRecordMinutes.push((recordTime - signupTime) / 60_000);
     }
   }
 
@@ -146,6 +163,11 @@ export function summarizeGrowth(input) {
   });
   const paidAccountIds = new Set(
     windowSubscriptions.map((subscription) => subscription.billing_account_id)
+  );
+  const paidCohorts = new Set(
+    [...paidAccountIds]
+      .map((billingAccountId) => cohortByBillingAccount.get(billingAccountId))
+      .filter(Boolean)
   );
   const monthlyPaid = new Set(
     windowSubscriptions
@@ -171,20 +193,34 @@ export function summarizeGrowth(input) {
       to: new Date(toTime).toISOString(),
     },
     acquisition: {
+      qualified_visits: pageViewCohorts.size,
+      signup_selections: signupSelectedCohorts.size,
+      completed_signups: signupConfirmedCohorts.size,
       qualified_trials: windowTrials.length,
       target_trials: 500,
       trial_target_progress_percent: percentage(windowTrials.length, 500),
+      visit_to_signup_percent: percentage(signupConfirmedCohorts.size, pageViewCohorts.size),
+      visits_by_source: suppressedSourceBreakdown(pageViewCohorts, sourceByCohort),
+      signups_by_source: suppressedSourceBreakdown(signupConfirmedCohorts, sourceByCohort),
     },
     activation: {
-      meaningfully_activated_accounts: activated,
-      meaningful_activation_rate_percent: percentage(activated, windowTrials.length),
-      first_report_accounts: firstReport,
-      first_report_rate_percent: percentage(firstReport, windowTrials.length),
+      meaningfully_activated_accounts: eligibleActivatedCohorts.size,
+      meaningful_activation_rate_percent: percentage(
+        eligibleActivatedCohorts.size,
+        windowTrials.length
+      ),
+      first_timeline_accounts: timelineCohorts.size,
+      first_report_accounts: reportCohorts.size,
+      first_report_rate_percent: percentage(reportCohorts.size, windowTrials.length),
       median_minutes_to_first_record: median(timeToFirstRecordMinutes),
     },
     engagement: {
-      repeat_value_accounts: repeatValue,
-      repeat_value_rate_percent: percentage(repeatValue, activated),
+      feedback_prompt_accounts: feedbackPromptCohorts.size,
+      feedback_opt_in_accounts: feedbackOptInCohorts.size,
+      feedback_opt_in_rate_percent: percentage(
+        feedbackOptInCohorts.size,
+        feedbackPromptCohorts.size
+      ),
     },
     satisfaction: {
       responses: satisfactionRows.length,
@@ -198,6 +234,8 @@ export function summarizeGrowth(input) {
       paid_subscribers: paidAccountIds.size,
       monthly_subscribers: monthlyPaid,
       annual_subscribers: annualPaid,
+      cancellations: cancelledCohorts.size,
+      refund_requests: refundCohorts.size,
       paid_target: 100,
       paid_target_progress_percent: percentage(paidAccountIds.size, 100),
       eligible_trial_to_paid_percent: percentage(
@@ -206,6 +244,7 @@ export function summarizeGrowth(input) {
         ).length,
         windowTrials.length
       ),
+      paid_by_source: suppressedSourceBreakdown(paidCohorts, sourceByCohort),
     },
   };
 }

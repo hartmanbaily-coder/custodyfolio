@@ -6,14 +6,28 @@ const day = 86_400_000;
 const start = Date.parse("2026-08-30T00:00:00.000Z");
 const atDay = (number) => new Date(start + number * day).toISOString();
 
-test("summarizes activation, engagement, satisfaction, and paid conversion", () => {
+function event(eventName, cohortIdentifier, dayNumber, extra = {}) {
+  return {
+    event_name: eventName,
+    cohort_identifier: cohortIdentifier,
+    occurred_at: atDay(dayNumber),
+    ...extra,
+  };
+}
+
+test("summarizes private events, satisfaction, and authoritative paid conversion", () => {
   const report = summarizeGrowth({
     from: atDay(0),
     to: atDay(30),
     excludedUserIds: [],
+    excludedCohortIdentifiers: [],
     accounts: [
       { id: "account1", user_id: "user1" },
       { id: "account2", user_id: "user2" },
+    ],
+    accountCohorts: [
+      { billing_account_id: "account1", cohort_identifier: "cohort1" },
+      { billing_account_id: "account2", cohort_identifier: "cohort2" },
     ],
     trials: [
       { billing_account_id: "account1", started_at: atDay(0), ends_at: atDay(30) },
@@ -28,29 +42,18 @@ test("summarizes activation, engagement, satisfaction, and paid conversion", () 
         created_at: atDay(30),
       },
     ],
-    snapshots: [
-      {
-        user_id: "user1",
-        dataset: {
-          dateNotes: [
-            { id: "note1", createdAt: atDay(1), updatedAt: atDay(1) },
-            { id: "note2", createdAt: atDay(2), updatedAt: atDay(10) },
-            { id: "note3", createdAt: atDay(3), updatedAt: atDay(18) },
-          ],
-          auditLogs: [
-            { action: "exported", timestamp: atDay(4) },
-          ],
-        },
-      },
-      {
-        user_id: "user2",
-        dataset: {
-          dateNotes: [
-            { id: "note4", createdAt: atDay(3), updatedAt: atDay(3) },
-          ],
-          auditLogs: [],
-        },
-      },
+    growthEvents: [
+      event("marketing_page_viewed", "visitor1", 0, { source: "direct" }),
+      event("marketing_signup_selected", "visitor1", 0, { source: "direct" }),
+      event("account_signup_confirmed", "cohort1", 0),
+      event("account_signup_confirmed", "cohort2", 1),
+      event("customer_first_matter_created", "cohort1", 1),
+      event("customer_first_record_saved", "cohort1", 1),
+      event("customer_first_timeline_viewed", "cohort1", 2),
+      event("customer_first_report_created", "cohort1", 4),
+      event("customer_feedback_prompt_viewed", "cohort1", 5),
+      event("customer_feedback_prompt_viewed", "cohort2", 5),
+      event("customer_feedback_opted_in", "cohort1", 5),
     ],
     satisfactionResponses: [
       { responded_at: atDay(7), score: 5 },
@@ -58,24 +61,32 @@ test("summarizes activation, engagement, satisfaction, and paid conversion", () 
     ],
   });
 
+  assert.equal(report.acquisition.qualified_visits, 1);
+  assert.equal(report.acquisition.completed_signups, 2);
   assert.equal(report.acquisition.qualified_trials, 2);
   assert.equal(report.activation.meaningfully_activated_accounts, 1);
   assert.equal(report.activation.meaningful_activation_rate_percent, 50);
   assert.equal(report.activation.first_report_accounts, 1);
-  assert.equal(report.engagement.repeat_value_accounts, 1);
+  assert.equal(report.activation.median_minutes_to_first_record, 1440);
+  assert.equal(report.engagement.feedback_opt_in_accounts, 1);
   assert.equal(report.satisfaction.customer_value_satisfaction_percent, 50);
   assert.equal(report.conversion.paid_subscribers, 1);
   assert.equal(report.conversion.annual_subscribers, 1);
 });
 
-test("excludes listed account owners and nonlive subscriptions", () => {
+test("excludes review cohorts, ignores test subscriptions, and suppresses small sources", () => {
   const report = summarizeGrowth({
     from: atDay(0),
     to: atDay(30),
     excludedUserIds: ["reviewUser"],
+    excludedCohortIdentifiers: ["reviewCohort"],
     accounts: [
       { id: "reviewAccount", user_id: "reviewUser" },
       { id: "testAccount", user_id: "testUser" },
+    ],
+    accountCohorts: [
+      { billing_account_id: "reviewAccount", cohort_identifier: "reviewCohort" },
+      { billing_account_id: "testAccount", cohort_identifier: "testCohort" },
     ],
     trials: [
       { billing_account_id: "reviewAccount", started_at: atDay(1), ends_at: atDay(30) },
@@ -90,10 +101,16 @@ test("excludes listed account owners and nonlive subscriptions", () => {
         created_at: atDay(2),
       },
     ],
-    snapshots: [],
+    growthEvents: [
+      event("marketing_page_viewed", "reviewCohort", 1, { source: "direct" }),
+      event("marketing_page_viewed", "communityVisitor", 1, { source: "community" }),
+    ],
     satisfactionResponses: [],
   });
 
   assert.equal(report.acquisition.qualified_trials, 1);
+  assert.equal(report.acquisition.qualified_visits, 1);
+  assert.equal(report.acquisition.visits_by_source[0].count, null);
+  assert.equal(report.acquisition.visits_by_source[0].suppressed, true);
   assert.equal(report.conversion.paid_subscribers, 0);
 });

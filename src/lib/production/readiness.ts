@@ -48,6 +48,7 @@ export const supabaseFinalCheckIds = [
   "supabase-password-reauth",
   "supabase-auth-hardening-verified",
   "records-evidence-bucket",
+  "customer-growth-schema",
   "attorney-guest-feature-flag",
   "attorney-portal-secret",
   "attorney-owner-share-delivery",
@@ -242,6 +243,10 @@ export function evaluateProductionReadiness(
   const expectedSupabaseRef = (env.EXPECTED_SUPABASE_PROJECT_REF || "").trim();
   const recordsSignupsEnabled = isEnabled(env.RECORDS_SIGNUPS_ENABLED);
   const publicRecordsSignupsEnabled = isEnabled(env.NEXT_PUBLIC_RECORDS_SIGNUPS_ENABLED);
+  const marketingAnalyticsEnabled = isEnabled(env.MARKETING_ANALYTICS_ENABLED);
+  const customerFeedbackInvitesEnabled = isEnabled(
+    env.CUSTOMER_FEEDBACK_INVITE_ENABLED
+  );
   const approvalEvidence = evaluateProductionApprovalEvidence(
     env.PRODUCTION_APPROVAL_MANIFEST_BASE64,
     generatedAt
@@ -528,6 +533,24 @@ export function evaluateProductionReadiness(
       isEnabled(env.DATA_RETENTION_POLICY_APPROVED) && approvalEvidence.retention.ready,
       "blocker",
       "Approve the exact retention/deletion policy bundle, verify a recent privacy-rights rehearsal, and provide the validated approval manifest before real records are accepted."
+    ),
+    check(
+      "marketing-analytics-privacy",
+      "Growth measurement has an approved privacy configuration",
+      !marketingAnalyticsEnabled ||
+        (hasStrongSecret(env.MARKETING_ANALYTICS_SECRET) &&
+          isEnabled(env.DATA_RETENTION_POLICY_APPROVED) &&
+          approvalEvidence.retention.ready),
+      "blocker",
+      "Keep MARKETING_ANALYTICS_ENABLED false until the dedicated secret and exact 180 day aggregate event retention are covered by approved retention evidence."
+    ),
+    check(
+      "customer-growth-schema",
+      "Growth and feedback database schema is verified",
+      (!marketingAnalyticsEnabled && !customerFeedbackInvitesEnabled) ||
+        isRecentDate(env.CUSTOMER_GROWTH_SCHEMA_VERIFIED_AT, generatedAt, 30),
+      "blocker",
+      "Keep measurement and feedback invitations disabled until the growth and feedback migration has been applied and CUSTOMER_GROWTH_SCHEMA_VERIFIED_AT records the verification date."
     ),
     check(
       "incident-response-plan",

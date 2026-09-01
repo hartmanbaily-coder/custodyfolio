@@ -189,6 +189,81 @@ describe("production readiness", () => {
     expect(report.blockers.map((item) => item.id)).toContain("malware-provider");
   });
 
+  it("keeps growth measurement disabled by default", () => {
+    const report = evaluateProductionReadiness(
+      readyEnv,
+      "2026-06-15T00:00:00.000Z"
+    );
+    const analytics = report.checks.find(
+      (item) => item.id === "marketing-analytics-privacy"
+    );
+
+    expect(analytics?.ready).toBe(true);
+  });
+
+  it("requires a strong secret and approved retention before growth measurement", () => {
+    const weakSecret = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        MARKETING_ANALYTICS_ENABLED: "true",
+        MARKETING_ANALYTICS_SECRET: "short",
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+    const missingRetention = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        MARKETING_ANALYTICS_ENABLED: "true",
+        MARKETING_ANALYTICS_SECRET: "01234567890123456789012345678901",
+        DATA_RETENTION_POLICY_APPROVED: "false",
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+
+    expect(weakSecret.blockers.map((item) => item.id)).toContain(
+      "marketing-analytics-privacy"
+    );
+    expect(missingRetention.blockers.map((item) => item.id)).toContain(
+      "marketing-analytics-privacy"
+    );
+  });
+
+  it("requires recent schema verification before measurement or feedback activation", () => {
+    const analytics = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        MARKETING_ANALYTICS_ENABLED: "true",
+        MARKETING_ANALYTICS_SECRET: "01234567890123456789012345678901",
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+    const feedback = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        CUSTOMER_FEEDBACK_INVITE_ENABLED: "true",
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+    const verified = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        CUSTOMER_FEEDBACK_INVITE_ENABLED: "true",
+        CUSTOMER_GROWTH_SCHEMA_VERIFIED_AT: "2026-06-10",
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+
+    expect(analytics.blockers.map((item) => item.id)).toContain(
+      "customer-growth-schema"
+    );
+    expect(feedback.blockers.map((item) => item.id)).toContain(
+      "customer-growth-schema"
+    );
+    expect(verified.blockers.map((item) => item.id)).not.toContain(
+      "customer-growth-schema"
+    );
+  });
+
   it("allows attorney access when its policy and operational controls are enabled", () => {
     const report = evaluateProductionReadiness(
       {
@@ -478,6 +553,7 @@ describe("production readiness", () => {
         "records-mfa-enforced",
         "supabase-custom-smtp",
         "supabase-auth-redirects",
+        "customer-growth-schema",
         "records-evidence-bucket",
         "offsite-storage-backup",
         "supabase-auth-hardening-verified",

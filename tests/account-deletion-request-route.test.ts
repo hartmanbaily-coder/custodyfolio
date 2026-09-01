@@ -14,6 +14,7 @@ const deleteRecordsEvidenceForUser = vi.hoisted(() => vi.fn());
 const beginRecordsAccountDeletion = vi.hoisted(() => vi.fn());
 const clearRecordsAccountDeletion = vi.hoisted(() => vi.fn());
 const completeRecordsAccountDeletion = vi.hoisted(() => vi.fn());
+const deleteGrowthEventsForUser = vi.hoisted(() => vi.fn());
 const csrf = "account-deletion-csrf-token";
 
 vi.mock("@/lib/records/authServer", () => ({
@@ -32,6 +33,10 @@ vi.mock("@/lib/records/accountDeletion", () => ({
   clearRecordsAccountDeletion,
   completeRecordsAccountDeletion,
   deleteRecordsEvidenceForUser,
+}));
+
+vi.mock("@/lib/marketing/growthEvents", () => ({
+  deleteGrowthEventsForUser,
 }));
 
 function makeRequest(
@@ -58,6 +63,11 @@ describe("records immediate account deletion route", () => {
     beginRecordsAccountDeletion.mockResolvedValue("2026-08-21T00:00:00.000Z");
     clearRecordsAccountDeletion.mockResolvedValue(undefined);
     completeRecordsAccountDeletion.mockResolvedValue(undefined);
+    deleteGrowthEventsForUser.mockResolvedValue({
+      ok: true,
+      deleted: true,
+      reason: null,
+    });
     revokeSessions.mockResolvedValue({ error: null });
     deleteUser.mockResolvedValue({ error: null });
     getRecordsAuthContext.mockResolvedValue({
@@ -91,6 +101,9 @@ describe("records immediate account deletion route", () => {
     );
     expect(revokeSessions).toHaveBeenCalledWith("test-access-token", "global");
     expect(deleteUser).toHaveBeenCalledWith(userId, false);
+    expect(deleteGrowthEventsForUser).toHaveBeenCalledWith(
+      expect.objectContaining({ userId })
+    );
     expect(beginRecordsAccountDeletion).toHaveBeenCalledWith(
       expect.objectContaining({ userId })
     );
@@ -143,6 +156,22 @@ describe("records immediate account deletion route", () => {
     await expect(response.json()).resolves.toMatchObject({
       error: expect.stringContaining("could not be fully deleted"),
     });
+    expect(clearRecordsSessionCookies).toHaveBeenCalledWith(response);
+  });
+
+  it("stops before deleting Auth when growth measurement cleanup fails", async () => {
+    deleteGrowthEventsForUser.mockResolvedValue({
+      ok: false,
+      error: "cleanup failed",
+    });
+
+    const response = await POST(makeRequest({ confirmation: "DELETE" }));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: expect.stringContaining("could not be fully deleted"),
+    });
+    expect(deleteUser).not.toHaveBeenCalled();
     expect(clearRecordsSessionCookies).toHaveBeenCalledWith(response);
   });
 

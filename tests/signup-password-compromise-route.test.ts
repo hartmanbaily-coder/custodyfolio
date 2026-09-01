@@ -87,7 +87,7 @@ describe("signup compromised-password guard", () => {
         options: expect.objectContaining({
           data: expect.objectContaining({
             custody_folio_terms_version: "2026-08-23.1",
-            custody_folio_privacy_version: "2026-08-23.1",
+            custody_folio_privacy_version: "2026-08-31.1",
             custody_folio_legal_acceptance_source: "signup",
           }),
         }),

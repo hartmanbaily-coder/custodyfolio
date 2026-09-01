@@ -16,6 +16,10 @@ import { ensureBillingAccount, getBillingStatus } from "@/lib/billing/repository
 import { getRecordsAuthContext } from "@/lib/records/authServer";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
+import {
+  recordGrowthEvent,
+  subscriptionGrowthEventNames,
+} from "@/lib/marketing/growthEvents";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -107,6 +111,26 @@ export async function POST(request: NextRequest) {
       billingAccountId: account.id,
       subscription,
     });
+    try {
+      for (const growthEventName of subscriptionGrowthEventNames({
+        status: subscription.status,
+        cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+        providerEventType: "device.transaction",
+      })) {
+        await recordGrowthEvent({
+          supabase: context.supabase,
+          eventName: growthEventName,
+          request,
+          userId: context.userId,
+          platform: "ios",
+          planInterval: subscription.planInterval,
+          occurredAt,
+          dedupeSeed: `apple:transaction:${transaction.transactionId}`,
+        });
+      }
+    } catch {
+      // Growth measurement never changes verified provider processing.
+    }
     const status = await getBillingStatus({
       supabase: context.supabase,
       userId: context.userId,

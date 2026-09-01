@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { createHmac } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { summarizeGrowth } from "./growth-scorecard-lib.mjs";
 
@@ -69,6 +70,10 @@ async function loadSatisfactionResponses() {
 async function main() {
   const supabaseUrl = requiredEnvironment("NEXT_PUBLIC_SUPABASE_URL");
   const serviceRoleKey = requiredEnvironment("SUPABASE_SERVICE_ROLE_KEY");
+  const analyticsSecret = requiredEnvironment("MARKETING_ANALYTICS_SECRET");
+  if (analyticsSecret.length < 32) {
+    throw new Error("MARKETING_ANALYTICS_SECRET must contain at least 32 characters.");
+  }
   const from = dateEnvironment("GROWTH_WINDOW_START", "2026-08-30T00:00:00.000Z");
   const to = dateEnvironment("GROWTH_WINDOW_END", new Date().toISOString());
   const excludedUserIds = String(process.env.GROWTH_EXCLUDED_USER_IDS || "")
@@ -94,10 +99,10 @@ async function main() {
     "custody_folio_provider_subscriptions",
     "billing_account_id,environment,status,plan_interval,created_at"
   );
-  const snapshots = await loadRows(
+  const growthEvents = await loadRows(
     client,
-    "records_case_snapshots",
-    "user_id,dataset"
+    "custody_folio_growth_events",
+    "event_name,occurred_at,source,medium,campaign,content_code,plan_interval,cohort_identifier"
   );
   const savedSatisfactionResponses = await loadRows(
     client,
@@ -109,14 +114,26 @@ async function main() {
     ...savedSatisfactionResponses,
     ...manualSatisfactionResponses,
   ];
+  const cohortIdentifierForUser = (userId) =>
+    createHmac("sha256", analyticsSecret)
+      .update(`user:${userId}`)
+      .digest("hex")
+      .slice(0, 32);
+  const accountCohorts = accounts.map((account) => ({
+    billing_account_id: account.id,
+    cohort_identifier: cohortIdentifierForUser(account.user_id),
+  }));
+  const excludedCohortIdentifiers = excludedUserIds.map(cohortIdentifierForUser);
 
   const report = summarizeGrowth({
     accounts,
+    accountCohorts,
     trials,
     subscriptions,
-    snapshots,
+    growthEvents,
     satisfactionResponses,
     excludedUserIds,
+    excludedCohortIdentifiers,
     from,
     to,
   });

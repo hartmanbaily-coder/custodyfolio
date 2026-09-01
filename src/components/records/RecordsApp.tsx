@@ -170,6 +170,8 @@ import {
 import ExhibitBuilder from "./ExhibitBuilder";
 import AttorneyAccessPanel from "./AttorneyAccessPanel";
 import CustomerValuePulse from "./CustomerValuePulse";
+import CustomerFeedbackInvite from "./CustomerFeedbackInvite";
+import { sendAuthenticatedGrowthEvent } from "@/lib/marketing/client";
 import {
   saveScreenshotExhibitToFiles,
   type ExhibitSaveRequest,
@@ -506,6 +508,14 @@ export default function RecordsApp() {
     dataset.matters.find((matter) => matter.userId === userId);
   const effectiveCaseId = selectedCase?.id || selectedCaseId;
   const selected = useSelectedRecords(dataset, userId, effectiveCaseId);
+  const selectedRecordCount =
+    selected.custodyDayAssignments.length +
+    selected.exchangeLogs.length +
+    selected.dateNotes.length +
+    selected.evidenceItems.length +
+    selected.childSupportOrders.length +
+    selected.childSupportPayments.length +
+    selected.expenseItems.length;
   const selectedProfile = dataset.users.find((user) => user.userId === userId);
   const caseTimezone = selectedCase?.timezone || selectedProfile?.timezone || defaultRecordsTimezone;
   const terminology = resolveCaseTerminology(selectedCase?.terminology);
@@ -640,6 +650,16 @@ export default function RecordsApp() {
     },
     []
   );
+
+  useEffect(() => {
+    if (
+      activeView === "Timeline" &&
+      session &&
+      recordsStorageMode === "supabase"
+    ) {
+      void sendAuthenticatedGrowthEvent("customer_first_timeline_viewed");
+    }
+  }, [activeView, recordsStorageMode, session]);
 
   const expectedExchanges = useMemo(
     () => generateExpectedExchangeEvents(selected.exchangeRules, range),
@@ -1009,15 +1029,10 @@ export default function RecordsApp() {
                   terminology={terminology}
                   timezone={caseTimezone}
                 />
-                {recordsStorageMode === "supabase" &&
-                selected.custodyDayAssignments.length +
-                  selected.exchangeLogs.length +
-                  selected.dateNotes.length +
-                  selected.evidenceItems.length +
-                  selected.childSupportOrders.length +
-                  selected.childSupportPayments.length +
-                  selected.expenseItems.length >=
-                  3 ? (
+                {recordsStorageMode === "supabase" && selectedRecordCount >= 1 ? (
+                  <CustomerFeedbackInvite />
+                ) : null}
+                {recordsStorageMode === "supabase" && selectedRecordCount >= 3 ? (
                   <CustomerValuePulse />
                 ) : null}
               </>

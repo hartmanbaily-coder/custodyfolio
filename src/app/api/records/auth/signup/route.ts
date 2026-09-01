@@ -18,6 +18,8 @@ import {
   privacyVersion,
   termsVersion,
 } from "@/lib/legal";
+import { growthAnalyticsEnabled, recordGrowthEvent } from "@/lib/marketing/growthEvents";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 
@@ -131,6 +133,19 @@ export async function POST(request: NextRequest) {
   });
 
   if (data.user?.id) {
+    if (growthAnalyticsEnabled()) {
+      try {
+        await recordGrowthEvent({
+          supabase: createSupabaseAdminClient(),
+          eventName: "account_signup_requested",
+          request,
+          userId: data.user.id,
+          platform: "web",
+        });
+      } catch {
+        // Growth measurement never blocks account creation.
+      }
+    }
     await recordSecurityEvent({
       type: "policy_terms_accepted",
       severity: "info",

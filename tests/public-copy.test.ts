@@ -40,7 +40,7 @@ describe("customer facing copy", () => {
   it("preserves the Custody Folio brand statement", () => {
     const site = readFileSync(resolve(process.cwd(), "src/lib/site.ts"), "utf8");
     expect(site).toContain(
-      'recordsTagline = "Keep the facts clear. Keep your records together."'
+      'recordsTagline = "Remove the emotion. Track the data."'
     );
   });
 
@@ -115,6 +115,21 @@ describe("customer facing copy", () => {
     expect(home).toContain("Consumer Health Data Privacy Policy");
   });
 
+  it("discloses first party measurement and optional feedback limits", () => {
+    const privacy = readFileSync(
+      resolve(process.cwd(), "src/app/privacy/page.tsx"),
+      "utf8"
+    );
+
+    expect(privacy).toContain("fixed event name");
+    expect(privacy).toContain("does not include names, email addresses");
+    expect(privacy).toContain("groups representing fewer than five people");
+    expect(privacy).toContain("expire no later than 180 days");
+    expect(privacy).toContain("contact count limited to one");
+    expect(privacy).toContain("same service cookie");
+    expect(privacy).toContain("for up to 30 days");
+  });
+
   it("provides a direct trial signup path and factual public checklist", () => {
     const home = readFileSync(resolve(process.cwd(), "src/app/page.tsx"), "utf8");
     const checklist = readFileSync(
@@ -128,15 +143,50 @@ describe("customer facing copy", () => {
       resolve(process.cwd(), "src/components/records/RecordsApp.tsx"),
       "utf8"
     );
+    const tracker = readFileSync(
+      resolve(process.cwd(), "src/components/marketing/MarketingTracker.tsx"),
+      "utf8"
+    );
 
-    expect(home).toContain('href="/records?mode=signup"');
+    expect(home).toContain("<TrackedSignupLink");
+    expect(tracker).toContain('href="/records?mode=signup"');
     expect(home).toContain("Read the free checklist");
+    expect(home).toContain("Custody Folio | Private Custody Records");
+    expect(home).toContain("No other parent account is required");
+    expect(home).toContain("You may subscribe during the trial if you choose");
+    expect(home).toContain(
+      "Keep supporting files connected to the record they belong with"
+    );
+    expect(home).toContain("reports for personal review or an attorney conversation");
+    expect(home).not.toContain("court useful");
     expect(records).toContain("recordsSignupRoute(");
     expect(checklist).toContain("The factual custody record checklist");
     expect(checklist).toContain("This guide provides general organization information");
     expect([home, checklist].join("\n")).not.toMatch(
       /win custody|beat your ex|court approved|legally admissible|guaranteed evidence|tamper proof/i
     );
+  });
+
+  it("offers one optional feedback contact only after a saved record", () => {
+    const records = readFileSync(
+      resolve(process.cwd(), "src/components/records/RecordsApp.tsx"),
+      "utf8"
+    );
+    const invitation = readFileSync(
+      resolve(
+        process.cwd(),
+        "src/components/records/CustomerFeedbackInvite.tsx"
+      ),
+      "utf8"
+    );
+
+    expect(records).toContain(
+      'recordsStorageMode === "supabase" && selectedRecordCount >= 1'
+    );
+    expect(invitation).toContain("Yes, contact me once");
+    expect(invitation).toContain("Participation is optional");
+    expect(invitation).toContain("No message was sent by this action");
+    expect(invitation).toContain("not the contents of your records");
   });
 
   it("does not expose the retired product name in export filenames", () => {

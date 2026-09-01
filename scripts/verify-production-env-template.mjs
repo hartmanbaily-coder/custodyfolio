@@ -15,6 +15,10 @@ const requiredKeys = [
   "EXPECTED_SUPABASE_PROJECT_REF",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
+  "MARKETING_ANALYTICS_ENABLED",
+  "MARKETING_ANALYTICS_SECRET",
+  "CUSTOMER_FEEDBACK_INVITE_ENABLED",
+  "CUSTOMER_GROWTH_SCHEMA_VERIFIED_AT",
   "SUPABASE_MFA_POLICY",
   "RECORDS_ENFORCE_MFA",
   "SUPABASE_CUSTOM_SMTP_ENABLED",
@@ -183,6 +187,18 @@ if (entries.get("BILLING_MODE") !== "disabled") {
   findings.push("BILLING_MODE must remain disabled in the production template.");
 }
 
+if (entries.get("MARKETING_ANALYTICS_ENABLED") !== "false") {
+  findings.push("MARKETING_ANALYTICS_ENABLED must remain false in the production template.");
+}
+
+if (entries.get("CUSTOMER_FEEDBACK_INVITE_ENABLED") !== "false") {
+  findings.push("CUSTOMER_FEEDBACK_INVITE_ENABLED must remain false in the production template.");
+}
+
+if (entries.get("CUSTOMER_GROWTH_SCHEMA_VERIFIED_AT") !== "") {
+  findings.push("CUSTOMER_GROWTH_SCHEMA_VERIFIED_AT must remain empty until the production migration is verified.");
+}
+
 if (entries.get("BILLING_CHECKOUT_ENABLED") !== "false") {
   findings.push("BILLING_CHECKOUT_ENABLED must remain false in the production template.");
 }
@@ -278,6 +294,16 @@ if (authSecretValue && !/^REPLACE_WITH_|^PLACEHOLDER/i.test(authSecretValue)) {
 const attorneySecretValue = String(entries.get("ATTORNEY_PORTAL_SECRET") || "").trim();
 if (attorneySecretValue && !/^REPLACE_WITH_|^PLACEHOLDER/i.test(attorneySecretValue)) {
   findings.push("ATTORNEY_PORTAL_SECRET must remain a placeholder in .env.production.example.");
+}
+
+const marketingAnalyticsSecretValue = String(
+  entries.get("MARKETING_ANALYTICS_SECRET") || ""
+).trim();
+if (
+  marketingAnalyticsSecretValue &&
+  !/^REPLACE_WITH_|^PLACEHOLDER/i.test(marketingAnalyticsSecretValue)
+) {
+  findings.push("MARKETING_ANALYTICS_SECRET must remain a placeholder in .env.production.example.");
 }
 
 for (const key of [

@@ -16,6 +16,11 @@ import {
   readTextBodyWithLimit,
   RequestBodyTooLargeError,
 } from "@/lib/security/requestBody";
+import {
+  growthAnalyticsEnabled,
+  recordGrowthEvent,
+  subscriptionGrowthEventNames,
+} from "@/lib/marketing/growthEvents";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -177,6 +182,27 @@ export async function POST(request: NextRequest) {
       billingAccountId: account.id,
       subscription,
     });
+    if (growthAnalyticsEnabled()) {
+      try {
+        for (const growthEventName of subscriptionGrowthEventNames({
+          status: subscription.status,
+          cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+          providerEventType: eventType,
+        })) {
+          await recordGrowthEvent({
+            supabase,
+            eventName: growthEventName,
+            userId: account.user_id,
+            platform: "ios",
+            planInterval: subscription.planInterval,
+            occurredAt,
+            dedupeSeed: `apple:notification:${eventId}`,
+          });
+        }
+      } catch {
+        // Growth measurement never changes verified provider processing.
+      }
+    }
     return NextResponse.json({ received: true });
   } catch (error) {
     if (error instanceof InvalidAppleNotificationError) {
