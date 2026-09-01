@@ -58,31 +58,49 @@ function firstEventTimeByCohort(events, eventName) {
   return result;
 }
 
-function sourceForCohort(events) {
+function firstValueForCohort(events, field) {
   const sorted = [...events].sort(
     (left, right) => (validDate(left.occurred_at) || 0) - (validDate(right.occurred_at) || 0)
   );
   const result = new Map();
   for (const event of sorted) {
     if (!event.cohort_identifier || result.has(event.cohort_identifier)) continue;
-    if (event.source) result.set(event.cohort_identifier, event.source);
+    if (event[field]) result.set(event.cohort_identifier, event[field]);
   }
   return result;
 }
 
-function suppressedSourceBreakdown(cohorts, sourceByCohort) {
+function suppressedBreakdown(cohorts, valueByCohort, field, fallback) {
   const counts = new Map();
   for (const cohort of cohorts) {
-    const source = sourceByCohort.get(cohort) || "unattributed";
-    counts.set(source, (counts.get(source) || 0) + 1);
+    const value = valueByCohort.get(cohort) || fallback;
+    counts.set(value, (counts.get(value) || 0) + 1);
   }
   return [...counts.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
-    .map(([source, count]) => ({
-      source,
+    .map(([value, count]) => ({
+      [field]: value,
       count: count >= minimumReportableSourceCount ? count : null,
       suppressed: count < minimumReportableSourceCount,
     }));
+}
+
+function suppressedSourceBreakdown(cohorts, sourceByCohort) {
+  return suppressedBreakdown(
+    cohorts,
+    sourceByCohort,
+    "source",
+    "unattributed"
+  );
+}
+
+function suppressedContentBreakdown(cohorts, contentByCohort) {
+  return suppressedBreakdown(
+    cohorts,
+    contentByCohort,
+    "content_code",
+    "unattributed"
+  );
 }
 
 export function summarizeGrowth(input) {
@@ -110,7 +128,8 @@ export function summarizeGrowth(input) {
       !excludedCohorts.has(event.cohort_identifier) &&
       inWindow(event.occurred_at, fromTime, toTime)
   );
-  const sourceByCohort = sourceForCohort(events);
+  const sourceByCohort = firstValueForCohort(events, "source");
+  const contentByCohort = firstValueForCohort(events, "content_code");
 
   const windowTrials = input.trials.filter((trial) => {
     const userId = accountUsers.get(trial.billing_account_id);
@@ -202,6 +221,12 @@ export function summarizeGrowth(input) {
       visit_to_signup_percent: percentage(signupConfirmedCohorts.size, pageViewCohorts.size),
       visits_by_source: suppressedSourceBreakdown(pageViewCohorts, sourceByCohort),
       signups_by_source: suppressedSourceBreakdown(signupConfirmedCohorts, sourceByCohort),
+      visits_by_content: suppressedContentBreakdown(pageViewCohorts, contentByCohort),
+      signups_by_content: suppressedContentBreakdown(
+        signupConfirmedCohorts,
+        contentByCohort
+      ),
+      trials_by_content: suppressedContentBreakdown(trialCohorts, contentByCohort),
     },
     activation: {
       meaningfully_activated_accounts: eligibleActivatedCohorts.size,
@@ -213,6 +238,10 @@ export function summarizeGrowth(input) {
       first_report_accounts: reportCohorts.size,
       first_report_rate_percent: percentage(reportCohorts.size, windowTrials.length),
       median_minutes_to_first_record: median(timeToFirstRecordMinutes),
+      activated_by_content: suppressedContentBreakdown(
+        eligibleActivatedCohorts,
+        contentByCohort
+      ),
     },
     engagement: {
       feedback_prompt_accounts: feedbackPromptCohorts.size,
@@ -245,6 +274,7 @@ export function summarizeGrowth(input) {
         windowTrials.length
       ),
       paid_by_source: suppressedSourceBreakdown(paidCohorts, sourceByCohort),
+      paid_by_content: suppressedContentBreakdown(paidCohorts, contentByCohort),
     },
   };
 }

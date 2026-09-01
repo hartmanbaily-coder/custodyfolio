@@ -88,4 +88,26 @@ test("public checklist is discoverable and points directly to account creation",
   await expect(
     page.getByRole("link", { name: "Start 30 days free" })
   ).toHaveAttribute("href", "/records?mode=signup");
+
+  const weeklyRoutine = page.getByRole("link", {
+    name: "Use the complete weekly routine",
+  });
+  await expect(weeklyRoutine).toHaveAttribute(
+    "href",
+    "/guides/weekly?utm_source=checklist&utm_medium=organic&utm_campaign=checklist"
+  );
+  await weeklyRoutine.click();
+
+  await expect(
+    page.getByRole("heading", {
+      name: "A five minute weekly routine for clearer custody records",
+    })
+  ).toBeVisible();
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    "https://custodyfolio.com/guides/weekly"
+  );
+  await expect(
+    page.getByRole("link", { name: "Start 30 days free" })
+  ).toHaveAttribute("href", "/records?mode=signup");
 });

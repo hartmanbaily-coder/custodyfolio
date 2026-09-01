@@ -62,10 +62,14 @@ function sendMarketingEvent(eventName: string, contentCode: string) {
   }).catch(() => undefined);
 }
 
-export function MarketingPageView() {
+export function MarketingPageView({
+  contentCode = "homepage",
+}: {
+  contentCode?: string;
+}) {
   useEffect(() => {
-    sendMarketingEvent("marketing_page_viewed", "homepage");
-  }, []);
+    sendMarketingEvent("marketing_page_viewed", contentCode);
+  }, [contentCode]);
   return null;
 }
 

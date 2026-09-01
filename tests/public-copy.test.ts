@@ -13,6 +13,7 @@ const customerFacingFiles = [
   "src/app/open-source/page.tsx",
   "src/app/contact/page.tsx",
   "src/app/guides/factual-custody-record-checklist/page.tsx",
+  "src/app/guides/weekly/page.tsx",
   "src/app/account/delete/page.tsx",
   "src/app/account/delete/AccountDeletionRequest.tsx",
   "src/components/records/AttorneyAccessPanel.tsx",
@@ -147,6 +148,14 @@ describe("customer facing copy", () => {
       resolve(process.cwd(), "src/components/marketing/MarketingTracker.tsx"),
       "utf8"
     );
+    const weekly = readFileSync(
+      resolve(process.cwd(), "src/app/guides/weekly/page.tsx"),
+      "utf8"
+    );
+    const sitemap = readFileSync(
+      resolve(process.cwd(), "src/app/sitemap.ts"),
+      "utf8"
+    );
 
     expect(home).toContain("<TrackedSignupLink");
     expect(tracker).toContain('href="/records?mode=signup"');
@@ -162,7 +171,23 @@ describe("customer facing copy", () => {
     expect(records).toContain("recordsSignupRoute(");
     expect(checklist).toContain("The factual custody record checklist");
     expect(checklist).toContain("This guide provides general organization information");
-    expect([home, checklist].join("\n")).not.toMatch(
+    expect(checklist).toContain(
+      'href="/guides/weekly?utm_source=checklist&utm_medium=organic&utm_campaign=checklist"'
+    );
+    expect(weekly).toContain("How to Organize Custody Records Each Week");
+    expect(weekly).toContain("A five minute weekly routine for clearer custody records");
+    expect(weekly).toContain("<MarketingPageView contentCode=\"factual_checklist\"");
+    expect(weekly).toContain("<TrackedSignupLink");
+    expect(weekly).toContain("Start 30 days free");
+    expect(weekly).toContain("It is not legal");
+    expect(weekly).toContain("provide legal advice, verify allegations");
+    expect(weekly).toContain("guarantee admissibility");
+    expect(sitemap).toContain('"/guides/weekly"');
+    expect(tracker).toContain('contentCode = "homepage"');
+    expect(tracker).toContain(
+      'sendMarketingEvent("marketing_page_viewed", contentCode)'
+    );
+    expect([home, checklist, weekly].join("\n")).not.toMatch(
       /win custody|beat your ex|court approved|legally admissible|guaranteed evidence|tamper proof/i
     );
   });

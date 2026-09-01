@@ -114,3 +114,75 @@ test("excludes review cohorts, ignores test subscriptions, and suppresses small 
   assert.equal(report.acquisition.visits_by_source[0].suppressed, true);
   assert.equal(report.conversion.paid_subscribers, 0);
 });
+
+test("reports privacy safe content performance through paid conversion", () => {
+  const cohortIdentifiers = ["cohort1", "cohort2", "cohort3", "cohort4", "cohort5"];
+  const accounts = cohortIdentifiers.map((_, index) => ({
+    id: `account${index + 1}`,
+    user_id: `user${index + 1}`,
+  }));
+  const accountCohorts = cohortIdentifiers.map((cohortIdentifier, index) => ({
+    billing_account_id: `account${index + 1}`,
+    cohort_identifier: cohortIdentifier,
+  }));
+  const trials = cohortIdentifiers.map((_, index) => ({
+    billing_account_id: `account${index + 1}`,
+    started_at: atDay(1),
+    ends_at: atDay(30),
+  }));
+  const subscriptions = cohortIdentifiers.map((_, index) => ({
+    billing_account_id: `account${index + 1}`,
+    environment: "live",
+    status: "active",
+    plan_interval: "month",
+    created_at: atDay(20),
+  }));
+  const growthEvents = cohortIdentifiers.flatMap((cohortIdentifier) => [
+    event("marketing_page_viewed", cohortIdentifier, 0, {
+      source: "checklist",
+      content_code: "factual_checklist",
+    }),
+    event("account_signup_confirmed", cohortIdentifier, 1, {
+      source: "checklist",
+      content_code: "factual_checklist",
+    }),
+    event("customer_first_matter_created", cohortIdentifier, 2, {
+      source: "checklist",
+      content_code: "factual_checklist",
+    }),
+    event("customer_first_record_saved", cohortIdentifier, 2, {
+      source: "checklist",
+      content_code: "factual_checklist",
+    }),
+    event("customer_first_timeline_viewed", cohortIdentifier, 3, {
+      source: "checklist",
+      content_code: "factual_checklist",
+    }),
+  ]);
+
+  const report = summarizeGrowth({
+    from: atDay(0),
+    to: atDay(30),
+    excludedUserIds: [],
+    excludedCohortIdentifiers: [],
+    accounts,
+    accountCohorts,
+    trials,
+    subscriptions,
+    growthEvents,
+    satisfactionResponses: [],
+  });
+
+  const expected = [
+    {
+      content_code: "factual_checklist",
+      count: 5,
+      suppressed: false,
+    },
+  ];
+  assert.deepEqual(report.acquisition.visits_by_content, expected);
+  assert.deepEqual(report.acquisition.signups_by_content, expected);
+  assert.deepEqual(report.acquisition.trials_by_content, expected);
+  assert.deepEqual(report.activation.activated_by_content, expected);
+  assert.deepEqual(report.conversion.paid_by_content, expected);
+});
