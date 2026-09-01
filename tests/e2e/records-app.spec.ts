@@ -682,10 +682,17 @@ test("mobile screenshot exhibit builder preserves order and generates a protecte
 test("home overview counters use structured records in the selected range", async ({
   page,
 }) => {
-  const { today } = localDateParts();
+  const { monthKey } = localDateParts();
+  const [today] = threeDayRangeWithoutSeededExchange(monthKey);
 
   await page.goto("/records");
   await enterDemoWorkspace(page);
+  await revealDateRangeControls(page);
+  await page.getByLabel("Date range preset").selectOption("custom");
+  await page.getByLabel("From date").fill(today);
+  await page.getByLabel("To date").fill(today);
+  const done = page.getByRole("button", { name: "Done", exact: true });
+  if (await done.isVisible()) await done.click();
 
   await page.getByRole("button", { name: "Parenting time", exact: true }).click();
   const exchangeForm = page.locator("form").filter({
@@ -1279,8 +1286,10 @@ test("mobile create flows stay visible across every record tab and reload with a
   const exchangeLogForm = page.locator("form").filter({
     has: page.getByRole("button", { name: "Save exchange outcome" }),
   });
-  await exchangeLogForm.getByLabel("Scheduled exchange date").fill("2026-08-14");
-  await exchangeLogForm.getByLabel("Actual date").fill("2026-08-14");
+  await exchangeLogForm
+    .getByLabel("Scheduled exchange date")
+    .fill(currentCalendar.today);
+  await exchangeLogForm.getByLabel("Actual date").fill(currentCalendar.today);
   await exchangeLogForm.getByRole("button", { name: "Save exchange outcome" }).click();
   await expect(page.getByRole("status")).toContainText("Exchange outcome saved. It appears below");
   const exchangeChart = page.getByTestId("exchange-timing-chart");
@@ -1292,7 +1301,7 @@ test("mobile create flows stay visible across every record tab and reload with a
   const loggedExchanges = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Logged exchanges", exact: true }),
   });
-  await expect(loggedExchanges).toContainText("2026-08-14");
+  await expect(loggedExchanges).toContainText(currentCalendar.today);
 
   const fileName = "persistence-audit-file.txt";
   await openWorkspaceView(page, /^Files & evidence/);
@@ -1366,7 +1375,7 @@ test("mobile create flows stay visible across every record tab and reload with a
   await expect(page.getByText(exchangeRuleName, { exact: true })).toBeVisible();
   await openWorkspaceView(page, "Parenting time");
   await expectPhoneWidth();
-  await expect(loggedExchanges).toContainText("2026-08-14");
+  await expect(loggedExchanges).toContainText(currentCalendar.today);
   await expect(page.getByTestId("exchange-timing-chart")).toHaveAttribute("data-exchange-count", "1");
   await openWorkspaceView(page, /^Files & evidence/);
   await expectPhoneWidth();
