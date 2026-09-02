@@ -11,9 +11,9 @@ const sections: PolicySection[] = [
   {
     title: "Protecting your account",
     body: [
-      "Custody Folio uses verified accounts and additional sign in verification to protect access to records.",
-      "Use a unique password, protect your email and authenticator, and sign out on devices you do not control.",
-      "Account recovery may require identity verification.",
+      "Custody Folio verifies account access with a one-time code sent to the account email. No password or authenticator app is required.",
+      "Protect your email account and device, never share a sign-in code, and sign out on devices you do not control.",
+      "The iOS app additionally locks a restored session with Face ID, Touch ID, or the device passcode. This device lock is separate from server sign-in.",
     ],
   },
   {
@@ -60,7 +60,7 @@ export default function SecurityPage() {
     <PolicyPage
       title="Security"
       description="How to protect your account and report a security concern."
-      notice="Security controls reduce risk but do not make any internet service risk free. Keep local downloads, exports, passwords, and devices protected."
+      notice="Security controls reduce risk but do not make any internet service risk free. Keep your email account, devices, local downloads, and exports protected."
       sections={sections}
     >
       <section className="rounded-lg border border-slate-200 bg-white p-6 text-sm leading-6 text-slate-600">

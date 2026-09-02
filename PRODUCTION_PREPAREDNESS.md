@@ -13,13 +13,13 @@ Custody Folio can run against either the local demo store or the Supabase-backed
 - `.github/workflows/deploy.yml` runs lint, typecheck, unit tests, secret scanning, dependency audit, environment-template verification, and build without holding production host credentials or dispatching another repository.
 - `database/supabase/production_schema.sql` defines the first Supabase/Postgres schema with RLS, server-mediated table access, FK indexes, and private evidence bucket policies.
 - Supabase client helpers now fail when called without production config, not at module import time.
-- `src/app/api/records/auth/login/route.ts`, `session/route.ts`, and `logout/route.ts` add Supabase Auth through server-managed HttpOnly cookies.
-- `src/app/api/records/auth/mfa/verify/route.ts` and `src/app/api/records/auth/mfa/enroll/verify/route.ts` add Supabase TOTP MFA verification and enrollment completion while keeping tokens in HttpOnly cookies.
+- `src/app/api/records/auth/email-code/request/route.ts`, `email-code/verify/route.ts`, `session/route.ts`, and `logout/route.ts` implement passwordless Supabase Auth through server-managed HttpOnly cookies.
+- Legacy password routes return `410`; production owner and attorney access no longer requires TOTP enrollment. The separate native gate continues to require Face ID, Touch ID, or the device passcode when iOS restores a session.
 - `src/app/api/records/dataset/route.ts` adds a Supabase-backed dataset snapshot API authenticated by server-managed records cookies.
 - `src/app/api/records/evidence/preflight/route.ts` gates Supabase-mode evidence metadata behind authenticated server preflight and malware-provider readiness.
 - `src/app/api/records/evidence/upload/route.ts`, `download/route.ts`, and `delete/route.ts` provide server-mediated private evidence file handling with scan-before-store behavior.
 - `src/lib/security/rateLimit.ts` adds an app-level fallback limiter for records auth, dataset, and evidence routes.
-- `src/lib/security/securityEvents.ts` emits sanitized security events for login/MFA/evidence alerts, with optional HTTPS webhook delivery.
+- `src/lib/security/securityEvents.ts` emits sanitized security events for email-code login/evidence alerts, with optional HTTPS webhook delivery.
 - `PRIVACY_SECURITY_READINESS.md` defines the privacy/security launch gates, runbooks, and two-user isolation test.
 - `MONITORING_ALERTING_RUNBOOK.md` defines production security monitoring sources, alert thresholds, log privacy rules, and escalation paths.
 - `INCIDENT_RESPONSE_RUNBOOK.md` defines incident severity, containment, investigation, notification review, recovery, and post-incident review steps.
@@ -75,10 +75,10 @@ Verified:
 - No direct `anon` or `authenticated` table privileges remain on `public.records_*`.
 - No exposed `public` schema functions exist in production.
 - Private Storage bucket `records-evidence` exists with a 10 MB file limit and restricted MIME types.
-- Supabase security advisor still reports `auth_leaked_password_protection` as disabled in the production project. This blocks real-record launch until the Supabase Auth dashboard setting is enabled.
+- Supabase security advisor historically reported `auth_leaked_password_protection` as disabled. That warning is no longer applicable to the customer authentication flow because password signup/update routes are retired; passwordless email-code controls must be verified instead.
 - The readiness gate requires `SUPABASE_AUTH_HARDENING_VERIFIED_AT` after dashboard settings and Supabase advisors are checked, so env flags alone cannot mark Auth hardening complete.
 - Supabase performance advisor reports expected records unused-index INFO notices until real query traffic exists.
-- The old staging/mixed-use project still has lost-pet public table/bucket findings and disabled leaked-password protection. Keep it out of production records traffic.
+- The old staging/mixed-use project still has lost-pet public table/bucket findings. Keep it out of production records traffic.
 - Retired `grant_*` tables, grant helper functions, grant Storage policies, and the empty private `grant-documents` bucket have been removed from production.
 - Live two-user isolation passed on 2026-06-28 with synthetic users and evidence, and production readiness now reflects `TWO_USER_ISOLATION_TESTED_AT=2026-06-28`.
 - Live malware scanning passed on 2026-06-28 with clean and EICAR payloads, and production readiness now reflects `MALWARE_SCANNER_TESTED_AT=2026-06-28`.
@@ -87,15 +87,15 @@ Verified:
 
 1. Run `npm run verify:env-template`, `npm run security:secrets`, `npm run lint`, `npm run typecheck`, `npm run test:unit`, and `npm run build`.
 2. Configure edge/WAF rate limits and bot protections for auth, dataset, evidence, exports, and write-heavy routes, then set provider names.
-3. Configure monitoring/alerting for failed logins, MFA failures, evidence access, storage errors, server errors, and readiness failures, then run `npm run verify:security-events`.
+3. Configure monitoring/alerting for failed or rate-limited email-code requests/verifications, evidence access, storage errors, server errors, and readiness failures, then run `npm run verify:security-events`.
 4. Keep malware-scanner verification current; `MALWARE_SCANNER_TESTED_AT` must stay within 30 days before accepting real evidence.
 5. Approve retention/deletion, backup aging, incident response, monitoring/alerting, legal review, and vendor review runbooks.
 6. Run `npm run check:pre-supabase` to confirm all non-Supabase launch gates are clear.
 7. Keep production secrets in `/srv/losttofound/config/app.env` on the dedicated host using project `cieuilbpnwuvnrxrlczj`, and deploy only through the rootless Custody Folio stack.
 8. Set `EXPECTED_SUPABASE_PROJECT_REF=cieuilbpnwuvnrxrlczj` so production readiness fails if secrets point at the old staging project.
-9. Keep production invite-only until launch by setting `NEXT_PUBLIC_RECORDS_SIGNUPS_ENABLED=false` and `RECORDS_SIGNUPS_ENABLED=false`; also disable direct Supabase Auth signup while invite-only mode is active. Enable self-registration only after Supabase SMTP, abuse controls, direct-signup policy, and App Store review account handling are ready.
-10. Complete `SUPABASE_AUTH_LAUNCH_CHECKLIST.md`, including direct-signup policy, SMTP, redirect URLs, leaked-password protection, reset-token settings, password-change reauthentication, and session/device revocation in Supabase Auth.
-11. Set `RECORDS_ENFORCE_MFA=true` after the Supabase TOTP flow is verified in staging.
+9. Keep the two app signup flags and Supabase direct-signup setting aligned with the product owner's approved launch state. Do not change whether public accounts can be created as an incidental authentication migration.
+10. Complete `SUPABASE_AUTH_LAUNCH_CHECKLIST.md`, including the `{{ .Token }}` email template, Resend SMTP, six-digit code delivery, ten-minute expiry, rate limits, account-enumeration checks, and session/device revocation.
+11. Keep `RECORDS_ENFORCE_MFA=false` and `SUPABASE_MFA_POLICY=optional`; mandatory authenticator-app enrollment is retired.
 12. Keep two-user RLS/storage verification current by dispatching `Verify Live Isolation`; the latest passing value is `TWO_USER_ISOLATION_TESTED_AT=2026-06-28`.
 13. Run a restore drill, save `ops/backup-restore-evidence.json`, and run `npm run verify:backup-restore`.
 14. Seed staging with synthetic data only and run end-to-end tests against staging.
@@ -128,4 +128,4 @@ npm run verify:backup-restore
 
 ## Known Remaining Gap
 
-The user-facing records app now has Supabase Auth cookie routes, TOTP MFA enrollment/verification endpoints, production AAL2 enforcement, a Supabase snapshot persistence adapter, server-mediated private evidence upload/download/delete routes, app-level rate-limit fallback, sanitized security event logging, CI secret/dependency scanning, production template/header verifiers, a court-oriented Records Timeline, a launch wizard, live two-user isolation and malware-scanner verification reflected in production readiness, and the records schema applied in Supabase. Production launch still requires the remaining non-Supabase owner/provider approvals plus live Supabase Auth dashboard hardening, edge WAF/rate limits, monitoring, backup restore verification, and final deployed readiness before any real custody, child, payment, court, or evidence content is entered.
+The user-facing records app now has passwordless Supabase email-code routes, server-managed Auth cookies, a scoped and expiring App Review access path, a Supabase snapshot persistence adapter, server-mediated private evidence upload/download/delete routes, app-level rate-limit fallback, sanitized security event logging, CI secret/dependency scanning, production template/header verifiers, a court-oriented Records Timeline, a launch wizard, live two-user isolation and malware-scanner verification reflected in production readiness, and the records schema applied in Supabase. Production launch still requires hosted email-template/expiry verification, live Resend delivery, the remaining owner/provider approvals, edge WAF/rate limits, monitoring, backup restore verification, and final deployed readiness before any real custody, child, payment, court, or evidence content is entered.

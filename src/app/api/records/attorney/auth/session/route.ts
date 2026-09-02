@@ -12,7 +12,6 @@ import {
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
-import { recordsMfaPolicyResponse } from "@/lib/records/mfaPolicyServer";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -86,19 +85,6 @@ export async function POST(request: NextRequest) {
     });
     if (!authorized) return rejected();
 
-    const mfa = await recordsMfaPolicyResponse({
-      request,
-      authClient,
-      session: {
-        access_token: accessToken,
-        refresh_token: refreshToken,
-        expires_in: Number.isFinite(expiresIn) ? expiresIn : 3600,
-      },
-      userId: user.id,
-      sessionScope: "attorney_mfa_pending",
-    });
-    if (mfa) return mfa;
-
     const response = NextResponse.json(
       { ok: true },
       { headers: { "Cache-Control": "no-store" } }
@@ -119,7 +105,7 @@ export async function POST(request: NextRequest) {
       request,
       userId: user.id,
       status: 200,
-      detail: "Mailbox-verified returning attorney session established.",
+      detail: "Mailbox-verified returning attorney session established without an authenticator-app requirement.",
     });
     return response;
   } catch {

@@ -14,7 +14,7 @@ The approved work may release the website and policy, apply the additive migrati
 
 The current local policy bundle digest is:
 
-`sha256:73edc57f9a239db5a0c7a54c94e30ed51e5c4840e185edaa3d35cc99221ab439`
+`sha256:9607ea4e423c39d207275b19a729b611d495c2508d4e4a092e6932f0a28f12f6`
 
 The growth and feedback migration file digest is:
 

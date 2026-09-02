@@ -43,7 +43,7 @@ For every supported record type: create, locate in source and derived views, rel
 - [ ] Child Support: orders/payments, dependencies, frequencies, statuses, decimal totals, trends, calendar/timeline, export.
 - [ ] Expenses: categories, payer, reimbursement states, decimal totals, filters, derived views, export, CSV formula safety.
 - [ ] Reports: every visible report/export, inclusion rules, totals, order, empty/single/large outputs, long content, disclaimers.
-- [ ] Attorney Access: invite, resend, accept, AAL2, exact-case read-only access, report/evidence access, revoke, expiration/replay.
+- [ ] Attorney Access: invite, resend, exact-email code verification, accept, exact-case read-only access, report/evidence access, revoke, expiration/replay.
 - [ ] Settings: case/matter fields, timezone, labels, storage, audit summary, data export, sessions, logout, deletion flows.
 - [ ] Result: `__________`
 
@@ -59,10 +59,10 @@ For every supported record type: create, locate in source and derived views, rel
 
 ## 5. Authentication, privacy, and authorization
 
-- [ ] Signup gate, adult confirmation, email confirmation, login, generic failure messages, minimum password, leaked-password guard.
-- [ ] Password recovery is bound to a verified recovery method, same user, and same session; ordinary sessions are rejected.
-- [ ] TOTP enrollment and verification enforce product-profile approval; AAL2 is derived from validated session state.
-- [ ] Password update requires verified recovery/recent-auth proof and confirms global session revocation.
+- [ ] Signup gate, adult confirmation, policy acceptance, six-digit email-code delivery/verification, returning login, and generic non-enumerating responses.
+- [ ] Email codes expire after ten minutes, cannot be reused, and are rate-limited by IP and email/IP pair.
+- [ ] A verified code only creates an owner account when signups are enabled, or an attorney account when a matching pending invitation exists.
+- [ ] Password, password-reset, and mandatory authenticator routes are retired; existing sessions can still be revoked globally.
 - [ ] State-changing routes enforce origin/CSRF policy; authentication and write limits remain enabled.
 - [ ] Use two synthetic users and two cases to test cross-user/cross-case reads, edits, deletes, and evidence downloads.
 - [ ] Verify private files expose no public/raw Storage URLs, hashes, tokens, internal paths, or sensitive log/audit contents.
@@ -110,10 +110,10 @@ For every supported record type: create, locate in source and derived views, rel
 - [ ] Confirm privacy-policy, support, terms, and account-deletion URLs return 200.
 - [ ] Complete privacy labels from actual collection/use; reconcile them with `PrivacyInfo.xcprivacy`.
 - [ ] Review required-reason APIs, encryption/export compliance, permissions, screenshots, description, keywords, and review notes.
-- [ ] Create a dedicated synthetic reviewer account and document MFA/device-unlock instructions without committing credentials.
+- [ ] Create a dedicated synthetic reviewer account and document the temporary six-digit review code and device-unlock instructions only in App Store Connect, without committing the code.
 - [ ] Confirm subscriptions/paid claims match the build and metadata promises no unavailable functionality.
 - [ ] Confirm Stripe web and Apple in-app subscription clauses match checkout behavior, and no Stripe purchase call to action appears inside iOS.
-- [ ] Confirm attorney invitations require separate case-specific sharing authorization, adult account verification, MFA, read-only capability enforcement, download warning, and working revocation.
+- [ ] Confirm attorney invitations require separate case-specific sharing authorization, adult account verification, exact-email code verification, read-only capability enforcement, download warning, and working revocation.
 - [ ] Confirm timestamped protected readiness evidence is current before accepting real sensitive records; without it, allow informational pages and synthetic/internal testing only.
 - [ ] Record either qualified privacy/legal review or explicit operator self-review. Never represent operator self-review as counsel approval or a compliance certification.
 - [ ] If native code or metadata changed, upload a new build and complete TestFlight/internal-device testing before submission.
@@ -128,7 +128,7 @@ For every supported record type: create, locate in source and derived views, rel
 - [ ] Merge through the normal review path; do not deploy a dirty or stale checkout.
 - [ ] Apply database migrations only after safe-staging validation, backup confirmation, and an approved rollback plan.
 - [ ] Deploy the web/API release through the documented rootless production lane; verify health, readiness, rollback, headers, and edge controls.
-- [ ] Run post-deploy synthetic login/recovery/MFA, owner-only write, private download, and attorney-revoke smoke tests.
+- [ ] Run post-deploy synthetic owner and attorney email-code login, owner-only write, private download, and attorney-revoke smoke tests.
 - [ ] Record release revision, migration versions, verification timestamps, operational approvals, and remaining manual tasks.
 - [ ] Result: `__________`
 

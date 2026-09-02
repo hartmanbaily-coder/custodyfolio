@@ -157,7 +157,7 @@ describe("mailbox-verified attorney session", () => {
     expect(setRecordsSessionCookies).toHaveBeenCalled();
   });
 
-  it("keeps an AAL1 mailbox session pending until authenticator verification", async () => {
+  it("opens an AAL1 mailbox-verified guest session without an authenticator step", async () => {
     getAccessTokenAal.mockReturnValue("aal1");
     getAuthenticatorAssuranceLevel.mockResolvedValue({
       data: { currentLevel: "aal1", nextLevel: "aal2" },
@@ -170,13 +170,13 @@ describe("mailbox-verified attorney session", () => {
 
     const response = await POST(request());
 
-    expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toMatchObject({ mfaRequired: true });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ ok: true, accepted: true });
     expect(setRecordsSessionCookies).toHaveBeenCalledWith(
       response,
       expect.objectContaining({ access_token: "mailbox-access-token-long-enough" }),
       expect.any(String),
-      "attorney_mfa_pending"
+      "attorney_guest"
     );
   });
 

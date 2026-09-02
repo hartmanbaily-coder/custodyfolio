@@ -19,6 +19,10 @@ const requiredKeys = [
   "MARKETING_ANALYTICS_SECRET",
   "CUSTOMER_FEEDBACK_INVITE_ENABLED",
   "CUSTOMER_GROWTH_SCHEMA_VERIFIED_AT",
+  "RECORDS_AUTH_METHOD",
+  "SUPABASE_EMAIL_OTP_ENABLED",
+  "SUPABASE_EMAIL_OTP_LENGTH",
+  "SUPABASE_EMAIL_OTP_EXPIRY_SECONDS",
   "SUPABASE_MFA_POLICY",
   "RECORDS_ENFORCE_MFA",
   "SUPABASE_CUSTOM_SMTP_ENABLED",
@@ -67,6 +71,9 @@ const requiredKeys = [
   "APPLE_REVIEW_SANDBOX_ENABLED",
   "APPLE_REVIEW_SANDBOX_USER_ID",
   "APPLE_REVIEW_SANDBOX_EXPIRES_AT",
+  "APPLE_REVIEW_AUTH_CODE_SHA256",
+  "APPLE_REVIEW_ATTORNEY_USER_ID",
+  "APPLE_REVIEW_ATTORNEY_AUTH_CODE_SHA256",
   "APPLE_BILLING_ENVIRONMENT",
   "APPLE_BUNDLE_ID",
   "APPLE_APP_ID",
@@ -245,6 +252,42 @@ if (entries.get("APPLE_REVIEW_SANDBOX_USER_ID") !== "") {
 
 if (entries.get("APPLE_REVIEW_SANDBOX_EXPIRES_AT") !== "") {
   findings.push("APPLE_REVIEW_SANDBOX_EXPIRES_AT must remain empty in the fail-closed template.");
+}
+
+if (entries.get("APPLE_REVIEW_AUTH_CODE_SHA256") !== "") {
+  findings.push("APPLE_REVIEW_AUTH_CODE_SHA256 must remain empty in the fail-closed template.");
+}
+
+if (entries.get("APPLE_REVIEW_ATTORNEY_USER_ID") !== "") {
+  findings.push("APPLE_REVIEW_ATTORNEY_USER_ID must remain empty in the fail-closed template.");
+}
+
+if (entries.get("APPLE_REVIEW_ATTORNEY_AUTH_CODE_SHA256") !== "") {
+  findings.push("APPLE_REVIEW_ATTORNEY_AUTH_CODE_SHA256 must remain empty in the fail-closed template.");
+}
+
+if (entries.get("RECORDS_AUTH_METHOD") !== "email_otp") {
+  findings.push("RECORDS_AUTH_METHOD must be email_otp in the production template.");
+}
+
+if (entries.get("SUPABASE_EMAIL_OTP_ENABLED") !== "true") {
+  findings.push("SUPABASE_EMAIL_OTP_ENABLED must be true in the production template.");
+}
+
+if (entries.get("SUPABASE_EMAIL_OTP_LENGTH") !== "6") {
+  findings.push("SUPABASE_EMAIL_OTP_LENGTH must be 6 in the production template.");
+}
+
+if (entries.get("SUPABASE_EMAIL_OTP_EXPIRY_SECONDS") !== "600") {
+  findings.push("SUPABASE_EMAIL_OTP_EXPIRY_SECONDS must be 600 in the production template.");
+}
+
+if (entries.get("SUPABASE_MFA_POLICY") !== "optional") {
+  findings.push("SUPABASE_MFA_POLICY must be optional after the passwordless migration.");
+}
+
+if (entries.get("RECORDS_ENFORCE_MFA") !== "false") {
+  findings.push("RECORDS_ENFORCE_MFA must be false after the passwordless migration.");
 }
 
 if (entries.get("STRIPE_TAX_MODE") !== "disabled") {

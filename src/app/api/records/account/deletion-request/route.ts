@@ -60,7 +60,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if ("error" in context) {
     return (
       context.error ||
-      deletionError("Sign in and complete authenticator verification before deleting your account.", 401)
+      deletionError("Sign in with a current email code before deleting your account.", 401)
     );
   }
 

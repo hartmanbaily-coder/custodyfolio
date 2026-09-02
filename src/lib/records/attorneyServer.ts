@@ -251,13 +251,6 @@ function attorneyGuestAuthError(message = "Open the secure attorney access link 
   );
 }
 
-function attorneyMfaRequiredError() {
-  return NextResponse.json(
-    { error: "Authenticator verification is required.", mfaRequired: true },
-    { status: 403, headers: { "Cache-Control": "no-store" } }
-  );
-}
-
 export async function getAttorneyGuestAuthContext(
   request: NextRequest
 ): Promise<RecordsAuthContext | { error: NextResponse }> {
@@ -277,9 +270,6 @@ export async function getAttorneyGuestAuthContext(
     const { data, error } = await supabase.auth.getUser(accessToken);
     if (!error && data.user?.id && data.user.email && data.user.email_confirmed_at) {
       const assuranceLevel = getAccessTokenAal(accessToken);
-      if (assuranceLevel !== "aal2") {
-        return { error: attorneyMfaRequiredError() } as const;
-      }
       return {
         supabase,
         userId: data.user.id,
@@ -308,9 +298,6 @@ export async function getAttorneyGuestAuthContext(
       user.email_confirmed_at
     ) {
       const assuranceLevel = getAccessTokenAal(refreshed.access_token);
-      if (assuranceLevel !== "aal2") {
-        return { error: attorneyMfaRequiredError() } as const;
-      }
       return {
         supabase,
         userId: user.id,
@@ -333,14 +320,6 @@ export async function getAttorneyAuthContext(
   if (!isSupabaseRecordsMode()) return { error: attorneyDisabledResponse() } as const;
   const context = await getRecordsAuthContext(request);
   if ("error" in context) return context;
-  if (context.assuranceLevel !== "aal2") {
-    return {
-      error: NextResponse.json(
-        { error: "Authenticator verification is required.", mfaRequired: true },
-        { status: 403, headers: { "Cache-Control": "no-store" } }
-      ),
-    } as const;
-  }
   if (!context.email || !context.emailConfirmedAt) {
     return {
       error: NextResponse.json(

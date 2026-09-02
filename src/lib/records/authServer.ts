@@ -46,11 +46,10 @@ export function isSupabaseRecordsMode() {
   );
 }
 
-export function isRecordsMfaRequired(env: Record<string, string | undefined> = process.env) {
-  return (
-    env.RECORDS_ENFORCE_MFA === "true" ||
-    (env.NODE_ENV === "production" && env.SUPABASE_MFA_POLICY === "required")
-  );
+/** Legacy compatibility helper. Authenticator-app MFA is no longer mandatory. */
+export function isRecordsMfaRequired(env?: Record<string, string | undefined>) {
+  void env;
+  return false;
 }
 
 export function isRecordsSignupEnabled(env: Record<string, string | undefined> = process.env) {
@@ -114,16 +113,6 @@ export function getAccessTokenAal(
   } catch {
     return null;
   }
-}
-
-export function mfaRequiredResponse() {
-  return NextResponse.json(
-    {
-      error: "Multi factor verification required.",
-      mfaRequired: true,
-    },
-    { status: 403, headers: { "Cache-Control": "no-store" } }
-  );
 }
 
 export function getRecordsCaseKey(request: NextRequest) {
@@ -265,10 +254,6 @@ export function authError(message = "Authentication required.") {
   return NextResponse.json({ error: message }, { status: 401 });
 }
 
-function mfaSatisfied(accessToken: string | undefined) {
-  return !isRecordsMfaRequired() || getAccessTokenAal(accessToken) === "aal2";
-}
-
 async function approvedRecordsProfile(userId: string, accessToken: string) {
   try {
     return await recordsProfileIsAuthorized(userId, accessToken);
@@ -351,8 +336,6 @@ export async function getRecordsAuthContext(request: NextRequest) {
       if (profileApproved !== true) {
         return { error: unapprovedRecordsProfileResponse(profileApproved) };
       }
-      if (!mfaSatisfied(accessToken)) return { error: mfaRequiredResponse() };
-
       return {
         supabase,
         userId: data.user.id,
@@ -375,8 +358,6 @@ export async function getRecordsAuthContext(request: NextRequest) {
       if (profileApproved !== true) {
         return { error: unapprovedRecordsProfileResponse(profileApproved) };
       }
-      if (!mfaSatisfied(refreshed.access_token)) return { error: mfaRequiredResponse() };
-
       return {
         supabase,
         userId: user.id,

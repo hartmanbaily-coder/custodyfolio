@@ -23,7 +23,6 @@ import { defaultCaseIdForUser } from "@/lib/records/accountBoundary";
 import { checkRateLimit, rateLimitExceededResponse } from "@/lib/security/rateLimit";
 import { recordsCsrfError, verifyRecordsCsrf } from "@/lib/security/csrf";
 import { recordSecurityEvent } from "@/lib/security/securityEvents";
-import { recordsMfaPolicyResponse } from "@/lib/records/mfaPolicyServer";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -119,24 +118,6 @@ export async function POST(request: NextRequest) {
     });
     if (!invitation) throw new Error("Invitation identity binding failed.");
 
-    rejectionStage = "mfa_policy";
-    const mfa = await recordsMfaPolicyResponse({
-      request,
-      authClient,
-      session: {
-        access_token: accessToken,
-        refresh_token: refreshToken,
-        expires_in: Number.isFinite(expiresIn) ? expiresIn : 3600,
-      },
-      userId: user.id,
-      sessionScope: "attorney_mfa_pending",
-    });
-    if (mfa) {
-      clearAttorneyMailboxProofCookie(mfa);
-      clearAttorneyPasswordSetupCookie(mfa);
-      return mfa;
-    }
-
     rejectionStage = "invitation_acceptance_rpc";
     const row = await acceptPendingAttorneyInvitationForUser({
       token: invitationToken,
@@ -152,7 +133,7 @@ export async function POST(request: NextRequest) {
       request,
       userId: user.id,
       status: 200,
-      detail: "Mailbox and authenticator verified; attorney invitation accepted into a scoped guest session.",
+      detail: "Mailbox verified; attorney invitation accepted into a scoped guest session.",
     });
 
     rejectionStage = "guest_session_response";

@@ -290,18 +290,18 @@ describe("customer facing copy", () => {
     expect(attorneyAccess).toContain("Consumer Health Data Privacy Policy");
   });
 
-  it("tells invited attorneys that the private invitation is a single-link flow", () => {
+  it("tells invited attorneys how the passwordless email-code flow works", () => {
     const attorneyAccept = readFileSync(
       resolve(process.cwd(), "src/components/records/AttorneyAccept.tsx"),
       "utf8"
     );
     expect(attorneyAccept).toContain("This private invitation is bound to the attorney email");
-    expect(attorneyAccept).toContain("mailbox through a separate secure email");
-    expect(attorneyAccept).toContain("Email secure account link");
+    expect(attorneyAccept).toContain("mailbox is verified with a one-time code");
+    expect(attorneyAccept).toContain("Email me a sign-in code");
     expect(attorneyAccept).toContain("Before you begin");
     expect(attorneyAccept).toContain("Use the exact email address the client invited");
-    expect(attorneyAccept).toContain("Set up your authenticator");
-    expect(attorneyAccept).not.toContain("Check Inbox and Junk");
+    expect(attorneyAccept).toContain("6-digit, one-time code");
+    expect(attorneyAccept).not.toContain("Set up your authenticator");
   });
 
   it("keeps recurring exchange setup out of the primary exchange logging flow", () => {

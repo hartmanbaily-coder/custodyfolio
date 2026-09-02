@@ -70,6 +70,7 @@ import {
   nowIso,
   parseTags,
   readRecordsSession,
+  requestRecordsEmailCode,
   requestRecordsPasswordReset,
   resendRecordsSignupConfirmation,
   signInRecordsSession,
@@ -81,6 +82,7 @@ import {
   useSelectedRecords,
   verifyRecordsMfa,
   verifyRecordsMfaEnrollment,
+  verifyRecordsEmailCode,
   withAudit,
   writeSession,
   type RecordsMfaEnrollment,
@@ -893,6 +895,14 @@ export default function RecordsApp() {
   }
 
   if (!session) {
+    if (recordsStorageMode === "supabase") {
+      return (
+        <PasswordlessLoginScreen
+          appReady={hydrated}
+          onAuthenticated={finishAuthenticatedSession}
+        />
+      );
+    }
     return (
       <LoginScreen
         appReady={hydrated}
@@ -1428,6 +1438,236 @@ function RecordsLoadFailureScreen({
         </div>
       </section>
       <PolicyFooter />
+    </main>
+  );
+}
+
+function PasswordlessLoginScreen({
+  appReady,
+  onAuthenticated,
+}: {
+  appReady: boolean;
+  onAuthenticated: (session: Session) => Promise<LoginFlowResult>;
+}) {
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [adultConfirmed, setAdultConfirmed] = useState(false);
+  const [legalAccepted, setLegalAccepted] = useState(false);
+  const [codeRequested, setCodeRequested] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [invitedAttorney, setInvitedAttorney] = useState(false);
+  const legacyInviteHandled = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const route = recordsSignupRoute(
+      window.location.search,
+      process.env.NEXT_PUBLIC_RECORDS_SIGNUPS_ENABLED === "true"
+    );
+    setInvitedAttorney(route.invitedAttorney);
+
+    if (legacyInviteHandled.current) return;
+    const authState = new URLSearchParams(window.location.search).get("auth");
+    const fragment = parseRecordsAuthFragment(window.location.hash, authState);
+    if (fragment.kind !== "attorney_invite") return;
+    legacyInviteHandled.current = true;
+    window.history.replaceState(null, "", "/records?next=%2Fattorney&invite=1");
+    setBusy(true);
+    setMessage("Verifying the invited email…");
+    void acceptAttorneyInviteSession({
+      accessToken: fragment.accessToken,
+      refreshToken: fragment.refreshToken,
+      expiresIn: fragment.expiresIn,
+    })
+      .then((result) => {
+        if (result.status !== "accepted") {
+          throw new Error("The attorney invitation could not be completed.");
+        }
+        window.sessionStorage.setItem("l2f.attorney.access", result.accessHandle);
+        window.location.replace("/attorney");
+      })
+      .catch((inviteError: unknown) => {
+        setMessage("");
+        setError(
+          inviteError instanceof Error
+            ? inviteError.message
+            : "The attorney invitation is invalid or expired."
+        );
+      })
+      .finally(() => setBusy(false));
+  }, []);
+
+  function validateIdentity() {
+    if (!email.trim().includes("@") || !adultConfirmed || !legalAccepted) {
+      setError("Enter your email, confirm adult use, and accept the Terms and Privacy Policy.");
+      return false;
+    }
+    return true;
+  }
+
+  async function requestCode(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+    if (!validateIdentity()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await requestRecordsEmailCode({
+        email,
+        adultConfirmed,
+        legalAccepted,
+        workspace: invitedAttorney ? "attorney" : "records",
+      });
+      setCodeRequested(true);
+      setMessage(result.message);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "The email code could not be sent.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function verifyCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!validateIdentity()) return;
+    if (!/^\d{6}$/.test(code.trim())) {
+      setError("Enter the 6-digit code from your email.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const result = await verifyRecordsEmailCode({
+        email,
+        code,
+        adultConfirmed,
+        legalAccepted,
+        workspace: invitedAttorney ? "attorney" : "records",
+      });
+      if (result.attorneyAccessHandle) {
+        window.sessionStorage.setItem("l2f.attorney.access", result.attorneyAccessHandle);
+      }
+      if (result.destination === "/attorney") {
+        window.location.replace("/attorney");
+        return;
+      }
+      await onAuthenticated(result.session);
+    } catch (verifyError) {
+      setError(verifyError instanceof Error ? verifyError.message : "The email code was not accepted.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const publicSignupsEnabled = process.env.NEXT_PUBLIC_RECORDS_SIGNUPS_ENABLED === "true";
+  const heading = invitedAttorney
+    ? "Open the shared matter"
+    : publicSignupsEnabled
+      ? "Sign in or create an account"
+      : "Sign in";
+
+  return (
+    <main className="min-h-screen overflow-hidden bg-[#fffdf9] text-slate-950">
+      <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 sm:px-6 lg:px-8">
+        <header className="flex items-center justify-between gap-4">
+          <Link href="/" className="flex min-w-0 items-center gap-3">
+            <Image src="/app-icons/icon-192.png" alt="" width={40} height={40} priority className="h-10 w-10 shrink-0 rounded-md bg-slate-950 shadow-sm" />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold tracking-tight text-slate-950">{siteName}</span>
+              <span className="block text-xs leading-4 text-slate-500">{recordsTagline}</span>
+            </span>
+          </Link>
+        </header>
+
+        <section className="grid flex-1 items-center gap-6 py-6 lg:grid-cols-[minmax(0,1fr)_440px] lg:gap-12 lg:py-8">
+          <section className="order-2 flex max-w-3xl flex-col justify-center lg:order-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">Private records workspace</p>
+            <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950 sm:text-6xl">{siteName}</h1>
+            <p className="mt-4 max-w-2xl text-lg leading-7 text-slate-600 sm:text-xl sm:leading-8">
+              Turn custody notes, exchanges, files, and reports into a clear record you can actually use.
+            </p>
+            <p className="mt-5 max-w-2xl text-sm leading-6 text-slate-500">
+              The iOS app also protects a restored session with Face ID, Touch ID, or the device passcode.
+            </p>
+          </section>
+
+          <section className="order-1 self-center rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,0.12)] sm:p-8 lg:order-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Account access</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{heading}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              {codeRequested
+                ? "Enter the one-time code sent to this email. Codes expire and can be used only once."
+                : invitedAttorney
+                  ? "Use the exact email address named in the private invitation."
+                  : "No password or authenticator app is required. We will email a one-time sign-in code."}
+            </p>
+
+            {message ? <p role="status" className="mt-4 rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-medium text-teal-950">{message}</p> : null}
+            {error ? <p role="alert" className="mt-4 text-sm font-medium text-red-700">{error}</p> : null}
+
+            <form method="post" onSubmit={codeRequested ? verifyCode : requestCode} className="mt-5 space-y-4">
+              <Field label="Email">
+                <input
+                  name="email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.currentTarget.value)}
+                  className="input"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  readOnly={codeRequested}
+                />
+              </Field>
+              {codeRequested ? (
+                <Field label="6-digit email code">
+                  <input
+                    name="code"
+                    value={code}
+                    onChange={(event) => setCode(event.currentTarget.value.replace(/\D/g, "").slice(0, 6))}
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    autoComplete="one-time-code"
+                    className="input text-center font-mono text-lg tracking-[0.3em]"
+                    autoFocus
+                  />
+                </Field>
+              ) : null}
+              <label className="flex items-start gap-2 text-sm leading-5 text-slate-700">
+                <input type="checkbox" checked={adultConfirmed} onChange={(event) => setAdultConfirmed(event.currentTarget.checked)} className="mt-1 size-5 shrink-0" />
+                <span>{invitedAttorney ? "I am the adult attorney invited to this read-only matter." : "I am an adult user accessing my own records account."}</span>
+              </label>
+              <label className="flex items-start gap-2 text-sm leading-5 text-slate-700">
+                <input type="checkbox" checked={legalAccepted} onChange={(event) => setLegalAccepted(event.currentTarget.checked)} className="mt-1 size-5 shrink-0" />
+                <span>
+                  I agree to the <Link href="/terms" className="font-semibold text-teal-700 underline underline-offset-2">Terms of Use</Link> and acknowledge the <Link href="/privacy" className="font-semibold text-teal-700 underline underline-offset-2">Privacy Policy</Link>.
+                </span>
+              </label>
+              <button type="submit" disabled={!appReady || busy} className="min-h-11 w-full rounded-md bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60">
+                {!appReady ? "Loading workspace…" : busy ? (codeRequested ? "Verifying…" : "Sending…") : codeRequested ? (invitedAttorney ? "Open shared matter" : "Enter records workspace") : "Email me a sign-in code"}
+              </button>
+              {codeRequested ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                  <button type="button" className="font-semibold text-teal-700 hover:text-teal-900" onClick={() => { setCodeRequested(false); setCode(""); setMessage(""); setError(""); }}>
+                    Use a different email
+                  </button>
+                  <button type="button" disabled={busy} className="font-semibold text-teal-700 hover:text-teal-900" onClick={() => void requestCode()}>
+                    Send a new code
+                  </button>
+                </div>
+              ) : (
+                <button type="button" className="min-h-11 w-full rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:border-teal-500" onClick={() => { if (validateIdentity()) { setCodeRequested(true); setMessage("Enter the current code provided for this account."); } }}>
+                  I already have a code
+                </button>
+              )}
+            </form>
+          </section>
+        </section>
+        <PolicyFooter className="-mx-4 mt-auto sm:-mx-6 lg:-mx-8" />
+      </div>
     </main>
   );
 }

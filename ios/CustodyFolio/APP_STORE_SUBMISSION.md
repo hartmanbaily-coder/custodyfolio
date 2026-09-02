@@ -40,7 +40,7 @@ Key features:
 - Timeline, calendar, notes, and file organization
 - Document upload support through the protected workspace
 - Report and export workflows for review
-- Client-authorized, MFA-protected, read-only attorney access with revocation
+- Client-authorized, exact-email-verified, read-only attorney access with revocation
 - One 30-day no-card account trial, followed by optional monthly or annual auto-renewing access purchased through Apple in the iOS app
 - Device level unlock with Face ID, Touch ID, or passcode
 - Controlled records web view limited to Custody Folio-owned domains
@@ -68,13 +68,14 @@ Review flow:
 
 1. Launch the app.
 2. Unlock with the review device's Face ID, Touch ID, or passcode. The app uses Apple's LocalAuthentication framework and does not receive or store biometric data.
-3. Open the Records tab and sign in with the review account below.
+3. Open the Records tab, enter the owner review email, confirm adult use and the current Terms/Privacy acknowledgement, choose “I already have a code,” and enter the temporary owner code stored in App Store Connect. No authenticator app is required.
 4. Review the Policies tab for native privacy, terms, security, AI data use, subprocessors, accessibility, and contact links.
 5. Review the Support tab for support contact, account/data help, and the in-app self-service account deletion entry point. The deletion entry point opens `https://custodyfolio.com/account/delete`, where a signed-in records user can permanently delete the account after explicit confirmation.
 6. Open Subscription while the review account is in export-only mode. Monthly and annual products are loaded from StoreKit and Apple's sheet shows localized price and renewal terms. Purchase, restore, refund request, and subscription management use Apple interfaces; no Stripe checkout is offered inside iOS.
-7. Open Attorney Access. The client selects one case, identifies the adult attorney, separately authorizes sharing including any health-related information in that case, and creates a single-use invitation. The accepted grant is read-only and can be revoked by the client.
+7. Open Attorney Access. The client selects one case, identifies the adult attorney, separately authorizes sharing including any health-related information in that case, and creates a single-use invitation. The accepted grant is exact-email verified, read-only, and revocable by the client.
+8. Sign out and use the separate attorney review email and temporary attorney code stored in App Store Connect to inspect Shared With Me. The attorney identity has no owner-write or billing capabilities.
 
-The dedicated review account credentials are stored only in App Store Connect and must never be committed here. Before submission, verify that the saved account uses synthetic data, is export-only so the StoreKit purchase controls are visible, and includes workable MFA instructions.
+The dedicated owner and attorney review emails and temporary six-digit codes are stored only in App Store Connect and must never be committed here. Before submission, verify that both identities use synthetic data, the owner is export-only so StoreKit controls are visible, and each fixed-code exception is restricted to the exact user ID and an expiration no more than 45 days away.
 
 Account deletion path for review: Support tab -> Account and Data -> Delete account -> `https://custodyfolio.com/account/delete`. The direct deletion page lets a signed-in records user confirm the irreversible consequences and press "Permanently delete my account." The server removes private evidence files, revokes sessions, deletes the Auth account and cascaded active records, and reports completion without an approval queue. The public Privacy Policy also documents backup aging and legally required retention.
 
@@ -90,7 +91,7 @@ Current native build snapshot:
 - Scene privacy behavior: app returns to locked state when it leaves the active scene
 - Automated verification: the corrected native source built and ran 16 simulator tests on 2026-08-23; 15 passed, zero failed, and the StoreKit provider lifecycle test was skipped because Apple's simulator service returned `notEntitled`. A signed uploaded release-candidate binary still requires provider-backed purchase and restore verification.
 
-Do not submit to App Review until the production backend is ready for review access, including auth email delivery, auth redirect URLs, leaked-password protection, monitoring, backup/restore evidence, adopted retention/deletion decisions, zero readiness blockers, and verified Apple purchase/restore behavior.
+Do not submit to App Review until the production backend is ready for review access, including six-digit email delivery through Resend, ten-minute normal-code expiry, fixed review-code scoping/expiration, monitoring, backup/restore evidence, adopted retention/deletion decisions, zero readiness blockers, and verified Apple purchase/restore behavior.
 
 ## App Privacy Labels Draft
 
@@ -160,14 +161,14 @@ Do not use real custody, child, court, message, phone, address, or evidence data
 - App icon renders well at small sizes.
 - TestFlight build installed on a real iPhone.
 - App Review test account created with synthetic data.
-- App Review notes include review-device unlock instructions and login/MFA instructions.
+- App Review notes include review-device unlock instructions and separate owner/attorney temporary code instructions.
 - Self-service account deletion tested in the native Support tab and at `https://custodyfolio.com/account/delete`.
 - Privacy Policy, Terms, Security, AI Data Use, Accessibility, and Contact pages live.
 - No production secrets committed.
 - No real user data in screenshots or demo account.
-- Native app tested for login, MFA/recovery path, file upload, report export, and support links.
+- Native app tested for owner and attorney email-code login, session restoration/device unlock, file upload, report export, and support links.
 - Apple monthly/annual purchase, cancellation, restore, pending, refund/revoke, and entitlement reconciliation tested with the release candidate.
-- Attorney invitation, separate sharing authorization, MFA acceptance, read-only access, download warning, revocation, and post-revocation denial tested with synthetic data.
+- Attorney invitation, separate sharing authorization, exact-email code acceptance, read-only access, download warning, revocation, and post-revocation denial tested with synthetic data.
 - Operator has adopted the exact versioned Terms, Privacy, consumer-health sharing consent, retention, tax, and incident-response decisions; any unresolved legal uncertainty remains disclosed rather than represented as compliance.
 
 ## Apple References

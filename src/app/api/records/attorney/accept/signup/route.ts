@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json(
     {
       ok: true,
-      message: "Check the invited email and open the secure account link in that message. Custody Folio will then require authenticator verification before opening the shared matter.",
+      message: "Check the invited email and open the secure account link in that message. No password or authenticator app is required.",
     },
     { status: 202, headers: { "Cache-Control": "no-store" } }
   );

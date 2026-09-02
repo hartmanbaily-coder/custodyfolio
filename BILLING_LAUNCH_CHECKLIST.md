@@ -78,7 +78,7 @@ Status: dual-provider release prepared but not activated. The iOS app uses Apple
 - [ ] `LIVE_BILLING_APPROVED=true` is set by the authorized operator.
 - [ ] `BILLING_LIVE_ACTIVATION_AUTHORIZED=true` is set for the same monitored release window.
 - [ ] `BILLING_MODE=live`, `BILLING_CHECKOUT_ENABLED=true`, and `APPLE_PURCHASE_ENABLED=true` are applied together only for the approved dual-provider activation window.
-- [ ] `ATTORNEY_GUEST_FEATURE_ENABLED=true` and `ATTORNEY_INVITE_OWNER_SHARE_ENABLED=true` are applied only after the release-candidate attorney consent, MFA, revocation, and audit tests pass.
+- [ ] `ATTORNEY_GUEST_FEATURE_ENABLED=true` and `ATTORNEY_INVITE_OWNER_SHARE_ENABLED=true` are applied only after the release-candidate attorney consent, exact-email code verification, revocation, and audit tests pass.
 - [ ] A synthetic live purchase is performed only if expressly authorized and legally/operationally appropriate; verify entitlement, management, cancellation, export-only, and reconciliation.
 - [ ] Monitoring covers provider failures, conflicts, reconciliation, account-deletion billing cancellation, and unusual webhook volume.
 

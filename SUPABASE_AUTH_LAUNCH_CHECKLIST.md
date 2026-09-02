@@ -6,24 +6,24 @@ This checklist covers dashboard-controlled Supabase Auth settings that cannot be
 
 ## Current Policy
 
-Keep Custody Folio invite-only until launch review is complete:
+Custody Folio uses passwordless email codes for owner and attorney accounts. It does not require a password or authenticator app. The production flags must reflect the product owner's separately approved signup and Attorney Access launch state:
 
-- `NEXT_PUBLIC_RECORDS_SIGNUPS_ENABLED=false`
-- `RECORDS_SIGNUPS_ENABLED=false`
-- `ATTORNEY_GUEST_FEATURE_ENABLED=false`
-- Supabase Auth direct signup disabled while public app signup is disabled
+- `RECORDS_AUTH_METHOD=email_otp`
+- `SUPABASE_EMAIL_OTP_ENABLED=true`
+- `SUPABASE_EMAIL_OTP_LENGTH=6`
+- `SUPABASE_EMAIL_OTP_EXPIRY_SECONDS=600`
+- `RECORDS_ENFORCE_MFA=false`
+- `SUPABASE_MFA_POLICY=optional`
 
-When Attorney Access is enabled, keep both public app signup flags and Supabase Auth direct signup disabled. First-time attorneys receive a server-admin invitation email only after the exact pending invitation URL and invited email match. The mailbox-verified session establishes the app profile; copied invite URLs cannot choose or pre-bind an account password.
-
-If public self-registration is later approved, enable it deliberately in both the app env and Supabase Auth, then review signup abuse controls, custom SMTP limits, App Store review account handling, and support coverage.
+The public and server signup flags must match each other. When public owner signup is disabled, Supabase direct signup must also be disabled. Attorney creation remains gated by an exact, pending, case-specific invitation. A copied invitation cannot be accepted using a different email address.
 
 ## Dashboard Settings
 
 Open Supabase Dashboard for project `cieuilbpnwuvnrxrlczj`.
 
 1. Auth signups
-   - Go to Authentication settings for email/password auth.
-   - Disable direct signup whenever public app signup is disabled, including when Attorney Access is enabled. Server-admin attorney invitations still work with direct signup disabled.
+   - Go to Authentication settings for Email auth.
+   - Match Supabase direct signup to `RECORDS_SIGNUPS_ENABLED` and `NEXT_PUBLIC_RECORDS_SIGNUPS_ENABLED`.
    - Keep email confirmations required.
    - Keep anonymous sign-ins disabled.
    - Keep phone auth disabled unless a separate phone-auth review is completed.
@@ -37,42 +37,39 @@ Open Supabase Dashboard for project `cieuilbpnwuvnrxrlczj`.
      npm run verify:supabase-auth
      ```
 
-2. Custom SMTP
+2. Email-code template and custom SMTP
    - Go to Authentication > Emails > SMTP Settings.
    - Configure a production sender on the `custodyfolio.com` domain or an approved transactional email domain.
    - Current production fallback is `support@lendori.io` because `lendori.io` is the verified Resend domain on the free account and Resend flags `no-reply` senders as a deliverability risk. Migrate to `support@custodyfolio.com` only after `custodyfolio.com` is added and verified in Resend.
    - Keep `_dmarc.lendori.io` published as `v=DMARC1; p=none;` while monitoring delivery, then tighten the policy only after all legitimate senders are confirmed aligned.
    - Set **Sender name** exactly to `Custody Folio`; do not use the retired `My Custody Case` name.
    - Disable provider link tracking for auth links if the provider offers it.
-   - Send and receive a test confirmation/reset email using a synthetic account.
-   - Confirm the received confirmation/reset email displays `Custody Folio` as the sender name.
-   - Set the Invite user subject exactly to `Your secure Custody Folio attorney access link` and retain `{{ .ConfirmationURL }}` so server-admin attorney invitations deliver the mailbox-verification link.
+   - In the Magic Link template, display `{{ .Token }}` as the six-digit Custody Folio sign-in code. Do not use `{{ .ConfirmationURL }}` for the normal owner or attorney sign-in flow.
+   - Set the email-code expiry to `600` seconds.
+   - Send and receive a code using a synthetic owner and a synthetic invited attorney.
+   - Confirm each received email displays `Custody Folio` as the sender name, contains a six-digit code, and contains no case, child, court, health, or evidence information.
    - After any sender or template change, inspect a new message in Resend. Treat `delivered` only as recipient-server acceptance; resolve every deliverability warning and verify the message appears in the actual destination mailbox before closing the issue.
-   - For a missing attorney email, verify all three layers before changing app code: a successful `/invite` or OTP request in Supabase Auth logs, `delivered` or a specific failure in Resend Emails, and the recipient's junk/spam mailbox. A successful Supabase response only confirms provider handoff; it does not prove inbox placement.
+   - For a missing code, verify all three layers before changing app code: a successful OTP request in Supabase Auth logs, `delivered` or a specific failure in Resend Emails, and the recipient's junk/spam mailbox. A successful Supabase response only confirms provider handoff; it does not prove inbox placement.
    - After verification, set Listhaus repo variable `LOSTTOFOUND_SUPABASE_CUSTOM_SMTP_ENABLED=true`.
 
 3. Redirect URLs
    - Go to Authentication > URL Configuration.
    - Set Site URL to `https://custodyfolio.com`.
    - Allow exact production redirects used by the app:
-     - `https://custodyfolio.com/auth/confirm`
      - `https://custodyfolio.com/records`
-     - `https://custodyfolio.com/records?auth=confirmed`
-     - `https://custodyfolio.com/records?auth=attorney-invite&next=%2Fattorney%2Faccept&invite=1&attorney_token=*`
-     - `https://custodyfolio.com/records?auth=recovery`
+     - `https://custodyfolio.com/attorney`
+     - `https://custodyfolio.com/attorney/accept`
    - Remove redirect URLs for retired or repurposed domains before making those domains available to another product.
    - Avoid broad production wildcards.
-   - Verify signup confirmation, attorney invitation email onboarding, and password reset with synthetic accounts.
+   - Verify owner email-code onboarding and attorney invitation acceptance with synthetic accounts.
    - After verification, set Listhaus repo variable `LOSTTOFOUND_SUPABASE_AUTH_REDIRECTS_VERIFIED_AT=YYYY-MM-DD`.
 
-4. Password security
-   - Go to Authentication > Providers > Email.
-   - Set minimum password length to at least `12`.
-   - Enable Supabase leaked-password protection on Pro, or keep `PWNED_PASSWORD_CHECK_ENABLED=true` so signup and password changes use the free Have I Been Pwned k-anonymity range API as the compensating control on Free.
-   - Require reauthentication/current password for sensitive password changes where available.
-   - After verification, set:
-     - `LOSTTOFOUND_SUPABASE_LEAKED_PASSWORD_PROTECTION_ENABLED=true` when the native Pro control is enabled; otherwise keep it false and require `PWNED_PASSWORD_CHECK_ENABLED=true`.
-     - `LOSTTOFOUND_SUPABASE_AUTH_HARDENING_VERIFIED_AT=YYYY-MM-DD`
+4. Passwordless and session security
+   - Confirm the customer UI and production API do not offer password signup, password reset, password update, or mandatory TOTP enrollment.
+   - Confirm code request and verification routes use generic responses and both edge and app-level rate limits.
+   - Confirm a code cannot be reused after successful verification and fails after ten minutes.
+   - Confirm native session restoration still requires Face ID, Touch ID, or the device passcode on iOS.
+   - After verification, set `LOSTTOFOUND_SUPABASE_AUTH_HARDENING_VERIFIED_AT=YYYY-MM-DD`.
 
 5. Advisors
    - Run/review Supabase Security Advisor.
@@ -82,12 +79,12 @@ Open Supabase Dashboard for project `cieuilbpnwuvnrxrlczj`.
 ## Required Before Marking Auth Ready
 
 - `npm run verify:supabase-auth` passes.
-- Synthetic public signup confirms through `/auth/confirm` when enabled.
-- Synthetic attorney onboarding opens the mailbox link, establishes a password, completes MFA, and auto-accepts access.
-- Synthetic password reset lands on `/records?auth=recovery` and password update works.
-- Supabase leaked-password protection is enabled, or the tested app-level HIBP range check is enabled as the Free-plan compensating control.
+- Synthetic owner signup/sign-in sends and verifies a six-digit code when enabled.
+- Synthetic attorney onboarding verifies the exact invited mailbox by six-digit code and auto-accepts only the pending invitation.
+- Invalid, expired, reused, and rate-limited code paths are verified without revealing whether the account exists.
+- The temporary Apple Review code is restricted to the exact synthetic owner user ID, stored only as a SHA-256 digest on the server, expires within 45 days, and is removed after review.
 - `SUPABASE_AUTH_HARDENING_VERIFIED_AT` is set only after dashboard settings and advisors are checked.
 
 ## Sources
 
-Supabase production checklist recommends custom SMTP for auth email and dashboard advisor review before production. Supabase Auth redirect docs require production Site URL and allow-listed redirect URLs. Supabase password security docs cover minimum length, leaked-password protection, and password-change reauthentication.
+Supabase passwordless email documentation requires the Magic Link template to use `{{ .Token }}` when a one-time code is desired. Supabase production guidance recommends custom SMTP, short OTP expiry, rate limiting, production URL configuration, and dashboard advisor review.

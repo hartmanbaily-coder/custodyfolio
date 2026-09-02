@@ -53,6 +53,12 @@ export type RecordsAuthMessage = {
   message: string;
 };
 
+export type RecordsEmailCodeResult = {
+  session: RecordsSession;
+  destination: "/records" | "/attorney";
+  attorneyAccessHandle?: string;
+};
+
 let remoteSessionStateRequest: Promise<RecordsSessionReadResult> | null = null;
 let remoteSnapshotUpdatedAt: string | null = null;
 
@@ -469,6 +475,72 @@ export async function readRecordsSession() {
   if (recordsStorageMode === "supabase") return readRemoteSessionState();
   const session = readSession();
   return session ? { status: "signed_in" as const, session } : { status: "signed_out" as const };
+}
+
+export async function requestRecordsEmailCode(input: {
+  email: string;
+  adultConfirmed: boolean;
+  legalAccepted: boolean;
+  workspace?: "records" | "attorney";
+}): Promise<RecordsAuthMessage> {
+  const response = await fetch("/api/records/auth/email-code/request", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...input,
+      workspace: input.workspace || "records",
+    }),
+  });
+  const body = (await response.json().catch(() => ({}))) as {
+    ok?: boolean;
+    message?: string;
+    error?: string;
+  };
+  if (!response.ok) {
+    throw new Error(body.error || `Email code request failed with ${response.status}.`);
+  }
+  return {
+    ok: body.ok === true,
+    message: body.message || "Check your email for a 6-digit sign-in code.",
+  };
+}
+
+export async function verifyRecordsEmailCode(input: {
+  email: string;
+  code: string;
+  adultConfirmed: boolean;
+  legalAccepted: boolean;
+  workspace?: "records" | "attorney";
+}): Promise<RecordsEmailCodeResult> {
+  const response = await fetch("/api/records/auth/email-code/verify", {
+    method: "POST",
+    cache: "no-store",
+    credentials: "same-origin",
+    headers: {
+      Accept: "application/json",
+      "Cache-Control": "no-store",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      ...input,
+      workspace: input.workspace || "records",
+    }),
+  });
+  const body = (await response.json().catch(() => ({}))) as {
+    session?: RecordsSession;
+    destination?: "/records" | "/attorney";
+    attorneyAccessHandle?: string;
+    error?: string;
+  };
+  if (!response.ok || !body.session || !body.destination) {
+    throw new Error(body.error || `Email code verification failed with ${response.status}.`);
+  }
+  return {
+    session: body.session,
+    destination: body.destination,
+    attorneyAccessHandle: body.attorneyAccessHandle,
+  };
 }
 
 export async function signInRecordsSession(

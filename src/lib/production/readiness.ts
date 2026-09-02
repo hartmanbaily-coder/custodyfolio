@@ -39,13 +39,12 @@ export const supabaseFinalCheckIds = [
   "supabase-anon-key",
   "supabase-service-role",
   "records-signup-mode",
-  "supabase-mfa-policy",
-  "records-mfa-enforced",
+  "records-auth-method",
+  "supabase-email-otp",
+  "legacy-mfa-disabled",
   "supabase-custom-smtp",
   "supabase-auth-redirects",
-  "supabase-leaked-passwords",
-  "supabase-password-minimum",
-  "supabase-password-reauth",
+  "supabase-email-otp-expiry",
   "supabase-auth-hardening-verified",
   "records-evidence-bucket",
   "customer-growth-schema",
@@ -164,11 +163,6 @@ function supabaseProjectRef(value: string | undefined) {
   } catch {
     return "";
   }
-}
-
-function numberAtLeast(value: string | undefined, minimum: number) {
-  const parsed = Number(value || 0);
-  return Number.isFinite(parsed) && parsed >= minimum;
 }
 
 function isRecentDate(value: string | undefined, nowIso: string, maxAgeDays: number) {
@@ -370,55 +364,46 @@ export function evaluateProductionReadiness(
       "Set AUTH_SECRET to a high entropy value with at least 32 characters."
     ),
     check(
-      "supabase-mfa-policy",
-      "Supabase MFA policy is required",
-      env.SUPABASE_MFA_POLICY === "required",
+      "records-auth-method",
+      "Records authentication uses passwordless email OTP",
+      env.RECORDS_AUTH_METHOD === "email_otp",
       "blocker",
-      "Set SUPABASE_MFA_POLICY=required after enforcing MFA enrollment and AAL2 checks for production users."
+      "Set RECORDS_AUTH_METHOD=email_otp after enabling the verified passwordless email-code flow."
     ),
     check(
-      "records-mfa-enforced",
-      "Records API enforces MFA assurance level",
-      isEnabled(env.RECORDS_ENFORCE_MFA),
+      "supabase-email-otp",
+      "Supabase email OTP is explicitly enabled",
+      isEnabled(env.SUPABASE_EMAIL_OTP_ENABLED) && env.SUPABASE_EMAIL_OTP_LENGTH === "6",
       "blocker",
-      "Set RECORDS_ENFORCE_MFA=true so production records APIs require an AAL2 Supabase session."
+      "Enable Supabase email OTP and set SUPABASE_EMAIL_OTP_LENGTH=6."
+    ),
+    check(
+      "legacy-mfa-disabled",
+      "Retired authenticator-app enforcement is disabled",
+      env.SUPABASE_MFA_POLICY === "optional" && !isEnabled(env.RECORDS_ENFORCE_MFA),
+      "blocker",
+      "Set SUPABASE_MFA_POLICY=optional and RECORDS_ENFORCE_MFA=false."
     ),
     check(
       "supabase-custom-smtp",
       "Supabase Auth uses production email delivery",
       isEnabled(env.SUPABASE_CUSTOM_SMTP_ENABLED),
       "blocker",
-      "Configure custom SMTP for Supabase Auth before relying on signup or password reset emails."
+      "Configure Resend-backed custom SMTP before relying on passwordless sign-in codes."
     ),
     check(
       "supabase-auth-redirects",
       "Supabase Auth redirect URLs were verified recently",
       isRecentDate(env.SUPABASE_AUTH_REDIRECTS_VERIFIED_AT, generatedAt, 30),
       "blocker",
-      "Verify custodyfolio.com auth redirects, /auth/confirm, and password reset recovery links, then set SUPABASE_AUTH_REDIRECTS_VERIFIED_AT."
+      "Verify custodyfolio.com auth redirects, invitation callbacks, and /auth/confirm, then set SUPABASE_AUTH_REDIRECTS_VERIFIED_AT."
     ),
     check(
-      "supabase-leaked-passwords",
-      "Leaked password protection is enabled",
-      isEnabled(env.SUPABASE_LEAKED_PASSWORD_PROTECTION_ENABLED) ||
-        isEnabled(env.PWNED_PASSWORD_CHECK_ENABLED),
+      "supabase-email-otp-expiry",
+      "Email OTP expiration is limited to ten minutes",
+      env.SUPABASE_EMAIL_OTP_EXPIRY_SECONDS === "600",
       "blocker",
-      "Enable Supabase leaked password protection or the app-level Have I Been Pwned range check."
-    ),
-    check(
-      "supabase-password-minimum",
-      "Password minimum length is strong",
-      numberAtLeast(env.SUPABASE_PASSWORD_MIN_LENGTH, 12),
-      "blocker",
-      "Set Supabase password minimum length to at least 12 and declare SUPABASE_PASSWORD_MIN_LENGTH=12 or higher."
-    ),
-    check(
-      "supabase-password-reauth",
-      "Sensitive password changes require reauthentication",
-      isEnabled(env.SUPABASE_PASSWORD_REAUTH_ENABLED) &&
-        isEnabled(env.SUPABASE_CURRENT_PASSWORD_REQUIRED),
-      "blocker",
-      "Enable reauthentication and current password checks for password changes."
+      "Set the Supabase Email OTP expiration to 600 seconds and record SUPABASE_EMAIL_OTP_EXPIRY_SECONDS=600."
     ),
     check(
       "supabase-auth-hardening-verified",

@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
 const requiredEnv = [
@@ -36,7 +36,6 @@ const admin = createClient(
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
 const runId = randomUUID();
-const password = `CF-${randomUUID()}-synthetic-access`;
 const ownerEmail = `custodyfolio-owner-${runId}@${syntheticEmailDomain}`;
 const attorneyEmail = `custodyfolio-attorney-${runId}@${syntheticEmailDomain}`;
 const caseId = `synthetic-attorney-${runId}`;
@@ -105,64 +104,29 @@ async function csrfToken(jar) {
   return result.body.token;
 }
 
-const base32Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-
-function decodeBase32(input) {
-  const normalized = String(input || "").replace(/=+$/g, "").replace(/\s+/g, "").toUpperCase();
-  let bits = "";
-  for (const character of normalized) {
-    const value = base32Alphabet.indexOf(character);
-    if (value !== -1) bits += value.toString(2).padStart(5, "0");
-  }
-  const bytes = [];
-  for (let offset = 0; offset + 8 <= bits.length; offset += 8) {
-    bytes.push(Number.parseInt(bits.slice(offset, offset + 8), 2));
-  }
-  return Buffer.from(bytes);
-}
-
-function totpCode(secret, timestamp = Date.now()) {
-  const key = decodeBase32(secret);
-  const counter = Math.floor(timestamp / 30_000);
-  const buffer = Buffer.alloc(8);
-  buffer.writeBigUInt64BE(BigInt(counter));
-  const digest = createHmac("sha1", key).update(buffer).digest();
-  const offset = digest[digest.length - 1] & 0x0f;
-  const binary =
-    ((digest[offset] & 0x7f) << 24)
-    | ((digest[offset + 1] & 0xff) << 16)
-    | ((digest[offset + 2] & 0xff) << 8)
-    | (digest[offset + 3] & 0xff);
-  return String(binary % 1_000_000).padStart(6, "0");
-}
-
-async function enrollMfa(jar, enrollment) {
-  const verified = await jsonRequest("/api/records/auth/mfa/enroll/verify", {
+async function ownerLogin(jar) {
+  const generated = await admin.auth.admin.generateLink({
+    type: "magiclink",
+    email: ownerEmail,
+  });
+  const code = generated.data?.properties?.email_otp;
+  assert(!generated.error && /^\d{6}$/.test(code || ""), "Unable to generate a synthetic owner email code.");
+  const login = await jsonRequest("/api/records/auth/email-code/verify", {
     method: "POST",
     jar,
     body: {
-      factorId: enrollment.factorId,
-      code: totpCode(enrollment.secret),
+      email: ownerEmail,
+      code,
+      adultConfirmed: true,
+      legalAccepted: true,
+      workspace: "records",
     },
   });
   assert(
-    verified.response.ok,
-    `MFA enrollment verification failed with ${verified.response.status}: ${verified.body.error || "unknown error"}`
+    login.response.ok && login.body.session?.userId === ownerUserId,
+    `Synthetic owner email-code login failed with ${login.response.status}: ${login.body.error || "unknown error"}`
   );
-  return verified.body.session;
-}
-
-async function ownerLogin(jar) {
-  const login = await jsonRequest("/api/records/auth/login", {
-    method: "POST",
-    jar,
-    body: { email: ownerEmail, password, adultConfirmed: true },
-  });
-  assert(
-    login.response.status === 403 && login.body.mfaEnrollmentRequired && login.body.enrollment,
-    `Synthetic owner login did not require MFA enrollment; got ${login.response.status}: ${login.body.error || "unknown error"}`
-  );
-  return enrollMfa(jar, login.body.enrollment);
+  return login.body.session;
 }
 
 function syntheticDataset() {
@@ -249,155 +213,48 @@ async function createInvitation(ownerJar, ownerCsrf) {
   return token;
 }
 
-async function requestMailboxAuthentication(attorneyJar, attorneyCsrf) {
-  const requested = await jsonRequest("/api/records/attorney/accept/signup", {
+async function requestMailboxAuthentication(attorneyJar) {
+  const requested = await jsonRequest("/api/records/auth/email-code/request", {
     method: "POST",
     jar: attorneyJar,
-    csrf: attorneyCsrf,
     body: {
       email: attorneyEmail,
       adultConfirmed: true,
       legalAccepted: true,
+      workspace: "attorney",
     },
   });
   if (requested.response.status === 202) return true;
-  if (
-    requested.response.status === 503 &&
-    /\.(?:test|invalid)$/i.test(attorneyEmail.split("@").at(-1) || "")
-  ) {
-    return false;
-  }
   throw new Error(
     `Mailbox authentication handoff failed with ${requested.response.status}: ${requested.body.error || "unknown error"}`
   );
 }
 
-async function syntheticMailboxSession(invitationToken) {
+async function acceptWithEmailCode(attorneyJar) {
   const generated = await admin.auth.admin.generateLink({
     type: "magiclink",
     email: attorneyEmail,
-    options: {
-      redirectTo: `${trustedOrigin}/records?auth=attorney-invite&attorney_token=${encodeURIComponent(invitationToken)}`,
-    },
   });
-  if (generated.error || !generated.data?.properties?.hashed_token || !generated.data.user?.id) {
-    throw new Error(`Unable to generate the synthetic mailbox link: ${generated.error?.message || "missing token"}`);
-  }
-  attorneyUserId = generated.data.user.id;
-
-  const mailboxClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-  const verified = await mailboxClient.auth.verifyOtp({
-    token_hash: generated.data.properties.hashed_token,
-    type: "email",
-  });
-  if (verified.error || !verified.data.session?.access_token || !verified.data.session.refresh_token) {
-    throw new Error(`Synthetic mailbox link verification failed: ${verified.error?.message || "missing session"}`);
-  }
-  return verified.data.session;
-}
-
-function jwtPayload(token) {
-  const payload = String(token || "").split(".")[1];
-  if (!payload) return null;
-  try {
-    return JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-  } catch {
-    return null;
-  }
-}
-
-async function verifyAcceptancePreconditions(invitationToken, mailboxSession) {
-  assert(
-    mailboxSession.access_token.length > 20
-      && mailboxSession.access_token.length < 8_000
-      && mailboxSession.refresh_token.length >= 8
-      && mailboxSession.refresh_token.length < 8_000
-      && invitationToken.length > 20
-      && invitationToken.length < 8_000,
-    `Mailbox token lengths were route-incompatible (access ${mailboxSession.access_token.length}, refresh ${mailboxSession.refresh_token.length}, invitation ${invitationToken.length}).`
-  );
-  const claims = jwtPayload(mailboxSession.access_token);
-  const amr = Array.isArray(claims?.amr) ? claims.amr : [];
-  const methods = amr.map((entry) => String(entry?.method || "unknown"));
-  const freshMailboxProof = amr.some((entry) => {
-    const timestamp = typeof entry?.timestamp === "number" ? entry.timestamp : 0;
-    return ["invite", "magiclink", "otp"].includes(entry?.method)
-      && timestamp >= Math.floor(Date.now() / 1000) - 10 * 60;
-  });
-  assert(
-    freshMailboxProof && typeof claims?.session_id === "string" && claims?.sub === attorneyUserId,
-    `Synthetic mailbox token claims were not acceptance-compatible (methods: ${methods.join(",") || "none"}).`
-  );
-
-  const confirmed = await admin.auth.getUser(mailboxSession.access_token);
-  assert(
-    !confirmed.error
-      && confirmed.data.user?.id === attorneyUserId
-      && confirmed.data.user.email === attorneyEmail
-      && Boolean(confirmed.data.user.email_confirmed_at),
-    "Synthetic mailbox token did not resolve to the confirmed invited identity."
-  );
-
-  const routeEquivalentClient = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    { auth: { autoRefreshToken: false, detectSessionInUrl: false, persistSession: false } }
-  );
-  const verifiedClaims = await routeEquivalentClient.auth.getClaims(mailboxSession.access_token);
-  assert(
-    !verifiedClaims.error && verifiedClaims.data?.claims?.sub === attorneyUserId,
-    `Route-equivalent Supabase claim verification failed (${verifiedClaims.error?.code || "invalid claims"}).`
-  );
-  const setSession = await routeEquivalentClient.auth.setSession({
-    access_token: mailboxSession.access_token,
-    refresh_token: mailboxSession.refresh_token,
-  });
-  assert(
-    !setSession.error && setSession.data.user?.id === attorneyUserId,
-    `Route-equivalent Supabase session verification failed (${setSession.error?.code || "invalid session"}).`
-  );
-
-  const tokenHash = createHash("sha256").update(invitationToken).digest("hex");
-  const portalSecret = process.env.ATTORNEY_PORTAL_SECRET || "";
-  assert(portalSecret.length >= 32, "Attorney portal secret is unavailable to the isolated verifier.");
-  const emailKey = createHash("sha256").update(`attorney-email-hmac:${portalSecret}`).digest();
-  const emailHash = createHmac("sha256", emailKey).update(attorneyEmail).digest("hex");
-  const invitation = await admin
-    .from("records_attorney_invitations")
-    .select("id,invited_email_hash,status,expires_at")
-    .eq("token_hash", tokenHash)
-    .maybeSingle();
-  assert(
-    !invitation.error
-      && invitation.data?.status === "pending"
-      && invitation.data.invited_email_hash === emailHash
-      && new Date(invitation.data.expires_at).getTime() > Date.now(),
-    "Synthetic invitation database binding was not acceptance-compatible."
-  );
-  invitationId = invitation.data.id;
-}
-
-async function acceptWithMailboxSession(attorneyJar, attorneyCsrf, invitationToken, mailboxSession) {
-  const accepted = await jsonRequest("/api/records/attorney/accept/session", {
+  const code = generated.data?.properties?.email_otp;
+  assert(!generated.error && /^\d{6}$/.test(code || ""), "Unable to generate a synthetic attorney email code.");
+  const accepted = await jsonRequest("/api/records/auth/email-code/verify", {
     method: "POST",
     jar: attorneyJar,
-    csrf: attorneyCsrf,
     body: {
-      accessToken: mailboxSession.access_token,
-      refreshToken: mailboxSession.refresh_token,
-      expiresIn: mailboxSession.expires_in,
-      onboardingToken: invitationToken,
+      email: attorneyEmail,
+      code,
+      adultConfirmed: true,
+      legalAccepted: true,
+      workspace: "attorney",
     },
   });
   assert(
-    accepted.response.status === 403 && accepted.body.mfaEnrollmentRequired && accepted.body.enrollment,
-    `Mailbox-verified attorney session did not require MFA enrollment; got ${accepted.response.status}: ${accepted.body.error || "unknown error"}`
+    accepted.response.ok && accepted.body.destination === "/attorney",
+    `Mailbox-verified attorney email-code session failed with ${accepted.response.status}: ${accepted.body.error || "unknown error"}`
   );
-  await enrollMfa(attorneyJar, accepted.body.enrollment);
+  if (accepted.body.attorneyAccessHandle) {
+    assert(typeof accepted.body.attorneyAccessHandle === "string", "Attorney email-code response contained an invalid access handle.");
+  }
 }
 
 async function verifyReadOnlyPortal(attorneyJar) {
@@ -507,7 +364,6 @@ async function cleanup() {
 try {
   const owner = await admin.auth.admin.createUser({
     email: ownerEmail,
-    password,
     email_confirm: true,
     user_metadata: { purpose: "custody-folio-attorney-access-test", run_id: runId },
   });
@@ -540,10 +396,17 @@ try {
     body: { token: invitationToken },
   });
   assert(prepared.response.ok, `Attorney invitation preparation failed with ${prepared.response.status}.`);
-  mailboxProviderHandoffVerified = await requestMailboxAuthentication(attorneyJar, attorneyCsrf);
-  const mailboxSession = await syntheticMailboxSession(invitationToken);
-  await verifyAcceptancePreconditions(invitationToken, mailboxSession);
-  await acceptWithMailboxSession(attorneyJar, attorneyCsrf, invitationToken, mailboxSession);
+  const attorney = await admin.auth.admin.createUser({
+    email: attorneyEmail,
+    email_confirm: true,
+    user_metadata: { purpose: "custody-folio-attorney-access-test", run_id: runId },
+  });
+  if (attorney.error || !attorney.data.user?.id) {
+    throw new Error(`Unable to create the synthetic attorney: ${attorney.error?.message || "missing user id"}`);
+  }
+  attorneyUserId = attorney.data.user.id;
+  mailboxProviderHandoffVerified = await requestMailboxAuthentication(attorneyJar);
+  await acceptWithEmailCode(attorneyJar);
   const accessHandle = await verifyReadOnlyPortal(attorneyJar);
   await revokeAccess(ownerJar, ownerCsrf);
   await verifyPostRevokeDenial(attorneyJar, accessHandle);
@@ -558,7 +421,7 @@ try {
   grantId = grant.data.id;
 
   console.log("Synthetic attorney access verification passed.");
-  console.log("Verified: invitation, mailbox token, MFA, read-only portal, revoke, and post-revoke denial.");
+  console.log("Verified: invitation, passwordless email code, read-only portal, revoke, and post-revoke denial.");
   console.log(
     mailboxProviderHandoffVerified
       ? "Mailbox-provider handoff passed; inbox placement was not verified."

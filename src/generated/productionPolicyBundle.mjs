@@ -15,17 +15,17 @@ export const productionPolicyDocumentPaths = {
 };
 
 export const productionPolicyDocumentDigests = {
-  "privacy": "sha256:7c195652026d418841137463778872d0b6cc8b284b7754b5b8adc2e3b8883b74",
-  "terms": "sha256:dcb79187a72e3aaf6624dc4d861c622c8dd3fdc45bfcc973a8fbafd52b9aa6a2",
-  "consumerHealthData": "sha256:7fb8fba2fb6537a57fdca7a2bb5102f77b9d1bce18e33ce0845bb9b8438793de",
-  "subprocessors": "sha256:2861f4f613d207d01d0b69ef75018af8da73c6404fdca7206b012b900614c60f",
+  "privacy": "sha256:50b616675553a6ba9b802e0e3bebce6cc4532f0fb9cd9df6132ef390b29f7002",
+  "terms": "sha256:454ca2df47415347e8da050ce96145b5e4c72426ab2f881721c554dedfdc29e4",
+  "consumerHealthData": "sha256:5644d58985e4605b77c6a8b68fab99f1ed53c398f26899f3c475de6ed9ec0e2d",
+  "subprocessors": "sha256:53a7aa5804e761eb2a96bc6b853251aa31a4238f1d2c30227991ca1e377823b2",
   "dataRetentionRunbook": "sha256:333e53cfe7324710fe926703ff81aedfd9dc87bb09ec192026e1376b5af0f66b",
   "incidentResponseRunbook": "sha256:26d40342b03142fe0bf1f386bb1e28ae530203c49eb63e080a36dd9ff6b8af30",
   "monitoringRunbook": "sha256:ccc9dea9c41184d496f639b143dfe65402180d6093e575b0e5e6a7c6d556f2c7",
   "legalReviewPacket": "sha256:fb9c19eee953b6448d4159591ef3a52757aa6fff83a71fdd9ec67746b80919d2",
   "privacyRightsOperations": "sha256:a7eb79d92c4751da75a92afade1017b4dde38ee3267420c95421a874be470ce6",
   "billingOperationsRunbook": "sha256:f8833f4c6cd5360514dd7ad7838c18a16339c6c514cb03f214588d65355158da",
-  "billingLaunchChecklist": "sha256:2dfff7337624c1f5b562c6d23e474795183727e2845cecc5814ac0341a3eeb9f"
+  "billingLaunchChecklist": "sha256:875fc4071902df815a4e6e848ad96b0db6c2d20a3b69c63f573727ae4b9b7660"
 };
 
-export const productionPolicyBundleSha256 = "sha256:73edc57f9a239db5a0c7a54c94e30ed51e5c4840e185edaa3d35cc99221ab439";
+export const productionPolicyBundleSha256 = "sha256:9607ea4e423c39d207275b19a729b611d495c2508d4e4a092e6932f0a28f12f6";

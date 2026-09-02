@@ -205,7 +205,7 @@ export default function AttorneyAccessPanel({
     try {
       await navigator.share({
         title: "Custody Folio attorney access",
-        text: "Private read-only attorney access invitation. Open this one link, use the exact invited email, create or sign in, and complete authenticator verification. Custody Folio will not send another invitation email.",
+        text: "Private read-only attorney access invitation. Open this link, use the exact invited email, and enter the one-time code Custody Folio sends to that mailbox.",
         url: invitationUrl,
       });
       setMessage("Invitation share sheet opened.");
@@ -268,7 +268,7 @@ export default function AttorneyAccessPanel({
         <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-5 text-slate-700">
           <li><strong>Enter the attorney&apos;s exact email address</strong> and select Create invitation.</li>
           <li><strong>Send the one private link yourself</strong> using Share Link, Copy Link, or the QR code. Custody Folio does not email it.</li>
-          <li><strong>Tell the attorney to open that link</strong>, use the same email address, create a free account or sign in, and complete authenticator verification.</li>
+          <li><strong>Tell the attorney to open that link</strong>, use the same email address, and enter the one-time code sent to that mailbox.</li>
           <li><strong>Review or revoke access here at any time.</strong> Accepted access stays active until you revoke it, the attorney leaves the matter, or the case/account is deleted.</li>
         </ul>
       </section>

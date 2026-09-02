@@ -26,7 +26,7 @@ const sections: PolicySection[] = [
   {
     title: "Information you provide",
     body: [
-      "Account and profile information: email address, account role and status, display name, timezone, and authentication settings.",
+      "Account and profile information: email address, account role and status, display name, timezone, and email-code authentication settings and events.",
       "Case and family records: matter labels, court and order information, child labels, parenting schedules, exchanges, locations, witnesses, notes, tags, and event details.",
       "Financial records: child-support orders and payments, agency or case references, expenses, reimbursements, amounts, dates, and related notes.",
       "Files and communications: photos, videos, screenshots, documents, email or text-message copies, evidence metadata, support messages, and generated reports or exports.",
@@ -39,7 +39,7 @@ const sections: PolicySection[] = [
       "We process IP address and network information, browser or device type, request time, route, request identifier, authentication and security events, and diagnostic information needed to deliver and protect the service.",
       "Security logs use shortened hashes for IP addresses, user agents, account IDs, and case IDs where practical. They do not intentionally include note bodies, file contents, child names, court details, or payment references.",
       "When first party product measurement is enabled, we process a fixed event name, event time, web or iOS platform, approved source and campaign codes, plan interval when relevant, completion or bounded technical status, and a keyed opaque cohort identifier. This event store does not include names, email addresses, raw account identifiers, case identifiers, customer record contents, file information, child information, health information, full IP addresses, full user agents, or free text feedback.",
-      "When compromised-password screening is enabled, only a short password-hash prefix is sent to the Have I Been Pwned range service. Your password, email address, and complete password hash are not sent.",
+      "Passwordless sign-in codes are generated and verified by Supabase Auth and delivered through Resend. Codes expire, can be used only once, and are not stored in Custody Folio records.",
     ],
   },
   {
@@ -64,7 +64,7 @@ const sections: PolicySection[] = [
     title: "Service providers and disclosures",
     body: [
       "Supabase provides authentication, database, and private file storage; Backblaze provides encrypted off-site evidence backups; Hetzner hosts the application; Cloudflare provides network delivery, DNS, and security protection; and Resend delivers authentication email.",
-      "Apple iCloud Mail processes support, privacy, and security messages. Have I Been Pwned processes password-hash prefixes only when compromised-password screening is enabled.",
+      "Apple iCloud Mail processes support, privacy, and security messages. Resend processes the recipient address and delivery information needed to send passwordless sign-in codes.",
       "When web subscription billing is enabled, Stripe processes checkout, subscription, invoice, refund, dispute, payment-method, and U.S. service-address information used to enforce the current web-purchase territory. When App Store billing is enabled, Apple processes in-app purchases, subscriptions, cancellations, and refunds. Custody Folio does not store full card details.",
       "Providers process information only to provide contracted services and are required to protect user data consistently with this policy and applicable law. The current provider list and processing descriptions appear on the Subprocessors page.",
       "We may disclose information in response to valid legal process, to protect people or the service, or as part of a business transfer where the recipient assumes these privacy obligations. We review requests and disclose only what we reasonably believe is required.",

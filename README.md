@@ -12,7 +12,7 @@ The product is for factual documentation and organization only. It does not prov
 
 This repository now ships a working records workspace with synthetic demo data by default and an optional Supabase-backed records mode:
 
-- Adult-user login/register demo flow
+- Adult-user passwordless email-code login/register flow in Supabase mode
 - Custody matter setup
 - Simple recurring exchange rules
 - Exchange logging and late/early/missed calculations
@@ -50,7 +50,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-The demo login is pre-filled. It only validates adult-use confirmation, email shape, and an 8-character password locally.
+Local demo mode still uses a non-production demo form. Supabase mode sends a six-digit, single-use email code and does not ask the user to create or remember a password.
 
 ## Environment Variables
 
@@ -82,8 +82,8 @@ npx playwright install chromium
 
 Before storing real user records, verify the production deployment end to end:
 
-- Supabase Auth settings, MFA/session policy, and rate limits
-- Records API AAL2 enforcement with TOTP MFA verification in Supabase mode
+- Supabase Auth email-code template, ten-minute code expiry, custom SMTP, session policy, and rate limits
+- Passwordless email verification in Supabase mode, with native iOS protection supplied separately by Face ID, Touch ID, or the device passcode
 - PostgreSQL tables with row-level access controls and server-enforced `userId` and `caseId` authorization
 - Private object storage isolation for evidence
 - Authenticated server-mediated evidence access only

@@ -67,15 +67,14 @@ Before production deploy, use `.env.production.example` as the source checklist 
 - `EXPECTED_SUPABASE_PROJECT_REF`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `RECORDS_AUTH_METHOD`
+- `SUPABASE_EMAIL_OTP_ENABLED`
+- `SUPABASE_EMAIL_OTP_LENGTH`
+- `SUPABASE_EMAIL_OTP_EXPIRY_SECONDS`
 - `SUPABASE_MFA_POLICY`
 - `RECORDS_ENFORCE_MFA`
 - `SUPABASE_CUSTOM_SMTP_ENABLED`
 - `SUPABASE_AUTH_REDIRECTS_VERIFIED_AT`
-- `SUPABASE_LEAKED_PASSWORD_PROTECTION_ENABLED`
-- `PWNED_PASSWORD_CHECK_ENABLED` (required when the native Supabase leaked-password control is unavailable)
-- `SUPABASE_PASSWORD_MIN_LENGTH`
-- `SUPABASE_PASSWORD_REAUTH_ENABLED`
-- `SUPABASE_CURRENT_PASSWORD_REQUIRED`
 - `SUPABASE_AUTH_HARDENING_VERIFIED_AT`
 - `AUTH_SECRET`
 - `RECORDS_EVIDENCE_BUCKET`
@@ -113,7 +112,7 @@ Use this deploy path for Custody Folio changes:
 4. The remote deploy builds a release-tagged image, replaces the application container, reloads Caddy in place without disconnecting Cloudflare Tunnel, verifies readiness, verifies clean/EICAR malware scanning, verifies security headers, and rolls back to the prior image if validation fails.
 5. Verify production after deploy:
    - `https://custodyfolio.com/records` serves the expected bundle/UI.
-   - A fake login to `POST https://custodyfolio.com/api/records/auth/login` returns a handled `400` or `401` JSON response, not a blank `500`.
+   - The retired password endpoint returns `410`, and an invalid request to `POST https://custodyfolio.com/api/records/auth/email-code/request` returns handled `400` JSON, not a blank `500`.
    - `https://custodyfolio.com/api/records/readiness` returns a structured `ready` or `not_ready` result with no unexpected infrastructure blocker. Policy and dashboard attestations remain visible and must not be marked complete without evidence.
 
 Production deployment is intentionally not triggered by GitHub Actions. This keeps the production SSH key and host environment out of GitHub and removes the cross-repository `LISTHAUS_DEPLOY_TOKEN`. Run `npm run check:production` with the real host environment before accepting real records.
@@ -197,7 +196,7 @@ Email subjects and bodies must be generic.
 - Edge rate limits and WAF configured
 - Production env template verified
 - Security headers verified
-- Supabase MFA and password hardening configured
+- Supabase six-digit email-code template, ten-minute expiry, Resend SMTP, and rate limits configured
 - Server-side authorization tests passing
 - Private evidence storage configured
 - Malware scanning provider configured

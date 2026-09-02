@@ -62,7 +62,7 @@ const sections: PolicySection[] = [
     body: [
       "Supabase processes authentication, database records, and private files; Backblaze stores encrypted off-site evidence backups; Hetzner hosts the application; Cloudflare processes network and security traffic; and our production logging environment processes minimized security events.",
       "An attorney selected by the client may receive the shared case. Apple iCloud Mail may receive health information only if a person voluntarily includes it in a support or privacy email; users are instructed not to email sensitive records unless requested.",
-      "Resend handles authentication email and is not intended to receive custody or health record contents. Have I Been Pwned may receive a password-hash prefix and is not intended to receive health information.",
+      "Resend handles one-time authentication-code email and is not intended to receive custody or health record contents.",
       "Custody Folio has no affiliate that receives consumer health data and does not sell consumer health data. The separate Subprocessors page identifies current service-provider categories.",
     ],
   },

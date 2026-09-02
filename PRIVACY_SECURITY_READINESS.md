@@ -21,11 +21,10 @@ These gates are enforced by `src/lib/production/readiness.ts` and `scripts/check
 | Supabase mode | `RECORDS_STORAGE_MODE=supabase` and `NEXT_PUBLIC_RECORDS_STORAGE_MODE=supabase` | Required |
 | Production Supabase project guard | `EXPECTED_SUPABASE_PROJECT_REF=cieuilbpnwuvnrxrlczj`; production must not point at staging project `adhnoiicwfvppzenwcgv` | Required |
 | Server-only service role | `SUPABASE_SERVICE_ROLE_KEY` only in server secrets | Required |
-| MFA policy | `SUPABASE_MFA_POLICY=required` | Required |
-| Records MFA enforcement | `RECORDS_ENFORCE_MFA=true`; API requires Supabase AAL2 | Required |
-| Leaked-password protection | `SUPABASE_LEAKED_PASSWORD_PROTECTION_ENABLED=true` | Required |
-| Strong password minimum | `SUPABASE_PASSWORD_MIN_LENGTH=12` or higher | Required |
-| Password-change reauth | `SUPABASE_PASSWORD_REAUTH_ENABLED=true` and `SUPABASE_CURRENT_PASSWORD_REQUIRED=true` | Required |
+| Account authentication method | `RECORDS_AUTH_METHOD=email_otp` | Required |
+| Supabase email OTP | `SUPABASE_EMAIL_OTP_ENABLED=true`, length `6`, expiry `600` seconds | Required |
+| Legacy mandatory MFA disabled | `RECORDS_ENFORCE_MFA=false`; `SUPABASE_MFA_POLICY=optional` or `disabled` | Required |
+| Custom SMTP | Supabase Auth sends Custody Folio email codes through the approved Resend configuration | Required |
 | Supabase Auth verification | `SUPABASE_AUTH_HARDENING_VERIFIED_AT` within 30 days after dashboard settings and advisors are checked | Required |
 | Private evidence bucket | `RECORDS_EVIDENCE_BUCKET=records-evidence` | Required |
 | Malware scanning | Real `MALWARE_SCAN_PROVIDER`; HTTP providers require HTTPS `MALWARE_SCAN_ENDPOINT`; `MALWARE_SCANNER_TESTED_AT` within 30 days | Required |
