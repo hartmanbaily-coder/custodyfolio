@@ -199,7 +199,7 @@ test("records login and report workflow", async ({ page }) => {
   await expect(rangeEndDay.locator('[data-exchange-time-marker="18:00"]')).toHaveCount(1);
   await rangeEndDay.click();
   await expect(page.getByLabel("Child will be with")).toHaveValue("Alternate caregiver");
-  await expect(page.getByLabel("Exchange day")).toHaveValue("start");
+  await expect(page.getByLabel("Exchange day")).toHaveValue("end");
   await expect(page.getByLabel("Exchange time")).toHaveValue("18:00");
 
   await page.getByTestId("calendar-color-tools").locator("summary").click();
@@ -698,8 +698,8 @@ test("home overview counters use structured records in the selected range", asyn
   const exchangeForm = page.locator("form").filter({
     has: page.getByRole("button", { name: "Save exchange outcome" }),
   });
-  await expect(exchangeForm.getByLabel("Scheduled exchange date")).toHaveValue(today);
-  await expect(exchangeForm.getByLabel("Actual date")).toHaveValue(today);
+  await exchangeForm.getByLabel("Scheduled exchange date").fill(today);
+  await exchangeForm.getByLabel("Actual date").fill(today);
   await exchangeForm.getByLabel("Actual time").fill("18:15");
   await exchangeForm.getByRole("button", { name: "Save exchange outcome" }).click();
   await expect(page.getByRole("status")).toContainText(
@@ -715,7 +715,7 @@ test("home overview counters use structured records in the selected range", asyn
 
   await page.getByRole("button", { name: "Notes & events", exact: true }).click();
   const faceTimeForm = page.getByTestId("facetime-outcome-form");
-  await expect(faceTimeForm.getByLabel("Date", { exact: true })).toHaveValue(today);
+  await faceTimeForm.getByLabel("Date", { exact: true }).fill(today);
   await faceTimeForm.getByLabel("Communication outcome").selectOption("attempted_unanswered");
   await faceTimeForm
     .getByLabel("A message or notice came after the call attempt.")
@@ -1061,7 +1061,24 @@ test("an attorney invitation starts mailbox-verified account access", async ({ p
       contentType: "application/json",
       body: JSON.stringify({
         ok: true,
-        message: "Invitation verified. New accounts must open a secure link sent to the invited email; existing accounts may sign in below.",
+        message: "Invitation verified. Enter the invited attorney email below.",
+      }),
+    });
+  });
+  await page.route("**/api/records/auth/email-code/request", async (route) => {
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().postDataJSON()).toEqual({
+      email: "counsel@example.test",
+      adultConfirmed: true,
+      legalAccepted: true,
+      workspace: "attorney",
+    });
+    await route.fulfill({
+      status: 202,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        message: "If that email can access Custody Folio, a 6-digit sign-in code will arrive shortly. Check Inbox and Junk.",
       }),
     });
   });
@@ -1070,11 +1087,17 @@ test("an attorney invitation starts mailbox-verified account access", async ({ p
   await expect(page.getByRole("heading", { name: "Open a read-only shared matter" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Before you begin" })).toBeVisible();
   await expect(page.getByText("Use the exact email address the client invited.", { exact: false })).toBeVisible();
-  await expect(page.getByText("Have an authenticator app ready.", { exact: false })).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("secure link sent to the invited email");
-  await expect(page.getByRole("button", { name: "Create account", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Email secure account link" })).toBeVisible();
+  await expect(page.getByText("no password or authenticator app is required.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Request a code.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Enter the code here.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("Enter the invited attorney email below");
+  await page.getByLabel("Invited attorney email").fill("counsel@example.test");
+  await page.getByRole("checkbox", { name: /I am the adult attorney invited/ }).check();
+  await page.getByRole("checkbox", { name: /I agree to the Terms of Use/ }).check();
+  await page.getByRole("button", { name: "Email me a sign-in code" }).click();
+  await expect(page.getByRole("status")).toContainText("a 6-digit sign-in code will arrive shortly");
+  await expect(page.getByLabel("6-digit email code")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open attorney portal" })).toBeVisible();
   await expect(page).toHaveURL(/\/attorney\/accept$/);
   expect(await page.evaluate(() => window.sessionStorage.getItem("l2f.attorney.access")))
     .toBeNull();
