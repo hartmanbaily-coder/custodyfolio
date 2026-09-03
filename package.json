@@ -39,6 +39,8 @@
     "verify:apple-notifications": "node scripts/verify-apple-notifications-v2.mjs",
     "growth:scorecard": "node scripts/report-growth-scorecard.mjs",
     "test:growth-scorecard": "node --test scripts/growth-scorecard-lib.test.mjs scripts/growth-scorecard-migration.test.mjs",
+    "indexnow:dry-run": "node scripts/submit-indexnow.mjs --dry-run",
+    "test:indexnow": "node --test scripts/submit-indexnow.test.mjs",
     "audit:apple-billing": "node scripts/ios/audit-app-store-billing-readiness.mjs",
     "generate:policy-bundle": "node scripts/generate-production-policy-bundle.mjs",
     "approval:prepare": "npm run generate:policy-bundle && node scripts/create-production-approval-manifest.mjs",
