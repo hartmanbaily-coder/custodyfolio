@@ -1,11 +1,15 @@
-insert into public.custody_folio_billing_accounts (id, user_id)
+insert into public.custody_folio_billing_accounts (
+  id,
+  user_id,
+  growth_cohort_identifier
+)
 values
-  ('10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001'),
-  ('10000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002'),
-  ('10000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000003'),
-  ('10000000-0000-4000-8000-000000000004', '20000000-0000-4000-8000-000000000004'),
-  ('10000000-0000-4000-8000-000000000005', '20000000-0000-4000-8000-000000000005'),
-  ('10000000-0000-4000-8000-000000000099', '20000000-0000-4000-8000-000000000099');
+  ('10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', '11111111111111111111111111111111'),
+  ('10000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', '22222222222222222222222222222222'),
+  ('10000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000003', '33333333333333333333333333333333'),
+  ('10000000-0000-4000-8000-000000000004', '20000000-0000-4000-8000-000000000004', '44444444444444444444444444444444'),
+  ('10000000-0000-4000-8000-000000000005', '20000000-0000-4000-8000-000000000005', '55555555555555555555555555555555'),
+  ('10000000-0000-4000-8000-000000000099', '20000000-0000-4000-8000-000000000099', '99999999999999999999999999999999');
 
 insert into public.custody_folio_trials (billing_account_id, started_at, ends_at)
 select
@@ -47,7 +51,8 @@ with cohort(cohort_identifier) as (
     ('customer_first_record_saved', 5),
     ('customer_first_timeline_viewed', 6),
     ('customer_feedback_prompt_viewed', 7),
-    ('customer_subscription_started', 8)
+    ('customer_value_prompt_viewed', 8),
+    ('customer_subscription_started', 9)
 )
 insert into public.custody_folio_growth_events (
   event_name,
@@ -107,8 +112,9 @@ with event(event_name, minute_offset) as (
     ('customer_first_record_saved', 4),
     ('customer_first_report_created', 5),
     ('customer_feedback_prompt_viewed', 6),
-    ('customer_feedback_opted_in', 7),
-    ('customer_subscription_started', 8)
+    ('customer_value_prompt_viewed', 7),
+    ('customer_feedback_opted_in', 8),
+    ('customer_subscription_started', 9)
 )
 insert into public.custody_folio_growth_events (
   event_name,

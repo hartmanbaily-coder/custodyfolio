@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  growthAnalyticsEnabled,
+  growthCohortIdentifierForUser,
+} from "@/lib/marketing/growthEvents";
+import {
   appleProductIds,
   billingPurchaseEnabledForUser,
   billingEnvironment,
@@ -114,6 +118,46 @@ export async function ensureBillingAccount(
   };
 }
 
+export async function captureBillingGrowthCohort(input: {
+  supabase: BillingSupabase;
+  billingAccountId: string;
+  userId: string;
+  now?: Date;
+  env?: Record<string, string | undefined>;
+}) {
+  const env = input.env || process.env;
+  if (!growthAnalyticsEnabled(env)) {
+    return { captured: false as const, reason: "disabled" as const };
+  }
+
+  const cohortIdentifier = growthCohortIdentifierForUser(input.userId, env);
+  if (!cohortIdentifier) {
+    return { captured: false as const, reason: "missing_cohort" as const };
+  }
+
+  try {
+    const { data, error } = await input.supabase.rpc(
+      "custody_folio_capture_billing_growth_cohort",
+      {
+        p_billing_account_id: input.billingAccountId,
+        p_user_id: input.userId,
+        p_growth_cohort_identifier: cohortIdentifier,
+        p_now: (input.now || new Date()).toISOString(),
+      }
+    );
+    if (error || data !== true) throw error || new Error("cohort mismatch");
+    return { captured: true as const, reason: null };
+  } catch {
+    console.warn(
+      JSON.stringify({
+        event: "custody_folio_billing_growth_cohort_capture_failed",
+        at: new Date().toISOString(),
+      })
+    );
+    return { captured: false as const, reason: "storage_failed" as const };
+  }
+}
+
 async function refreshEntitlement(
   supabase: BillingSupabase,
   billingAccountId: string,
@@ -206,6 +250,12 @@ export async function getBillingStatus(input: {
   const [{ row, stale }, subscription] = await Promise.all([
     refreshEntitlement(input.supabase, account.id, now),
     currentSubscription(input.supabase, account.id),
+    captureBillingGrowthCohort({
+      supabase: input.supabase,
+      billingAccountId: account.id,
+      userId: input.userId,
+      now,
+    }),
   ]);
   const entitlement: EffectiveEntitlement = {
     mode: row.mode,

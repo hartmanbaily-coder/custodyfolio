@@ -32,6 +32,7 @@ const growthContentCodes = z.enum([
 const nonnegativeInteger = z.number().int().nonnegative();
 const percentage = z.number().min(0).max(100);
 const nullableNonnegativeNumber = z.number().nonnegative().nullable();
+const nullablePercentage = percentage.nullable();
 
 function suppressedBreakdownSchema(field, valueSchema) {
   return z
@@ -70,7 +71,7 @@ const contentBreakdown = suppressedBreakdownSchema(
 
 export const growthScorecardSchema = z
   .object({
-    schema_version: z.literal(1),
+    schema_version: z.literal(2),
     window: z
       .object({
         from: z.string().datetime({ offset: true }),
@@ -81,10 +82,14 @@ export const growthScorecardSchema = z
       .object({
         minimum_reportable_group_size: z.literal(minimumReportableGroupSize),
         billing_totals: z.literal("authoritative_live_billing"),
-        source_content_attribution: z.literal(
-          "privacy_preserving_growth_events"
+        trial_attribution: z.literal("protected_billing_growth_cohort"),
+        source_conclusions_rule: z.literal(
+          "complete_trial_mapping_required"
         ),
-        satisfaction_source: z.literal("persisted_production_responses"),
+        visitor_signup_measure: z.literal(
+          "aggregate_diagnostic_ratio_only"
+        ),
+        satisfaction_scope: z.literal("campaign_trial_respondents"),
         minimum_viable_segment_evidence: z.literal(
           "not_established_by_article_attribution"
         ),
@@ -92,58 +97,73 @@ export const growthScorecardSchema = z
       .strict(),
     acquisition: z
       .object({
-        qualified_visits: nonnegativeInteger,
+        tracked_visits: nonnegativeInteger,
         signup_selections: nonnegativeInteger,
-        completed_signups: nonnegativeInteger,
+        confirmed_signups: nonnegativeInteger,
         qualified_trials: nonnegativeInteger,
+        mapped_qualified_trials: nonnegativeInteger,
+        unmapped_qualified_trials: nonnegativeInteger,
+        trial_mapping_coverage_percent: nullablePercentage,
+        source_conclusions_available: z.boolean(),
         target_trials: z.literal(500),
-        trial_target_progress_percent: percentage,
-        visit_to_signup_percent: percentage,
+        trial_target_progress_percent: z.number().nonnegative(),
+        visit_to_confirmed_signup_diagnostic_ratio_percent:
+          nullableNonnegativeNumber,
         visits_by_source: z.array(sourceBreakdown),
-        signups_by_source: z.array(sourceBreakdown),
+        confirmed_signups_by_source: z.array(sourceBreakdown),
+        qualified_trials_by_source: z.array(sourceBreakdown),
         visits_by_content: z.array(contentBreakdown),
-        signups_by_content: z.array(contentBreakdown),
-        confirmed_trial_events_by_content: z.array(contentBreakdown),
+        confirmed_signups_by_content: z.array(contentBreakdown),
+        qualified_trials_by_content: z.array(contentBreakdown),
       })
       .strict(),
     activation: z
       .object({
-        meaningfully_activated_accounts: nonnegativeInteger,
-        meaningful_activation_rate_percent: percentage,
-        first_timeline_accounts: nonnegativeInteger,
-        first_report_accounts: nonnegativeInteger,
-        first_report_rate_percent: percentage,
-        median_minutes_to_first_record: nullableNonnegativeNumber,
-        activated_by_content: z.array(contentBreakdown),
+        mapped_meaningfully_activated_trial_accounts: nonnegativeInteger,
+        meaningful_activation_rate_percent: nullablePercentage,
+        mapped_first_timeline_trial_accounts: nonnegativeInteger,
+        mapped_first_report_trial_accounts: nonnegativeInteger,
+        first_report_rate_percent: nullablePercentage,
+        median_minutes_from_trial_start_to_first_record:
+          nullableNonnegativeNumber,
+        activated_trials_by_source: z.array(sourceBreakdown),
+        activated_trials_by_content: z.array(contentBreakdown),
       })
       .strict(),
     engagement: z
       .object({
-        feedback_prompt_accounts: nonnegativeInteger,
-        feedback_opt_in_accounts: nonnegativeInteger,
-        feedback_opt_in_rate_percent: percentage,
+        mapped_feedback_prompt_trial_accounts: nonnegativeInteger,
+        mapped_feedback_opt_in_trial_accounts: nonnegativeInteger,
+        feedback_opt_in_rate_percent: nullablePercentage,
+        mapped_customer_value_prompt_trial_accounts: nonnegativeInteger,
+        customer_value_prompt_rate_percent: nullablePercentage,
       })
       .strict(),
     satisfaction: z
       .object({
-        responses: nonnegativeInteger,
-        positive_responses: nonnegativeInteger,
-        customer_value_satisfaction_percent: percentage,
+        campaign_trial_responses: nonnegativeInteger,
+        positive_campaign_trial_responses: nonnegativeInteger,
+        customer_value_satisfaction_among_respondents_percent:
+          nullablePercentage,
+        responses_with_tracked_prompt: nonnegativeInteger,
+        response_coverage_percent: nullablePercentage,
+        response_measurement_ready: z.boolean(),
       })
       .strict(),
     conversion: z
       .object({
-        paid_subscribers: nonnegativeInteger,
+        new_active_paid_subscribers: nonnegativeInteger,
         monthly_subscribers: nonnegativeInteger,
         annual_subscribers: nonnegativeInteger,
-        subscription_start_accounts: nonnegativeInteger,
-        cancellations: nonnegativeInteger,
-        refund_requests: nonnegativeInteger,
+        campaign_trial_active_paid_subscribers: nonnegativeInteger,
+        mapped_subscription_start_event_accounts: nonnegativeInteger,
+        mapped_cancellation_event_accounts: nonnegativeInteger,
+        mapped_refund_request_event_accounts: nonnegativeInteger,
         paid_target: z.literal(100),
-        paid_target_progress_percent: percentage,
-        eligible_trial_to_paid_percent: percentage,
-        subscription_starts_by_source: z.array(sourceBreakdown),
-        subscription_starts_by_content: z.array(contentBreakdown),
+        paid_target_progress_percent: z.number().nonnegative(),
+        campaign_trial_to_active_paid_percent: nullablePercentage,
+        active_paid_campaign_trials_by_source: z.array(sourceBreakdown),
+        active_paid_campaign_trials_by_content: z.array(contentBreakdown),
       })
       .strict(),
   })
@@ -155,6 +175,34 @@ export const growthScorecardSchema = z
         message: "Growth window is invalid.",
         path: ["window"],
       });
+    }
+    if (
+      report.acquisition.mapped_qualified_trials
+        + report.acquisition.unmapped_qualified_trials
+      !== report.acquisition.qualified_trials
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Mapped and unmapped trials must equal qualified trials.",
+        path: ["acquisition", "qualified_trials"],
+      });
+    }
+    if (!report.acquisition.source_conclusions_available) {
+      const unavailableGroups = [
+        report.acquisition.qualified_trials_by_source,
+        report.acquisition.qualified_trials_by_content,
+        report.activation.activated_trials_by_source,
+        report.activation.activated_trials_by_content,
+        report.conversion.active_paid_campaign_trials_by_source,
+        report.conversion.active_paid_campaign_trials_by_content,
+      ];
+      if (unavailableGroups.some((groups) => groups.length > 0)) {
+        context.addIssue({
+          code: "custom",
+          message: "Trial linked groups must be empty when source conclusions are unavailable.",
+          path: ["acquisition", "source_conclusions_available"],
+        });
+      }
     }
   });
 

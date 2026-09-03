@@ -121,6 +121,24 @@ describe("privacy preserving growth events", () => {
     expect(stored.expires_at).toBe("2027-02-27T00:00:00.000Z");
   });
 
+  it("treats the customer value prompt as a first time event", async () => {
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const from = vi.fn(() => ({ upsert }));
+
+    await recordGrowthEvent({
+      supabase: { from } as never,
+      eventName: "customer_value_prompt_viewed",
+      userId: "00000000-0000-4000-8000-000000000123",
+      occurredAt: new Date("2026-09-03T08:00:00.000Z"),
+    });
+
+    expect(upsert.mock.calls[0][0]).toMatchObject({
+      event_name: "customer_value_prompt_viewed",
+      first_time: true,
+      dedupe_key: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+  });
+
   it("validates visitor tokens and maps billing states", () => {
     expect(validGrowthVisitorToken("a".repeat(32))).toBe("a".repeat(32));
     expect(validGrowthVisitorToken("a".repeat(31))).toBe("");

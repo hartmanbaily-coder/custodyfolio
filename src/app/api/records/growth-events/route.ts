@@ -11,6 +11,7 @@ export const runtime = "nodejs";
 const clientEventNames = new Set([
   "customer_first_timeline_viewed",
   "customer_feedback_prompt_viewed",
+  "customer_value_prompt_viewed",
   "customer_refund_requested",
 ]);
 
@@ -51,12 +52,14 @@ export async function POST(request: NextRequest) {
     eventName: eventName as
       | "customer_first_timeline_viewed"
       | "customer_feedback_prompt_viewed"
+      | "customer_value_prompt_viewed"
       | "customer_refund_requested",
     request,
     userId: context.userId,
     platform: isNativeIosUserAgent(request.headers.get("user-agent")) ? "ios" : "web",
     attribution:
-      eventName === "customer_feedback_prompt_viewed"
+      eventName === "customer_feedback_prompt_viewed" ||
+      eventName === "customer_value_prompt_viewed"
         ? { contentCode: "in_product_feedback" }
         : eventName === "customer_refund_requested"
           ? { contentCode: "subscription" }

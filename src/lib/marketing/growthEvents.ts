@@ -12,6 +12,7 @@ export const growthEventNames = [
   "customer_first_timeline_viewed",
   "customer_first_report_created",
   "customer_feedback_prompt_viewed",
+  "customer_value_prompt_viewed",
   "customer_feedback_opted_in",
   "customer_subscription_started",
   "customer_subscription_cancelled",
@@ -62,6 +63,7 @@ const firstTimeEvents = new Set<GrowthEventName>([
   "customer_first_timeline_viewed",
   "customer_first_report_created",
   "customer_feedback_prompt_viewed",
+  "customer_value_prompt_viewed",
   "customer_feedback_opted_in",
   "customer_subscription_started",
 ]);

@@ -7,7 +7,7 @@ import {
 } from "./growth-scorecard-lib.mjs";
 
 const validReport = {
-  schema_version: 1,
+  schema_version: 2,
   window: {
     from: "2026-08-31T08:00:00.000Z",
     to: "2026-09-07T08:00:00.000Z",
@@ -15,66 +15,86 @@ const validReport = {
   reporting_contract: {
     minimum_reportable_group_size: 5,
     billing_totals: "authoritative_live_billing",
-    source_content_attribution: "privacy_preserving_growth_events",
-    satisfaction_source: "persisted_production_responses",
+    trial_attribution: "protected_billing_growth_cohort",
+    source_conclusions_rule: "complete_trial_mapping_required",
+    visitor_signup_measure: "aggregate_diagnostic_ratio_only",
+    satisfaction_scope: "campaign_trial_respondents",
     minimum_viable_segment_evidence:
       "not_established_by_article_attribution",
   },
   acquisition: {
-    qualified_visits: 5,
+    tracked_visits: 5,
     signup_selections: 5,
-    completed_signups: 5,
+    confirmed_signups: 5,
     qualified_trials: 5,
+    mapped_qualified_trials: 5,
+    unmapped_qualified_trials: 0,
+    trial_mapping_coverage_percent: 100,
+    source_conclusions_available: true,
     target_trials: 500,
     trial_target_progress_percent: 1,
-    visit_to_signup_percent: 100,
+    visit_to_confirmed_signup_diagnostic_ratio_percent: 100,
     visits_by_source: [{ source: "checklist", count: 5, suppressed: false }],
-    signups_by_source: [{ source: "checklist", count: 5, suppressed: false }],
+    confirmed_signups_by_source: [
+      { source: "checklist", count: 5, suppressed: false },
+    ],
+    qualified_trials_by_source: [
+      { source: "checklist", count: 5, suppressed: false },
+    ],
     visits_by_content: [
       { content_code: "factual_checklist", count: 5, suppressed: false },
     ],
-    signups_by_content: [
+    confirmed_signups_by_content: [
       { content_code: "factual_checklist", count: 5, suppressed: false },
     ],
-    confirmed_trial_events_by_content: [
+    qualified_trials_by_content: [
       { content_code: "factual_checklist", count: 5, suppressed: false },
     ],
   },
   activation: {
-    meaningfully_activated_accounts: 5,
+    mapped_meaningfully_activated_trial_accounts: 5,
     meaningful_activation_rate_percent: 100,
-    first_timeline_accounts: 5,
-    first_report_accounts: 0,
+    mapped_first_timeline_trial_accounts: 5,
+    mapped_first_report_trial_accounts: 0,
     first_report_rate_percent: 0,
-    median_minutes_to_first_record: 1440,
-    activated_by_content: [
+    median_minutes_from_trial_start_to_first_record: 5,
+    activated_trials_by_source: [
+      { source: "checklist", count: 5, suppressed: false },
+    ],
+    activated_trials_by_content: [
       { content_code: "factual_checklist", count: 5, suppressed: false },
     ],
   },
   engagement: {
-    feedback_prompt_accounts: 5,
-    feedback_opt_in_accounts: 1,
+    mapped_feedback_prompt_trial_accounts: 5,
+    mapped_feedback_opt_in_trial_accounts: 1,
     feedback_opt_in_rate_percent: 20,
+    mapped_customer_value_prompt_trial_accounts: 5,
+    customer_value_prompt_rate_percent: 100,
   },
   satisfaction: {
-    responses: 5,
-    positive_responses: 4,
-    customer_value_satisfaction_percent: 80,
+    campaign_trial_responses: 5,
+    positive_campaign_trial_responses: 4,
+    customer_value_satisfaction_among_respondents_percent: 80,
+    responses_with_tracked_prompt: 5,
+    response_coverage_percent: 100,
+    response_measurement_ready: false,
   },
   conversion: {
-    paid_subscribers: 1,
+    new_active_paid_subscribers: 1,
     monthly_subscribers: 1,
     annual_subscribers: 0,
-    subscription_start_accounts: 1,
-    cancellations: 0,
-    refund_requests: 0,
+    campaign_trial_active_paid_subscribers: 1,
+    mapped_subscription_start_event_accounts: 1,
+    mapped_cancellation_event_accounts: 0,
+    mapped_refund_request_event_accounts: 0,
     paid_target: 100,
     paid_target_progress_percent: 1,
-    eligible_trial_to_paid_percent: 20,
-    subscription_starts_by_source: [
+    campaign_trial_to_active_paid_percent: 20,
+    active_paid_campaign_trials_by_source: [
       { source: "checklist", count: null, suppressed: true },
     ],
-    subscription_starts_by_content: [
+    active_paid_campaign_trials_by_content: [
       { content_code: "factual_checklist", count: null, suppressed: true },
     ],
   },
@@ -108,7 +128,7 @@ test("enforces source and content suppression before output", () => {
       ...validReport,
       acquisition: {
         ...validReport.acquisition,
-        visits_by_source: [
+        qualified_trials_by_source: [
           { source: "checklist", count: 4, suppressed: false },
         ],
       },
@@ -119,12 +139,64 @@ test("enforces source and content suppression before output", () => {
       ...validReport,
       acquisition: {
         ...validReport.acquisition,
-        visits_by_content: [
+        qualified_trials_by_content: [
           { content_code: "factual_checklist", count: 4, suppressed: true },
         ],
       },
     })
   );
+});
+
+test("rejects linked groups when mapping is incomplete", () => {
+  assert.throws(() =>
+    validateGrowthScorecard({
+      ...validReport,
+      acquisition: {
+        ...validReport.acquisition,
+        mapped_qualified_trials: 4,
+        unmapped_qualified_trials: 1,
+        trial_mapping_coverage_percent: 80,
+        source_conclusions_available: false,
+      },
+    })
+  );
+
+  const unavailableReport = {
+    ...validReport,
+    acquisition: {
+      ...validReport.acquisition,
+      mapped_qualified_trials: 4,
+      unmapped_qualified_trials: 1,
+      trial_mapping_coverage_percent: 80,
+      source_conclusions_available: false,
+      qualified_trials_by_source: [],
+      qualified_trials_by_content: [],
+    },
+    activation: {
+      ...validReport.activation,
+      meaningful_activation_rate_percent: null,
+      first_report_rate_percent: null,
+      median_minutes_from_trial_start_to_first_record: null,
+      activated_trials_by_source: [],
+      activated_trials_by_content: [],
+    },
+    engagement: {
+      ...validReport.engagement,
+      feedback_opt_in_rate_percent: null,
+      customer_value_prompt_rate_percent: null,
+    },
+    satisfaction: {
+      ...validReport.satisfaction,
+      response_coverage_percent: null,
+      response_measurement_ready: false,
+    },
+    conversion: {
+      ...validReport.conversion,
+      active_paid_campaign_trials_by_source: [],
+      active_paid_campaign_trials_by_content: [],
+    },
+  };
+  assert.deepEqual(validateGrowthScorecard(unavailableReport), unavailableReport);
 });
 
 test("builds bounded RPC inputs without returning the analytics secret", () => {

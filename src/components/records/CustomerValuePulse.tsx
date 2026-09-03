@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { sendAuthenticatedGrowthEvent } from "@/lib/marketing/client";
 import { getRecordsCsrfToken } from "@/lib/records/attorneyClient";
 
 type ResponseState =
@@ -12,6 +13,7 @@ type ResponseState =
 
 export default function CustomerValuePulse() {
   const [state, setState] = useState<ResponseState>({ status: "loading" });
+  const promptRecorded = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,6 +35,10 @@ export default function CustomerValuePulse() {
         if (Number.isInteger(body.response?.score)) {
           setState({ status: "answered", score: Number(body.response?.score) });
           return;
+        }
+        if (!promptRecorded.current) {
+          promptRecorded.current = true;
+          void sendAuthenticatedGrowthEvent("customer_value_prompt_viewed");
         }
         setState({ status: "ready", selectedScore: null, error: "" });
       } catch {

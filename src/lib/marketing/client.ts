@@ -5,6 +5,7 @@ import { getRecordsCsrfToken } from "@/lib/records/attorneyClient";
 export type AuthenticatedGrowthEventName =
   | "customer_first_timeline_viewed"
   | "customer_feedback_prompt_viewed"
+  | "customer_value_prompt_viewed"
   | "customer_refund_requested";
 
 export async function sendAuthenticatedGrowthEvent(

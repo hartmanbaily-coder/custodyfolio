@@ -15,6 +15,17 @@ const permissionMigration = readFileSync(
   ),
   "utf8"
 );
+const cohortIntegrityMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260903064803_add_growth_kpi_cohort_integrity.sql",
+    import.meta.url
+  ),
+  "utf8"
+);
+const customerValuePulse = readFileSync(
+  new URL("../src/components/records/CustomerValuePulse.tsx", import.meta.url),
+  "utf8"
+);
 const growthTable = migration.split(
   "create table public.custody_folio_customer_feedback_consents"
 )[0];
@@ -35,6 +46,7 @@ describe("growth event storage", () => {
     expect(growthTable).toContain("'marketing_page_viewed'");
     expect(growthTable).toContain("'customer_first_record_saved'");
     expect(growthTable).toContain("'customer_subscription_started'");
+    expect(cohortIntegrityMigration).toContain("'customer_value_prompt_viewed'");
     expect(growthTable).toContain(
       "alter table public.custody_folio_growth_events force row level security"
     );
@@ -49,5 +61,12 @@ describe("growth event storage", () => {
     expect(permissionMigration).toContain(
       "from public, anon, authenticated"
     );
+  });
+
+  it("records the existing customer value question when it becomes visible", () => {
+    expect(customerValuePulse).toContain(
+      'sendAuthenticatedGrowthEvent("customer_value_prompt_viewed")'
+    );
+    expect(customerValuePulse).toContain("if (!promptRecorded.current)");
   });
 });

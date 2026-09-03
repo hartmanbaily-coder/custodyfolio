@@ -42,7 +42,7 @@ async function main() {
     auth: { persistSession: false },
   });
   const { data, error } = await client.rpc(
-    "custody_folio_growth_scorecard_v1",
+    "custody_folio_growth_scorecard_v2",
     parameters
   );
   if (error) {
