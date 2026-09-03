@@ -10,13 +10,13 @@ Custody Folio stores private family-court documentation records for adult users.
 
 Risk: an attacker gains access to a parent account and reads or exports private records.
 
-Controls: strong auth provider, MFA, rate limiting, generic email content, session management, login notifications, server-side authorization, and audit logs.
+Controls: passwordless single-use email codes, short code expiry, request and verification rate limiting, non-enumerating responses, session management, native device locking, server-side authorization, and audit logs.
 
 ### Abusive Partner Attempting Access
 
 Risk: someone with personal knowledge guesses credentials, uses a shared device, or pressures the user for access.
 
-Controls: MFA, session list, logout-all, discreet future PWA option, generic notification content, no public profiles, and clear shared-device warnings.
+Controls: control of the verified mailbox, short-lived single-use codes, native device locking, session list, logout-all, discreet future PWA option, generic notification content, no public profiles, and clear shared-device warnings.
 
 ### Shared-Device Risk
 

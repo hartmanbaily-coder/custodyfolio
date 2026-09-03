@@ -27,9 +27,9 @@ describe("records auth server helpers", () => {
     expect(getAccessTokenAal("not-a-jwt")).toBeNull();
   });
 
-  it("requires MFA when explicitly enabled", () => {
-    expect(isRecordsMfaRequired({ RECORDS_ENFORCE_MFA: "true" })).toBe(true);
-    expect(isRecordsMfaRequired({ NODE_ENV: "production", SUPABASE_MFA_POLICY: "required" })).toBe(true);
+  it("does not reinstate retired authenticator-app enforcement from legacy environment values", () => {
+    expect(isRecordsMfaRequired({ RECORDS_ENFORCE_MFA: "true" })).toBe(false);
+    expect(isRecordsMfaRequired({ NODE_ENV: "production", SUPABASE_MFA_POLICY: "required" })).toBe(false);
     expect(isRecordsMfaRequired({ NODE_ENV: "development", SUPABASE_MFA_POLICY: "required" })).toBe(false);
   });
 

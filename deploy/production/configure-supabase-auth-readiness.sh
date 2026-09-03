@@ -63,41 +63,78 @@ awk \
   -v redirects_verified_at="${redirects_verified_at}" \
   -v hardening_verified_at="${hardening_verified_at}" '
     BEGIN {
-      redirects_seen = 0
-      hardening_seen = 0
+      key_count = 0
+      keys[++key_count] = "RECORDS_AUTH_METHOD"
+      desired["RECORDS_AUTH_METHOD"] = "email_otp"
+      keys[++key_count] = "SUPABASE_EMAIL_OTP_ENABLED"
+      desired["SUPABASE_EMAIL_OTP_ENABLED"] = "true"
+      keys[++key_count] = "SUPABASE_EMAIL_OTP_LENGTH"
+      desired["SUPABASE_EMAIL_OTP_LENGTH"] = "6"
+      keys[++key_count] = "SUPABASE_EMAIL_OTP_EXPIRY_SECONDS"
+      desired["SUPABASE_EMAIL_OTP_EXPIRY_SECONDS"] = "600"
+      keys[++key_count] = "SUPABASE_MFA_POLICY"
+      desired["SUPABASE_MFA_POLICY"] = "optional"
+      keys[++key_count] = "RECORDS_ENFORCE_MFA"
+      desired["RECORDS_ENFORCE_MFA"] = "false"
+      keys[++key_count] = "SUPABASE_CUSTOM_SMTP_ENABLED"
+      desired["SUPABASE_CUSTOM_SMTP_ENABLED"] = "true"
+      keys[++key_count] = "PWNED_PASSWORD_CHECK_ENABLED"
+      desired["PWNED_PASSWORD_CHECK_ENABLED"] = "false"
+      keys[++key_count] = "SUPABASE_LEAKED_PASSWORD_PROTECTION_ENABLED"
+      desired["SUPABASE_LEAKED_PASSWORD_PROTECTION_ENABLED"] = "false"
+      keys[++key_count] = "SUPABASE_PASSWORD_REAUTH_ENABLED"
+      desired["SUPABASE_PASSWORD_REAUTH_ENABLED"] = "false"
+      keys[++key_count] = "SUPABASE_CURRENT_PASSWORD_REQUIRED"
+      desired["SUPABASE_CURRENT_PASSWORD_REQUIRED"] = "false"
+      keys[++key_count] = "SUPABASE_AUTH_REDIRECTS_VERIFIED_AT"
+      desired["SUPABASE_AUTH_REDIRECTS_VERIFIED_AT"] = redirects_verified_at
+      keys[++key_count] = "SUPABASE_AUTH_HARDENING_VERIFIED_AT"
+      desired["SUPABASE_AUTH_HARDENING_VERIFIED_AT"] = hardening_verified_at
     }
-    /^SUPABASE_AUTH_REDIRECTS_VERIFIED_AT=/ {
-      if (redirects_seen == 0) {
-        print "SUPABASE_AUTH_REDIRECTS_VERIFIED_AT=" redirects_verified_at
+    {
+      key = $0
+      sub(/=.*/, "", key)
+      if (key in desired) {
+        if (!(key in seen)) {
+          print key "=" desired[key]
+          seen[key] = 1
+        }
+        next
       }
-      redirects_seen += 1
-      next
+      print
     }
-    /^SUPABASE_AUTH_HARDENING_VERIFIED_AT=/ {
-      if (hardening_seen == 0) {
-        print "SUPABASE_AUTH_HARDENING_VERIFIED_AT=" hardening_verified_at
-      }
-      hardening_seen += 1
-      next
-    }
-    { print }
     END {
-      if (redirects_seen == 0) {
-        print "SUPABASE_AUTH_REDIRECTS_VERIFIED_AT=" redirects_verified_at
-      }
-      if (hardening_seen == 0) {
-        print "SUPABASE_AUTH_HARDENING_VERIFIED_AT=" hardening_verified_at
+      for (idx = 1; idx <= key_count; idx += 1) {
+        key = keys[idx]
+        if (!(key in seen)) {
+          print key "=" desired[key]
+        }
       }
     }
   ' "${app_env_file}" >"${next_env}"
 
 chmod 0600 "${next_env}"
-if [[ $(grep -c '^SUPABASE_AUTH_REDIRECTS_VERIFIED_AT=' "${next_env}") -ne 1 ]] ||
-  [[ $(grep -c '^SUPABASE_AUTH_HARDENING_VERIFIED_AT=' "${next_env}") -ne 1 ]]; then
-  echo "Supabase Auth readiness evidence must contain each verification date exactly once." >&2
-  exit 1
-fi
+for expected in \
+  'RECORDS_AUTH_METHOD=email_otp' \
+  'SUPABASE_EMAIL_OTP_ENABLED=true' \
+  'SUPABASE_EMAIL_OTP_LENGTH=6' \
+  'SUPABASE_EMAIL_OTP_EXPIRY_SECONDS=600' \
+  'SUPABASE_MFA_POLICY=optional' \
+  'RECORDS_ENFORCE_MFA=false' \
+  'SUPABASE_CUSTOM_SMTP_ENABLED=true' \
+  'PWNED_PASSWORD_CHECK_ENABLED=false' \
+  'SUPABASE_LEAKED_PASSWORD_PROTECTION_ENABLED=false' \
+  'SUPABASE_PASSWORD_REAUTH_ENABLED=false' \
+  'SUPABASE_CURRENT_PASSWORD_REQUIRED=false' \
+  "SUPABASE_AUTH_REDIRECTS_VERIFIED_AT=${redirects_verified_at}" \
+  "SUPABASE_AUTH_HARDENING_VERIFIED_AT=${hardening_verified_at}"; do
+  key="${expected%%=*}"
+  if [[ $(grep -c "^${key}=" "${next_env}") -ne 1 ]] || ! grep -Fqx "${expected}" "${next_env}"; then
+    echo "Supabase Auth configuration must contain exactly one verified ${key} value." >&2
+    exit 1
+  fi
+done
 
 mv -f "${next_env}" "${app_env_file}"
 trap - EXIT
-echo "Recorded Supabase Auth production verification evidence for ${redirects_verified_at}."
+echo "Configured passwordless Supabase email-code authentication and recorded production verification evidence."

@@ -23,6 +23,8 @@ For every request, review each current target even when it is not applicable:
 - `auth_identity`: Supabase Auth identity and active sessions
 - `application_exports`: any server-held export, if server-side export storage is later added
 - `security_audit_records`: minimized security, access, and deletion audit records
+- `growth_measurement`: fixed event taxonomy and keyed opaque cohort records with no customer record content
+- `feedback_permission`: optional product feedback choice and one contact limit
 - `supabase`: database, authentication, and Storage processor
 - `hetzner`: application hosting
 - `backblaze`: encrypted off-site evidence backups
@@ -43,11 +45,12 @@ For deletion or consent withdrawal:
 1. Revoke active attorney grants and sessions for the affected scope.
 2. Delete private evidence objects through the Storage API and confirm success.
 3. Delete active records and metadata. Do not report success if object deletion or the dataset update fails.
-4. Delete or disable the Auth identity only after active records cleanup succeeds when the entire account is being deleted.
-5. Notify each applicable processor, contractor, or recipient that remains under Custody Folio's control. Record the notice time, acknowledgement, and a non-sensitive ticket or evidence reference.
-6. Record the deletion so a later restore re-applies it before restored data can serve production traffic.
-7. Confirm the backup aging deadline is no later than 180 days after active deletion.
-8. Send the completion response only after every applicable active-system and downstream check passes.
+4. Delete the keyed growth cohort while the account identifier and measurement secret are available. Confirm that the product feedback permission and value response will be removed by the Auth user cascade.
+5. Delete or disable the Auth identity only after active records cleanup succeeds when the entire account is being deleted.
+6. Notify each applicable processor, contractor, or recipient that remains under Custody Folio's control. Record the notice time, acknowledgement, and a non-sensitive ticket or evidence reference.
+7. Record the deletion so a later restore re-applies it before restored data can serve production traffic.
+8. Confirm the backup aging deadline is no later than 180 days after active deletion.
+9. Send the completion response only after every applicable active-system and downstream check passes.
 
 For access or correction requests, use the same inventory, provide only the authenticated requester's data, and propagate corrections to applicable controlled processors or recipients. Use an encrypted or authenticated delivery method appropriate for sensitive records.
 

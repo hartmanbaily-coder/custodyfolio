@@ -50,16 +50,15 @@ describe("attorney authentication policy", () => {
       "attorney-auth-policy-secret-that-is-long-enough-for-tests";
   });
 
-  it("requires AAL2 even when ordinary records policy is not being exercised", async () => {
-    getRecordsAuthContext.mockResolvedValue({
+  it("accepts an email-confirmed AAL1 context after authenticator enforcement is retired", async () => {
+    const expected = {
       userId: "attorney-1",
       email: "counsel@example.com",
       emailConfirmedAt: "2026-01-01T00:00:00.000Z",
       assuranceLevel: "aal1",
-    });
-    const context = await getAttorneyAuthContext(request);
-    expect("error" in context).toBe(true);
-    if ("error" in context) expect(context.error.status).toBe(403);
+    };
+    getRecordsAuthContext.mockResolvedValue(expected);
+    await expect(getAttorneyAuthContext(request)).resolves.toBe(expected);
   });
 
   it("requires a confirmed invited email", async () => {
@@ -76,7 +75,7 @@ describe("attorney authentication policy", () => {
     });
   });
 
-  it("accepts a confirmed AAL2 adult account context", async () => {
+  it("also accepts a confirmed AAL2 account that still has an optional factor", async () => {
     const expected = {
       userId: "attorney-1",
       email: "counsel@example.com",

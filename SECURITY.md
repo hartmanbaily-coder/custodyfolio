@@ -26,7 +26,9 @@ Only the current `main` branch MVP is supported during initial development.
 - The Supabase dataset adapter requires a server-validated records session cookie before loading or saving records.
 - Bearer-token fallback is disabled in production and must only be used for explicit non-production diagnostics.
 - Authentication, dataset, and evidence routes have an app-level rate-limit fallback; production must still use edge/WAF rate limiting.
-- Supabase Auth must require MFA, leaked-password protection, strong password minimums, and password-change reauthentication before production use.
+- Supabase Auth must send single-use six-digit email codes through the approved custom SMTP provider, expire those codes after ten minutes, and keep direct signups aligned with the app's signup policy.
+- Authentication responses and rate limits must not reveal whether an email owns an account or has an attorney grant.
+- The iOS device-unlock gate uses Face ID, Touch ID, or the device passcode independently of the web account's email-code sign-in. Custody Folio does not receive biometric data.
 - Cookies must be host-only for `custodyfolio.com`.
 - Secure, HttpOnly, SameSite=Lax or SameSite=Strict cookies are required in production.
 - Server-side authorization must check both `userId` and `caseId`.

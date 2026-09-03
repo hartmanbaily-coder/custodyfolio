@@ -116,6 +116,12 @@ export default function FactualCustodyRecordChecklistPage() {
             <li>4. Replace conclusions with observable details where appropriate.</li>
             <li>5. Confirm that important information can be found quickly.</li>
           </ol>
+          <Link
+            href="/guides/weekly?utm_source=checklist&utm_medium=organic&utm_campaign=checklist"
+            className="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg bg-white px-5 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+          >
+            Use the complete weekly routine
+          </Link>
         </section>
 
         <section className="mt-10 rounded-2xl border border-teal-200 bg-teal-50 p-6 sm:p-8">

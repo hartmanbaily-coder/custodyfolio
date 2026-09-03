@@ -8,7 +8,7 @@ Current status from 2026-07-25: `custodyfolio.com` is active on Cloudflare, and 
 
 | Group | Routes | Risk |
 | --- | --- | --- |
-| Auth | `/api/records/auth/login`, `/api/records/auth/mfa/*`, `/api/records/auth/logout`, `/api/records/auth/session` | Credential abuse, MFA brute force |
+| Auth | `/api/records/auth/email-code/request`, `/api/records/auth/email-code/verify`, `/api/records/auth/logout`, `/api/records/auth/session` | Email abuse, code guessing, account enumeration |
 | Dataset | `/api/records/dataset` | Private records read/write |
 | Evidence | `/api/records/evidence/preflight`, `/api/records/evidence/upload`, `/api/records/evidence/download`, `/api/records/evidence/delete` | Private files, malware scanning, storage abuse |
 | Edge probe | `/api/records/edge-control-probe` | Synthetic WAF/rate-limit verification only; no user data |
@@ -30,8 +30,8 @@ Current status from 2026-07-25: `custodyfolio.com` is active on Cloudflare, and 
 
 | Route group | Suggested rule | Action |
 | --- | --- | --- |
-| Auth login | 10 requests per IP per 10 minutes and 10 per email hash per 10 minutes when provider supports request attributes | Challenge or block |
-| MFA verify | 8 requests per IP per 10 minutes | Challenge or block |
+| Email-code request | 8 requests per IP per 15 minutes and 4 per email/IP pair per hour | Challenge or block |
+| Email-code verify | 12 requests per IP per 10 minutes and 8 per email/IP pair per 10 minutes | Challenge or block |
 | Dataset write | 60 requests per authenticated user per 10 minutes | Throttle |
 | Evidence preflight | 30 requests per authenticated user per 10 minutes | Throttle |
 | Evidence upload | 10 uploads per authenticated user per 10 minutes | Throttle |

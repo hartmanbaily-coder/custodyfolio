@@ -43,21 +43,21 @@ describe("attorney guest assurance boundary", () => {
     });
   });
 
-  it("rejects an AAL1 access token even if the guest scope cookie is present", async () => {
+  it("accepts a confirmed AAL1 email-code session with the guest scope cookie", async () => {
     getAccessTokenAal.mockReturnValue("aal1");
 
     const context = await getAttorneyGuestAuthContext(
       request("records-access=aal1-access; records-refresh=refresh-token")
     );
 
-    expect("error" in context).toBe(true);
-    if ("error" in context) {
-      expect(context.error.status).toBe(403);
-      await expect(context.error.json()).resolves.toMatchObject({ mfaRequired: true });
+    expect("error" in context).toBe(false);
+    if (!("error" in context)) {
+      expect(context.userId).toBe("attorney-1");
+      expect(context.assuranceLevel).toBe("aal1");
     }
   });
 
-  it("rejects a refreshed guest session when the new access token is below AAL2", async () => {
+  it("accepts a refreshed confirmed email-code guest session at AAL1", async () => {
     adminGetUser.mockResolvedValue({ data: { user: null }, error: new Error("expired") });
     getAccessTokenAal.mockReturnValue("aal1");
     refreshSession.mockResolvedValue({
@@ -81,8 +81,11 @@ describe("attorney guest assurance boundary", () => {
       request("records-access=expired-access; records-refresh=refresh-token")
     );
 
-    expect("error" in context).toBe(true);
-    if ("error" in context) expect(context.error.status).toBe(403);
+    expect("error" in context).toBe(false);
+    if (!("error" in context)) {
+      expect(context.userId).toBe("attorney-1");
+      expect(context.refreshedSession?.access_token).toBe("refreshed-aal1");
+    }
   });
 
   it("preserves a confirmed AAL2 guest context", async () => {

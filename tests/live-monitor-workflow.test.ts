@@ -13,6 +13,13 @@ describe("live monitor workflow", () => {
     expect(workflow).toContain('"Sec-Fetch-Site": "same-origin"');
   });
 
+  it("requires the exact retired password login contract", () => {
+    expect(workflow).toContain("fakeLoginResponse.status !== 410");
+    expect(workflow).toContain('retiredPasswordLogin.code !== "password_sign_in_retired"');
+    expect(workflow).toContain("await fakeLoginResponse.json().catch(() => ({}))");
+    expect(workflow).not.toContain("[400, 401].includes(fakeLoginResponse.status)");
+  });
+
   it("ensures the monitor issue label exists before using it", () => {
     expect(workflow).toContain("gh label create live-monitor");
     expect(workflow).toContain("--force");

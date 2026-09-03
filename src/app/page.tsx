@@ -2,21 +2,25 @@ import Link from "next/link";
 import Image from "next/image";
 
 import PolicyFooter from "@/components/PolicyFooter";
+import {
+  MarketingPageView,
+  TrackedSignupLink,
+} from "@/components/marketing/MarketingTracker";
 import { pageMetadata, recordsTagline, siteDescription, siteName } from "@/lib/site";
 
 export const metadata = {
   ...pageMetadata({
-    title: "Custody Folio | Custody Logs and Evidence",
+    title: "Custody Folio | Private Custody Records",
     description: siteDescription,
     canonical: "/",
   }),
-  title: { absolute: "Custody Folio | Custody Logs and Evidence" },
+  title: { absolute: "Custody Folio | Private Custody Records" },
 };
 
 const quickActions = [
-  "Add a record",
-  "Review your timeline",
-  "Prepare or share",
+  { label: "Add a record", contentCode: "quick_add_record" },
+  { label: "Review your timeline", contentCode: "quick_review_timeline" },
+  { label: "Prepare or share", contentCode: "quick_prepare_or_share" },
 ];
 
 const workflowSteps = [
@@ -26,11 +30,11 @@ const workflowSteps = [
   },
   {
     title: "Attach",
-    detail: "Keep supporting files tied to the timeline item they belong with.",
+    detail: "Keep supporting files connected to the record they belong with.",
   },
   {
-    title: "Export",
-    detail: "Create cleaner summaries and court useful packets when you need to review the data.",
+    title: "Review and report",
+    detail: "Review one clear timeline and create reports for personal review or an attorney conversation.",
   },
 ];
 
@@ -43,6 +47,7 @@ const previewRows = [
 export default function HomePage() {
   return (
     <main className="min-h-screen overflow-hidden bg-[#fffdf9] text-slate-950">
+      <MarketingPageView />
       <header className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:px-8">
         <Link href="/" className="flex min-w-0 items-center gap-3">
           <Image
@@ -67,14 +72,14 @@ export default function HomePage() {
           <Link href="/records" className="rounded-md px-4 py-2 text-slate-700 transition hover:bg-slate-100 hover:text-slate-950">
             Sign in
           </Link>
-          <Link href="/records?mode=signup" className="rounded-md bg-slate-950 px-4 py-2 text-white shadow-sm transition hover:bg-slate-800">
+          <TrackedSignupLink contentCode="header_desktop" className="rounded-md bg-slate-950 px-4 py-2 text-white shadow-sm transition hover:bg-slate-800">
             Start 30 days free
-          </Link>
+          </TrackedSignupLink>
         </nav>
 
-        <Link href="/records?mode=signup" className="rounded-md bg-slate-950 px-3 py-2 text-sm font-semibold text-white shadow-sm md:hidden">
+        <TrackedSignupLink contentCode="header_mobile" className="rounded-md bg-slate-950 px-3 py-2 text-sm font-semibold text-white shadow-sm md:hidden">
           Start free
-        </Link>
+        </TrackedSignupLink>
       </header>
 
       <section className="mx-auto grid min-h-[calc(100vh-88px)] max-w-7xl content-center gap-10 px-4 pb-10 pt-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_500px] lg:px-8">
@@ -83,7 +88,7 @@ export default function HomePage() {
             A calmer way to keep custody records organized.
           </h1>
           <p className="mt-5 max-w-2xl text-xl leading-8 text-slate-600">
-            Add events, parenting time, expenses, notes, and files in one private place—then prepare clear information when you need it.
+            Keep parenting time, expenses, dated notes, and files together in one private timeline. No other parent account is required.
           </p>
 
           <div className="mt-8 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
@@ -92,27 +97,27 @@ export default function HomePage() {
                 <SearchIcon />
                 <span>What would you like to add?</span>
               </div>
-              <Link
-                href="/records?mode=signup"
+              <TrackedSignupLink
+                contentCode="hero"
                 className="inline-flex min-h-12 items-center justify-center rounded-lg bg-teal-700 px-5 text-sm font-semibold text-white transition hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-200"
               >
                 Start 30 days free
-              </Link>
+              </TrackedSignupLink>
             </div>
             <div className="mt-2 flex flex-wrap gap-2 px-1 pb-1">
               {quickActions.map((action) => (
-                <Link
-                  key={action}
-                  href="/records?mode=signup"
+                <TrackedSignupLink
+                  key={action.label}
+                  contentCode={action.contentCode}
                   className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-teal-500 hover:text-slate-950"
                 >
-                  {action}
-                </Link>
+                  {action.label}
+                </TrackedSignupLink>
               ))}
             </div>
           </div>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600">
-            No card required. No other parent account required. Custody Folio helps organize records and does not provide legal advice.
+            No card required. You may subscribe during the trial if you choose. Custody Folio helps organize records and does not provide legal advice.
           </p>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
             Health-related records are optional. Review how they are handled in the{" "}
@@ -209,14 +214,14 @@ export default function HomePage() {
             Try every core feature for 30 days.
           </h2>
           <p className="mt-4 text-base leading-7 text-slate-600">
-            No card is required during the account trial. Web access is $5.99 monthly or $59.99 annually after the trial. App Store prices are shown by Apple.
+            No card is required. Web access costs $5.99 monthly or $59.99 annually. You may subscribe during the trial or wait until it ends. App Store prices are shown by Apple.
           </p>
-          <Link
-            href="/records?mode=signup"
+          <TrackedSignupLink
+            contentCode="pricing"
             className="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg bg-teal-700 px-5 text-sm font-semibold text-white transition hover:bg-teal-800"
           >
             Create your account
-          </Link>
+          </TrackedSignupLink>
         </div>
       </section>
 

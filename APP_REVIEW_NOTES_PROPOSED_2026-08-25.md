@@ -1,35 +1,38 @@
 # Proposed Custody Folio 1.0 App Review Notes
 
-Status: proposed for product-owner review. Do not copy these notes into App Store Connect until the product owner approves them and the review fixtures below are verified.
+Status: approved authentication model; use only after the two synthetic review identities, fixed review codes, subscription state, and attorney grant are verified in production. Store the email addresses and six-digit codes only in App Store Connect, never in this repository.
 
-Keep the existing App Review contact information and all 1,440 characters of the current notes unchanged, including the owner review-account credentials, device-unlock instructions, and authenticator setup information. Append the section below. Do not move credentials or authenticator secrets into this repository.
+## Review notes
 
-## Proposed section to append to the current notes
+Custody Folio is a private factual records organizer for adults. It is not a law firm, legal-advice service, emergency service, social network, payment processor, or coparent messaging system. All data in the review accounts is synthetic.
+
+DEVICE UNLOCK
+
+Launch the app and unlock it using the review device's Face ID, Touch ID, or device passcode. This check uses Apple's LocalAuthentication framework. Custody Folio does not receive or store biometric data.
+
+OWNER SIGN-IN
+
+Open Records. Enter the owner review email shown in Sign-In Information, confirm adult use and the Terms/Privacy acknowledgement, then select “I already have a code.” Enter the temporary six-digit owner review code stored in App Store Connect. Normal customers receive a single-use six-digit code by email; the fixed review code is limited to the exact synthetic owner account, expires automatically, is rate-limited, and will be removed after review. No authenticator app is required.
 
 NATIVE SUBSCRIPTION TEST
 
-After signing in as the owner, open Settings > Subscription. This synthetic review account is intentionally in export-only state so both choices are visible. Select “Choose monthly in App Store” or “Choose annual in App Store” and complete Apple’s Sandbox purchase sheet. App Review and TestFlight purchases use Apple Sandbox; they do not create a Stripe charge. Confirm full access, then test “Restore purchases” and “Manage App Store subscription.” The iOS app never presents Stripe Checkout; Stripe is used only for direct web subscriptions.
+After signing in as the owner, open Settings > Subscription. This synthetic review account is intentionally in export-only state so both choices are visible. Select “Choose monthly in App Store” or “Choose annual in App Store” and complete Apple's Sandbox purchase sheet. App Review and TestFlight purchases use Apple Sandbox and do not create a Stripe charge. Confirm full access, then test Restore Purchases and Manage App Store Subscription. The iOS app never presents Stripe Checkout; Stripe is used only for direct web subscriptions.
 
 ATTORNEY READ-ONLY ACCESS
 
-Confidential credentials below include the existing owner identity and a dedicated synthetic adult-attorney identity. As the owner, open Attorney access. The prepared accepted grant can be reviewed immediately. Sign out, open Attorney sign in, and use the attorney credentials/MFA instructions. In Shared With Me, select the synthetic client and matter. The attorney can view the selected case and download reports/evidence, but cannot create, edit, delete, upload, change report inclusion, invite users, access billing, or access owner settings.
+The owner review account has a prepared active grant to the separate synthetic attorney identity. Sign out, open Attorney sign in, enter the attorney review email included below these notes, confirm adult use and the Terms/Privacy acknowledgement, select “I already have a code,” and enter the separate six-digit attorney review code. The attorney review exception is limited to that exact synthetic attorney account and expires with the owner review exception.
 
-To test revocation, sign in as owner, open Attorney access, and select Revoke access; the attorney’s next portal request is denied. To retest onboarding, authorize sharing, enter the dedicated attorney email, select Create invitation, open the one-time private link shown in the app, and sign in as the attorney. Links expire after seven days and become unusable after acceptance.
+In Shared With Me, select the synthetic client and matter. The attorney can view the selected case and download authorized reports/evidence, but cannot create, edit, delete, upload, change report inclusion, invite users, access billing, or access owner settings.
 
-Attorney access does not establish representation or attorney-client privilege. Revocation stops future access but cannot recall a downloaded copy. All review data is synthetic. Please test permanent account deletion last because it removes these fixtures.
+To test revocation, sign back in as the owner, open Attorney Access, and select Revoke access. The attorney's next portal request is denied. To retest onboarding, authorize sharing, enter the dedicated attorney email, create the invitation, open its single-use private link, and verify the exact attorney mailbox using its email code. Invitation links expire after seven days and cannot be reused after acceptance.
 
-## Required verified fixtures before these notes are used
+Attorney Access does not establish representation or attorney-client privilege. Revocation stops future access but cannot recall a downloaded copy. Test permanent account deletion last because it removes the synthetic fixtures.
 
-- The existing owner review account is the only production account authorized to submit Apple Sandbox transactions during review, and that authorization has an expiration.
-- The owner review account's app-managed trial is ended so its effective entitlement is export-only before the first StoreKit purchase.
-- A dedicated synthetic adult attorney review account exists with password and authenticator instructions stored only in App Store Connect.
-- The dedicated attorney account has an accepted, active, read-only grant to the owner's synthetic case.
-- Owner and attorney sign-in, MFA, portal access, download warning, revocation, post-revocation denial, and re-invitation are re-tested after fixture creation.
-- The App Review Sandbox exception automatically rejects every user ID other than the owner review account and is closed after App Review.
+## Required verified fixtures before submission
 
-## Production actions that require product-owner approval
-
-1. End the trial only for the synthetic owner review account and verify export-only state. This does not change the 30-day trial feature for any customer.
-2. Create the dedicated synthetic attorney review account and accepted read-only grant, then store its confidential credentials and authenticator instructions in App Store Connect.
-3. Replace the current App Review notes with the wording above while retaining the existing confidential owner credentials and authenticator section.
-4. Enable the expiring, one-account Apple Sandbox exception for the review window. This does not enable Sandbox purchases for any other account and does not alter Stripe's web-checkout state.
+- The owner and attorney review emails and their separate six-digit codes are stored only in App Store Connect.
+- Both fixed-code exceptions are limited to exact Supabase user IDs, stored server-side only as SHA-256 digests, share an expiration no more than 45 days away, and are closed after review.
+- Only the owner review identity is authorized for Apple Sandbox purchases.
+- The owner review account is export-only before the first StoreKit purchase, so monthly and annual purchase controls are visible.
+- The attorney review identity has an accepted, active, read-only grant to the owner's synthetic case.
+- Owner sign-in, attorney sign-in, purchase, restore, portal access, download warning, revocation, post-revocation denial, and re-invitation are re-tested after the production deployment.

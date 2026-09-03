@@ -1,5 +1,5 @@
-export const termsVersion = "2026-08-23.1";
-export const privacyVersion = "2026-08-23.1";
+export const termsVersion = "2026-09-02.1";
+export const privacyVersion = "2026-09-02.1";
 export const consumerHealthSharingConsentVersion = "2026-08-23.1";
 
 export const legalAcceptanceMetadataKeys = {

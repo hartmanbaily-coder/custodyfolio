@@ -22,6 +22,8 @@ This is product and operations guidance, not legal advice.
 | Reports/exports | generated CSV/JSON/print-to-PDF outputs | Browser/user controlled unless server-side export storage is added |
 | Audit logs | login, create/update/delete/export/upload metadata | Keep for security/accountability period |
 | Security logs | route, status, request id, user id hash, operational errors | Keep for security period without sensitive content |
+| Growth measurement | fixed event names, approved attribution codes, plan interval, bounded status, keyed opaque cohort | Delete with the account when configured and otherwise expire no later than 180 days |
+| Product feedback permission | account link, prompt version, opt in or decline, contact count limited to one | Keep while the account is active and delete with the account |
 
 ## Data Minimization Rules
 
@@ -30,6 +32,7 @@ This is product and operations guidance, not legal advice.
 - Do not collect full Social Security numbers, full bank account numbers, full card numbers, debit card numbers, bank login credentials, or unrelated third-party details.
 - Do not use advertising trackers or session replay.
 - Do not store raw storage paths, file contents, note bodies, payment references, or generated report bodies in logs.
+- Do not copy names, email addresses, raw account identifiers, case identifiers, record contents, file information, child information, health information, full IP addresses, full user agents, or free text into the growth event store.
 
 ## Export Before Deletion
 
@@ -77,9 +80,10 @@ Required behavior:
 5. The server recursively enumerates and deletes the authenticated user's private evidence-storage prefix and requires Storage cleanup to succeed.
 6. The server globally revokes the Supabase Auth session before removing the account.
 7. Billing identity is replaced with a keyed pseudonymous deletion hash, and active trial/entitlement links are removed through the billing redaction procedure.
-8. The server deletes the Supabase Auth user. Database foreign-key cascades remove the user's records snapshots, normalized records, profiles, invitations, grants, and owner audit rows; events owned by another user retain no deleted actor identity.
-9. The server marks the non-Auth deletion tombstone completed so an in-flight upload cannot recreate data after Auth deletion.
-10. The app clears local session cookies and records only minimal deletion-completion or failure telemetry without custody-record content.
+8. The server derives the keyed growth cohort while the account identifier is still available and deletes matching growth events. This step fails closed when configured measurement data cannot be removed.
+9. The server deletes the Supabase Auth user. Database foreign-key cascades remove the user's records snapshots, normalized records, profiles, feedback permission, value response, invitations, grants, and owner audit rows; events owned by another user retain no deleted actor identity.
+10. The server marks the non-Auth deletion tombstone completed so an in-flight upload cannot recreate data after Auth deletion.
+11. The app clears local session cookies and records only minimal deletion-completion or failure telemetry without custody-record content.
 
 The route fails closed at each safety boundary. If Stripe cancellation, evidence cleanup, session revocation, billing redaction, Auth deletion, or tombstone finalization cannot be confirmed, it returns a specific failure state instead of claiming complete deletion. Some later-stage failures occur after files or sessions have already been removed; the user is instructed to contact support so the remaining step can be completed.
 
@@ -130,6 +134,8 @@ Production limits:
 - Database backup retention: no more than 180 days
 - Private storage backup retention: no more than 180 days
 - Raw application and request logs: no more than 180 days; minimize IP addresses and user agents where practical
+- First party growth measurement events: no more than 180 days and earlier when an account deletion can be linked to its keyed cohort
+- Product feedback permission: while the account is active, with a contact count limited to one, then delete with the account
 - Authentication, security, attorney-access, and deletion audit events: no more than 365 days unless a documented legal hold applies
 - Closed support and privacy correspondence: no more than 24 months unless an active request, dispute, or documented legal hold requires longer
 - Backup restore owner: the Slantwire Studios, LLC infrastructure operator or a specifically designated incident lead

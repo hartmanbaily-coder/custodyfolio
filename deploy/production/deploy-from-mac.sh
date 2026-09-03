@@ -10,6 +10,8 @@ remote_path="/srv/losttofound/app"
 backup_env_source="${LOSTTOFOUND_BACKUP_ENV_SOURCE:-}"
 approval_manifest_source="${PRODUCTION_APPROVAL_MANIFEST_SOURCE:-}"
 approval_scopes="${PRODUCTION_APPROVAL_SCOPES:-}"
+auth_redirects_verified_at="${SUPABASE_AUTH_REDIRECTS_VERIFIED_AT:-}"
+auth_hardening_verified_at="${SUPABASE_AUTH_HARDENING_VERIFIED_AT:-}"
 allow_launch_pending="${ALLOW_LAUNCH_PENDING_DEPLOY:-false}"
 
 if [[ -z ${host} ]]; then
@@ -58,6 +60,13 @@ if [[ -n ${approval_scopes} && -z ${approval_manifest_source} ]]; then
   echo "PRODUCTION_APPROVAL_SCOPES requires PRODUCTION_APPROVAL_MANIFEST_SOURCE." >&2
   exit 1
 fi
+if [[ -n ${auth_redirects_verified_at} || -n ${auth_hardening_verified_at} ]]; then
+  if [[ ! ${auth_redirects_verified_at} =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] ||
+    [[ ! ${auth_hardening_verified_at} =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+    echo "Both Supabase Auth verification dates must be supplied in YYYY-MM-DD format." >&2
+    exit 1
+  fi
+fi
 if [[ -n ${approval_scopes} ]]; then
   (
     cd "${repo_root}"
@@ -91,6 +100,13 @@ if [[ -n ${approval_manifest_source} ]]; then
     -o UserKnownHostsFile="${known_hosts}" \
     "${user}@${host}" \
     "cd '${remote_path}' && PRODUCTION_APPROVAL_SCOPES='${approval_scopes}' ./deploy/production/configure-approval-evidence.sh '${approval_manifest_source}'"
+fi
+
+if [[ -n ${auth_redirects_verified_at} ]]; then
+  ssh -p "${port}" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+    -o UserKnownHostsFile="${known_hosts}" \
+    "${user}@${host}" \
+    "cd '${remote_path}' && ./deploy/production/configure-supabase-auth-readiness.sh '${auth_redirects_verified_at}' '${auth_hardening_verified_at}'"
 fi
 
 if [[ -n ${backup_env_source} ]]; then

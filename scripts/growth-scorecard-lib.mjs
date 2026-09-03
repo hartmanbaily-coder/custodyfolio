@@ -1,211 +1,263 @@
-const paidStatuses = new Set(["active"]);
+import { createHmac } from "node:crypto";
+import { z } from "zod";
 
-const recordCollections = [
-  "custodyDayAssignments",
-  "exchangeLogs",
-  "dateNotes",
-  "evidenceItems",
-  "childSupportOrders",
-  "childSupportPayments",
-  "expenseItems",
-];
+const minimumReportableGroupSize = 5;
 
-function validDate(value) {
-  const time = Date.parse(String(value || ""));
-  return Number.isFinite(time) ? time : null;
+const growthSources = z.enum([
+  "direct",
+  "app_store",
+  "checklist",
+  "community",
+  "referral",
+  "email",
+  "apple_ads",
+  "unattributed",
+]);
+
+const growthContentCodes = z.enum([
+  "homepage",
+  "header_desktop",
+  "header_mobile",
+  "hero",
+  "quick_add_record",
+  "quick_review_timeline",
+  "quick_prepare_or_share",
+  "pricing",
+  "factual_checklist",
+  "in_product_feedback",
+  "subscription",
+  "unattributed",
+]);
+
+const nonnegativeInteger = z.number().int().nonnegative();
+const percentage = z.number().min(0).max(100);
+const nullableNonnegativeNumber = z.number().nonnegative().nullable();
+const nullablePercentage = percentage.nullable();
+
+function suppressedBreakdownSchema(field, valueSchema) {
+  return z
+    .object({
+      [field]: valueSchema,
+      count: nonnegativeInteger.nullable(),
+      suppressed: z.boolean(),
+    })
+    .strict()
+    .superRefine((value, context) => {
+      if (value.suppressed && value.count !== null) {
+        context.addIssue({
+          code: "custom",
+          message: "Suppressed groups must not include a count.",
+          path: ["count"],
+        });
+      }
+      if (
+        !value.suppressed &&
+        (value.count === null || value.count < minimumReportableGroupSize)
+      ) {
+        context.addIssue({
+          code: "custom",
+          message: "Reportable groups must meet the minimum group size.",
+          path: ["count"],
+        });
+      }
+    });
 }
 
-function inWindow(value, fromTime, toTime) {
-  const time = validDate(value);
-  return time !== null && time >= fromTime && time <= toTime;
-}
+const sourceBreakdown = suppressedBreakdownSchema("source", growthSources);
+const contentBreakdown = suppressedBreakdownSchema(
+  "content_code",
+  growthContentCodes
+);
 
-function percentage(numerator, denominator) {
-  return denominator > 0
-    ? Number(((numerator / denominator) * 100).toFixed(1))
-    : 0;
-}
-
-function userActivity(dataset) {
-  const records = [];
-  for (const collection of recordCollections) {
-    const rows = Array.isArray(dataset?.[collection]) ? dataset[collection] : [];
-    for (const row of rows) {
-      records.push({
-        id: String(row?.id || ""),
-        createdAt: row?.createdAt,
-        updatedAt: row?.updatedAt,
+export const growthScorecardSchema = z
+  .object({
+    schema_version: z.literal(2),
+    window: z
+      .object({
+        from: z.string().datetime({ offset: true }),
+        to: z.string().datetime({ offset: true }),
+      })
+      .strict(),
+    reporting_contract: z
+      .object({
+        minimum_reportable_group_size: z.literal(minimumReportableGroupSize),
+        billing_totals: z.literal("authoritative_live_billing"),
+        trial_attribution: z.literal("protected_billing_growth_cohort"),
+        source_conclusions_rule: z.literal(
+          "complete_trial_mapping_required"
+        ),
+        visitor_signup_measure: z.literal(
+          "aggregate_diagnostic_ratio_only"
+        ),
+        satisfaction_scope: z.literal("campaign_trial_respondents"),
+        minimum_viable_segment_evidence: z.literal(
+          "not_established_by_article_attribution"
+        ),
+      })
+      .strict(),
+    acquisition: z
+      .object({
+        tracked_visits: nonnegativeInteger,
+        signup_selections: nonnegativeInteger,
+        confirmed_signups: nonnegativeInteger,
+        qualified_trials: nonnegativeInteger,
+        mapped_qualified_trials: nonnegativeInteger,
+        unmapped_qualified_trials: nonnegativeInteger,
+        trial_mapping_coverage_percent: nullablePercentage,
+        source_conclusions_available: z.boolean(),
+        target_trials: z.literal(500),
+        trial_target_progress_percent: z.number().nonnegative(),
+        visit_to_confirmed_signup_diagnostic_ratio_percent:
+          nullableNonnegativeNumber,
+        visits_by_source: z.array(sourceBreakdown),
+        confirmed_signups_by_source: z.array(sourceBreakdown),
+        qualified_trials_by_source: z.array(sourceBreakdown),
+        visits_by_content: z.array(contentBreakdown),
+        confirmed_signups_by_content: z.array(contentBreakdown),
+        qualified_trials_by_content: z.array(contentBreakdown),
+      })
+      .strict(),
+    activation: z
+      .object({
+        mapped_meaningfully_activated_trial_accounts: nonnegativeInteger,
+        meaningful_activation_rate_percent: nullablePercentage,
+        mapped_first_timeline_trial_accounts: nonnegativeInteger,
+        mapped_first_report_trial_accounts: nonnegativeInteger,
+        first_report_rate_percent: nullablePercentage,
+        median_minutes_from_trial_start_to_first_record:
+          nullableNonnegativeNumber,
+        activated_trials_by_source: z.array(sourceBreakdown),
+        activated_trials_by_content: z.array(contentBreakdown),
+      })
+      .strict(),
+    engagement: z
+      .object({
+        mapped_feedback_prompt_trial_accounts: nonnegativeInteger,
+        mapped_feedback_opt_in_trial_accounts: nonnegativeInteger,
+        feedback_opt_in_rate_percent: nullablePercentage,
+        mapped_customer_value_prompt_trial_accounts: nonnegativeInteger,
+        customer_value_prompt_rate_percent: nullablePercentage,
+      })
+      .strict(),
+    satisfaction: z
+      .object({
+        campaign_trial_responses: nonnegativeInteger,
+        positive_campaign_trial_responses: nonnegativeInteger,
+        customer_value_satisfaction_among_respondents_percent:
+          nullablePercentage,
+        responses_with_tracked_prompt: nonnegativeInteger,
+        response_coverage_percent: nullablePercentage,
+        response_measurement_ready: z.boolean(),
+      })
+      .strict(),
+    conversion: z
+      .object({
+        new_active_paid_subscribers: nonnegativeInteger,
+        monthly_subscribers: nonnegativeInteger,
+        annual_subscribers: nonnegativeInteger,
+        campaign_trial_active_paid_subscribers: nonnegativeInteger,
+        mapped_subscription_start_event_accounts: nonnegativeInteger,
+        mapped_cancellation_event_accounts: nonnegativeInteger,
+        mapped_refund_request_event_accounts: nonnegativeInteger,
+        paid_target: z.literal(100),
+        paid_target_progress_percent: z.number().nonnegative(),
+        campaign_trial_to_active_paid_percent: nullablePercentage,
+        active_paid_campaign_trials_by_source: z.array(sourceBreakdown),
+        active_paid_campaign_trials_by_content: z.array(contentBreakdown),
+      })
+      .strict(),
+  })
+  .strict()
+  .superRefine((report, context) => {
+    if (Date.parse(report.window.from) > Date.parse(report.window.to)) {
+      context.addIssue({
+        code: "custom",
+        message: "Growth window is invalid.",
+        path: ["window"],
       });
     }
-  }
+    if (
+      report.acquisition.mapped_qualified_trials
+        + report.acquisition.unmapped_qualified_trials
+      !== report.acquisition.qualified_trials
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Mapped and unmapped trials must equal qualified trials.",
+        path: ["acquisition", "qualified_trials"],
+      });
+    }
+    if (!report.acquisition.source_conclusions_available) {
+      const unavailableGroups = [
+        report.acquisition.qualified_trials_by_source,
+        report.acquisition.qualified_trials_by_content,
+        report.activation.activated_trials_by_source,
+        report.activation.activated_trials_by_content,
+        report.conversion.active_paid_campaign_trials_by_source,
+        report.conversion.active_paid_campaign_trials_by_content,
+      ];
+      if (unavailableGroups.some((groups) => groups.length > 0)) {
+        context.addIssue({
+          code: "custom",
+          message: "Trial linked groups must be empty when source conclusions are unavailable.",
+          path: ["acquisition", "source_conclusions_available"],
+        });
+      }
+    }
+  });
 
-  const exports = (Array.isArray(dataset?.auditLogs) ? dataset.auditLogs : [])
-    .filter((row) => row?.action === "exported")
-    .map((row) => row?.timestamp)
+function cohortIdentifierForUser(userId, analyticsSecret) {
+  return createHmac("sha256", analyticsSecret)
+    .update("user:" + userId)
+    .digest("hex")
+    .slice(0, 32);
+}
+
+const excludedUserIdSchema = z.string().uuid();
+
+export function parseGrowthExcludedUserIds(value) {
+  const identifiers = String(value || "")
+    .split(",")
+    .map((identifier) => identifier.trim())
     .filter(Boolean);
-
-  return { records, exports };
-}
-
-function activityBins(activity, startTime) {
-  const bins = new Set();
-  const activityTimes = [
-    ...activity.records.flatMap((row) => [row.createdAt, row.updatedAt]),
-    ...activity.exports,
-  ];
-
-  for (const value of activityTimes) {
-    const time = validDate(value);
-    if (time === null) continue;
-    const day = Math.floor((time - startTime) / 86_400_000);
-    if (day >= 8 && day <= 28) bins.add(Math.floor((day - 8) / 7));
+  const unique = [...new Set(identifiers)];
+  if (unique.length > 100) {
+    throw new Error("GROWTH_EXCLUDED_USER_IDS may contain at most 100 values.");
   }
-  return bins;
+  return z.array(excludedUserIdSchema).parse(unique);
 }
 
-function earliestRecordTime(activity, startTime, endTime) {
-  const times = activity.records
-    .map((row) => validDate(row.createdAt))
-    .filter((time) => time !== null && time >= startTime && time <= endTime)
-    .sort((a, b) => a - b);
-  return times[0] ?? null;
-}
-
-function median(values) {
-  if (values.length === 0) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0
-    ? Number(((sorted[middle - 1] + sorted[middle]) / 2).toFixed(1))
-    : Number(sorted[middle].toFixed(1));
-}
-
-export function summarizeGrowth(input) {
-  const fromTime = validDate(input.from);
-  const toTime = validDate(input.to);
-  if (fromTime === null || toTime === null || fromTime > toTime) {
+export function buildGrowthScorecardRpcParameters(input) {
+  const analyticsSecret = String(input.analyticsSecret || "");
+  if (analyticsSecret.length < 32) {
+    throw new Error(
+      "MARKETING_ANALYTICS_SECRET must contain at least 32 characters."
+    );
+  }
+  const from = new Date(input.from);
+  const to = new Date(input.to);
+  if (
+    !Number.isFinite(from.getTime()) ||
+    !Number.isFinite(to.getTime()) ||
+    from.getTime() > to.getTime()
+  ) {
     throw new Error("Growth window is invalid.");
   }
-
-  const excluded = new Set(input.excludedUserIds || []);
-  const accountUsers = new Map(
-    input.accounts
-      .filter((row) => row?.user_id && !excluded.has(row.user_id))
-      .map((row) => [row.id, row.user_id])
-  );
-  const snapshotByUser = new Map(
-    input.snapshots
-      .filter((row) => row?.user_id && !excluded.has(row.user_id))
-      .map((row) => [row.user_id, row.dataset || {}])
-  );
-
-  const windowTrials = input.trials.filter((trial) => {
-    const userId = accountUsers.get(trial.billing_account_id);
-    return userId && inWindow(trial.started_at, fromTime, toTime);
-  });
-
-  let activated = 0;
-  let firstReport = 0;
-  let repeatValue = 0;
-  const timeToFirstRecordMinutes = [];
-
-  for (const trial of windowTrials) {
-    const userId = accountUsers.get(trial.billing_account_id);
-    const startTime = validDate(trial.started_at);
-    if (!userId || startTime === null) continue;
-    const sevenDayEnd = startTime + 7 * 86_400_000;
-    const activity = userActivity(snapshotByUser.get(userId) || {});
-    const recordsInSevenDays = activity.records.filter((row) =>
-      inWindow(row.createdAt, startTime, sevenDayEnd)
-    ).length;
-    const exportedInSevenDays = activity.exports.some((value) =>
-      inWindow(value, startTime, sevenDayEnd)
-    );
-    const meaningfulActivation =
-      recordsInSevenDays >= 3 ||
-      (recordsInSevenDays >= 2 && exportedInSevenDays);
-
-    if (meaningfulActivation) activated += 1;
-    if (exportedInSevenDays) firstReport += 1;
-    if (activityBins(activity, startTime).size >= 2) repeatValue += 1;
-
-    const firstRecordTime = earliestRecordTime(activity, startTime, sevenDayEnd);
-    if (firstRecordTime !== null) {
-      timeToFirstRecordMinutes.push((firstRecordTime - startTime) / 60_000);
-    }
-  }
-
-  const windowSubscriptions = input.subscriptions.filter((subscription) => {
-    const userId = accountUsers.get(subscription.billing_account_id);
-    return (
-      userId &&
-      subscription.environment === "live" &&
-      paidStatuses.has(subscription.status) &&
-      inWindow(subscription.created_at, fromTime, toTime)
-    );
-  });
-  const paidAccountIds = new Set(
-    windowSubscriptions.map((subscription) => subscription.billing_account_id)
-  );
-  const monthlyPaid = new Set(
-    windowSubscriptions
-      .filter((subscription) => subscription.plan_interval === "month")
-      .map((subscription) => subscription.billing_account_id)
-  ).size;
-  const annualPaid = new Set(
-    windowSubscriptions
-      .filter((subscription) => subscription.plan_interval === "year")
-      .map((subscription) => subscription.billing_account_id)
-  ).size;
-
-  const satisfactionRows = (input.satisfactionResponses || []).filter((row) =>
-    inWindow(row.responded_at, fromTime, toTime)
-  );
-  const positiveSatisfaction = satisfactionRows.filter(
-    (row) => Number(row.score) >= 4
-  ).length;
+  const excludedUserIds = z
+    .array(excludedUserIdSchema)
+    .max(100)
+    .parse(input.excludedUserIds || []);
 
   return {
-    window: {
-      from: new Date(fromTime).toISOString(),
-      to: new Date(toTime).toISOString(),
-    },
-    acquisition: {
-      qualified_trials: windowTrials.length,
-      target_trials: 500,
-      trial_target_progress_percent: percentage(windowTrials.length, 500),
-    },
-    activation: {
-      meaningfully_activated_accounts: activated,
-      meaningful_activation_rate_percent: percentage(activated, windowTrials.length),
-      first_report_accounts: firstReport,
-      first_report_rate_percent: percentage(firstReport, windowTrials.length),
-      median_minutes_to_first_record: median(timeToFirstRecordMinutes),
-    },
-    engagement: {
-      repeat_value_accounts: repeatValue,
-      repeat_value_rate_percent: percentage(repeatValue, activated),
-    },
-    satisfaction: {
-      responses: satisfactionRows.length,
-      positive_responses: positiveSatisfaction,
-      customer_value_satisfaction_percent: percentage(
-        positiveSatisfaction,
-        satisfactionRows.length
-      ),
-    },
-    conversion: {
-      paid_subscribers: paidAccountIds.size,
-      monthly_subscribers: monthlyPaid,
-      annual_subscribers: annualPaid,
-      paid_target: 100,
-      paid_target_progress_percent: percentage(paidAccountIds.size, 100),
-      eligible_trial_to_paid_percent: percentage(
-        windowTrials.filter((trial) =>
-          paidAccountIds.has(trial.billing_account_id)
-        ).length,
-        windowTrials.length
-      ),
-    },
+    p_from: from.toISOString(),
+    p_to: to.toISOString(),
+    p_excluded_user_ids: excludedUserIds,
+    p_excluded_cohort_identifiers: excludedUserIds.map((userId) =>
+      cohortIdentifierForUser(userId, analyticsSecret)
+    ),
   };
+}
+
+export function validateGrowthScorecard(value) {
+  return growthScorecardSchema.parse(value);
 }

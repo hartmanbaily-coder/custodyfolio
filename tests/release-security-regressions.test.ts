@@ -108,9 +108,11 @@ describe("release security regressions", () => {
     await expect(access(`${envFile}.apple-testflight-canary-backup`)).rejects.toThrow();
   });
 
-  it("limits App Review Sandbox to one expiring account without changing Stripe checkout", async () => {
+  it("limits App Review to separate expiring owner and attorney accounts without changing Stripe checkout", async () => {
     const directory = await mkdtemp(join(tmpdir(), "custodyfolio-apple-review-"));
     const envFile = join(directory, "app.env");
+    const reviewCodeFile = join(directory, "review-code");
+    const attorneyReviewCodeFile = join(directory, "attorney-review-code");
     const helper = fileURLToPath(
       new URL("../deploy/production/configure-apple-review-sandbox.sh", import.meta.url)
     );
@@ -127,6 +129,10 @@ describe("release security regressions", () => {
       { mode: 0o600 }
     );
     await chmod(envFile, 0o600);
+    await writeFile(reviewCodeFile, "481729\n", { mode: 0o600 });
+    await chmod(reviewCodeFile, 0o600);
+    await writeFile(attorneyReviewCodeFile, "735902\n", { mode: 0o600 });
+    await chmod(attorneyReviewCodeFile, 0o600);
     const commandEnv = {
       ...process.env,
       LOSTTOFOUND_ENV_FILE: envFile,
@@ -137,7 +143,15 @@ describe("release security regressions", () => {
       .replace(/\.\d{3}Z$/, "Z");
     await execFileAsync(
       "bash",
-      [helper, "open", "724f81aa-b6d1-4b8a-ab59-aec5fe29e7ea", expiresAt],
+      [
+        helper,
+        "open",
+        "724f81aa-b6d1-4b8a-ab59-aec5fe29e7ea",
+        expiresAt,
+        reviewCodeFile,
+        "4f99752a-ea56-4e56-b067-10957d2c9e22",
+        attorneyReviewCodeFile,
+      ],
       { env: commandEnv }
     );
     const opened = await readFile(envFile, "utf8");
@@ -147,6 +161,13 @@ describe("release security regressions", () => {
     expect(opened).toContain(
       "APPLE_REVIEW_SANDBOX_USER_ID=724f81aa-b6d1-4b8a-ab59-aec5fe29e7ea"
     );
+    expect(opened).toMatch(/APPLE_REVIEW_AUTH_CODE_SHA256=[a-f0-9]{64}/);
+    expect(opened).toContain(
+      "APPLE_REVIEW_ATTORNEY_USER_ID=4f99752a-ea56-4e56-b067-10957d2c9e22"
+    );
+    expect(opened).toMatch(/APPLE_REVIEW_ATTORNEY_AUTH_CODE_SHA256=[a-f0-9]{64}/);
+    expect(opened).not.toContain("481729");
+    expect(opened).not.toContain("735902");
     await execFileAsync("bash", [helper, "close"], { env: commandEnv });
     const closed = await readFile(envFile, "utf8");
     expect(closed).toContain("BILLING_MODE=live");
@@ -154,6 +175,9 @@ describe("release security regressions", () => {
     expect(closed).toContain("APPLE_REVIEW_SANDBOX_ENABLED=false");
     expect(closed).toContain("APPLE_REVIEW_SANDBOX_USER_ID=\n");
     expect(closed).toContain("APPLE_REVIEW_SANDBOX_EXPIRES_AT=\n");
+    expect(closed).toContain("APPLE_REVIEW_AUTH_CODE_SHA256=\n");
+    expect(closed).toContain("APPLE_REVIEW_ATTORNEY_USER_ID=\n");
+    expect(closed).toContain("APPLE_REVIEW_ATTORNEY_AUTH_CODE_SHA256=\n");
   });
 
   it("records billing evidence without opening either purchase provider", async () => {

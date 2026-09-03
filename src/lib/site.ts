@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 
 export const siteName = "Custody Folio";
-export const recordsTagline = "Keep the facts clear. Keep your records together.";
+export const recordsTagline = "Remove the emotion. Track the data.";
 export const siteDescription =
-  "Privately organize custody events, parenting time, expenses, notes, and evidence, then create clear reports for personal review or your attorney.";
+  "Privately organize custody events, parenting time, expenses, notes, and files in one clear timeline. No other parent account is required.";
 export const legalDisclaimer =
   "This tool helps organize records and does not provide legal advice. Consult a qualified attorney about your situation.";
 export const supportEmail = "support@custodyfolio.com";
@@ -15,7 +15,7 @@ export const privacyMailto = `mailto:${privacyEmail}`;
 export const securityMailto = `mailto:${securityEmail}`;
 export const accountDeletionPath = "/account/delete";
 export const accountDeletionMailto = `mailto:${supportEmail}?subject=Custody%20Folio%20account%20deletion%20request`;
-export const policyLastUpdated = "August 27, 2026";
+export const policyLastUpdated = "September 2, 2026";
 
 export const publicPolicyLinks = [
   { href: "/privacy", label: "Privacy" },

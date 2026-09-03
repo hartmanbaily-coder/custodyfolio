@@ -47,7 +47,9 @@ if [[ ${allow_launch_pending} == "true" ]]; then
   for disabled_flag in \
     RECORDS_SIGNUPS_ENABLED \
     NEXT_PUBLIC_RECORDS_SIGNUPS_ENABLED \
-    BILLING_CHECKOUT_ENABLED; do
+    BILLING_CHECKOUT_ENABLED \
+    MARKETING_ANALYTICS_ENABLED \
+    CUSTOMER_FEEDBACK_INVITE_ENABLED; do
     if [[ $(env_value "${disabled_flag}") != "false" ]]; then
       echo "Launch-pending deployment requires ${disabled_flag}=false." >&2
       exit 1

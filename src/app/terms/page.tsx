@@ -40,7 +40,7 @@ const sections: PolicySection[] = [
     title: "Accounts and security",
     body: [
       "Provide accurate account information and use only accounts and matters you are authorized to access. You are responsible for activity under your account except activity caused by our breach of these Terms or applicable law.",
-      "Protect your email, password, authenticator, recovery information, devices, downloads, and exports. Notify us promptly at the security address if you suspect unauthorized access.",
+      "Protect your email account, one-time sign-in codes, devices, downloads, and exports. Notify us promptly at the security address if you suspect unauthorized access.",
       "We may require identity or account-control verification for recovery, privacy requests, deletion, or other sensitive actions.",
     ],
   },

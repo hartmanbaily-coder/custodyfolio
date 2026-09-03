@@ -98,11 +98,6 @@ function supabaseProjectRef(value) {
   }
 }
 
-function numberAtLeast(value, minimum) {
-  const parsed = Number(value || 0);
-  return Number.isFinite(parsed) && parsed >= minimum;
-}
-
 const mode = process.argv.includes("--pre-supabase") ? "pre-supabase" : "production";
 const supabaseFinalEnvNames = new Set([
   "RECORDS_STORAGE_MODE",
@@ -112,6 +107,10 @@ const supabaseFinalEnvNames = new Set([
   "EXPECTED_SUPABASE_PROJECT_REF",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
+  "RECORDS_AUTH_METHOD",
+  "SUPABASE_EMAIL_OTP_ENABLED",
+  "SUPABASE_EMAIL_OTP_LENGTH",
+  "SUPABASE_EMAIL_OTP_EXPIRY_SECONDS",
   "SUPABASE_MFA_POLICY",
   "RECORDS_ENFORCE_MFA",
   "SUPABASE_CUSTOM_SMTP_ENABLED",
@@ -233,30 +232,17 @@ const checks = [
     process.env.ATTORNEY_INVITE_DEV_DELIVERY === "false",
     "must be false in production",
   ],
-  ["SUPABASE_MFA_POLICY", process.env.SUPABASE_MFA_POLICY === "required", "must be required"],
-  ["RECORDS_ENFORCE_MFA", isEnabled(process.env.RECORDS_ENFORCE_MFA), "must be true"],
+  ["RECORDS_AUTH_METHOD", process.env.RECORDS_AUTH_METHOD === "email_otp", "must be email_otp"],
+  ["SUPABASE_EMAIL_OTP_ENABLED", isEnabled(process.env.SUPABASE_EMAIL_OTP_ENABLED), "must be true"],
+  ["SUPABASE_EMAIL_OTP_LENGTH", process.env.SUPABASE_EMAIL_OTP_LENGTH === "6", "must be 6"],
+  ["SUPABASE_EMAIL_OTP_EXPIRY_SECONDS", process.env.SUPABASE_EMAIL_OTP_EXPIRY_SECONDS === "600", "must be 600"],
+  ["SUPABASE_MFA_POLICY", process.env.SUPABASE_MFA_POLICY === "optional", "must be optional"],
+  ["RECORDS_ENFORCE_MFA", !isEnabled(process.env.RECORDS_ENFORCE_MFA), "must be false"],
   ["SUPABASE_CUSTOM_SMTP_ENABLED", isEnabled(process.env.SUPABASE_CUSTOM_SMTP_ENABLED), "must be true"],
   [
     "SUPABASE_AUTH_REDIRECTS_VERIFIED_AT",
     isRecentDate(process.env.SUPABASE_AUTH_REDIRECTS_VERIFIED_AT, 30),
-    "must be an ISO date within the last 30 days after password reset and /auth/confirm redirects are verified",
-  ],
-  [
-    "SUPABASE_LEAKED_PASSWORD_PROTECTION_ENABLED",
-    isEnabled(process.env.SUPABASE_LEAKED_PASSWORD_PROTECTION_ENABLED) ||
-      isEnabled(process.env.PWNED_PASSWORD_CHECK_ENABLED),
-    "or PWNED_PASSWORD_CHECK_ENABLED must be true",
-  ],
-  [
-    "SUPABASE_PASSWORD_MIN_LENGTH",
-    numberAtLeast(process.env.SUPABASE_PASSWORD_MIN_LENGTH, 12),
-    "must be at least 12",
-  ],
-  [
-    "SUPABASE_PASSWORD_REAUTH_ENABLED",
-    isEnabled(process.env.SUPABASE_PASSWORD_REAUTH_ENABLED) &&
-      isEnabled(process.env.SUPABASE_CURRENT_PASSWORD_REQUIRED),
-    "and SUPABASE_CURRENT_PASSWORD_REQUIRED must both be true",
+    "must be an ISO date within the last 30 days after invitation and /auth/confirm redirects are verified",
   ],
   [
     "SUPABASE_AUTH_HARDENING_VERIFIED_AT",

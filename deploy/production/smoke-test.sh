@@ -182,8 +182,20 @@ login_status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
   --header 'Sec-Fetch-Site: same-origin' \
   --data '{"email":"deploy-probe","password":"not-a-real-password","adultConfirmed":true}' \
   http://127.0.0.1:8080/api/records/auth/login)"
-if [[ ${login_status} != "400" && ${login_status} != "401" ]]; then
+if [[ ${login_status} != "410" ]]; then
   echo "Login probe returned unexpected HTTP ${login_status}." >&2
+  exit 1
+fi
+
+email_code_status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --request POST \
+  --header 'Content-Type: application/json' \
+  --header "Origin: ${public_url%/}" \
+  --header 'Sec-Fetch-Site: same-origin' \
+  --data '{"email":"deploy-probe","adultConfirmed":true,"legalAccepted":true,"workspace":"records"}' \
+  http://127.0.0.1:8080/api/records/auth/email-code/request)"
+if [[ ${email_code_status} != "400" ]]; then
+  echo "Email-code request probe returned unexpected HTTP ${email_code_status}." >&2
   exit 1
 fi
 

@@ -41,6 +41,7 @@ export type SecurityEventType =
   | "account_deletion_session_revocation_failed"
   | "account_deletion_billing_cancellation_failed"
   | "account_deletion_billing_redaction_failed"
+  | "account_deletion_growth_measurement_failed"
   | "evidence_upload_scanner_blocked"
   | "evidence_upload_scanner_failed"
   | "evidence_storage_failed"

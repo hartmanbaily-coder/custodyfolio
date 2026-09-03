@@ -11,6 +11,13 @@ trap cleanup EXIT
 env_file="${tmp_dir}/app.env"
 cat >"${env_file}" <<'EOF'
 NEXT_PUBLIC_APP_URL=https://custodyfolio.com
+SUPABASE_MFA_POLICY=required
+RECORDS_ENFORCE_MFA=true
+SUPABASE_CUSTOM_SMTP_ENABLED=true
+PWNED_PASSWORD_CHECK_ENABLED=true
+SUPABASE_LEAKED_PASSWORD_PROTECTION_ENABLED=true
+SUPABASE_PASSWORD_REAUTH_ENABLED=true
+SUPABASE_CURRENT_PASSWORD_REQUIRED=true
 SUPABASE_AUTH_REDIRECTS_VERIFIED_AT=2026-01-01
 SUPABASE_AUTH_REDIRECTS_VERIFIED_AT=duplicate
 SUPABASE_AUTH_HARDENING_VERIFIED_AT=2026-01-01
@@ -24,6 +31,22 @@ test "$(grep -c '^SUPABASE_AUTH_REDIRECTS_VERIFIED_AT=' "${env_file}")" -eq 1
 test "$(grep -c '^SUPABASE_AUTH_HARDENING_VERIFIED_AT=' "${env_file}")" -eq 1
 grep -Fqx 'SUPABASE_AUTH_REDIRECTS_VERIFIED_AT=2026-08-21' "${env_file}"
 grep -Fqx 'SUPABASE_AUTH_HARDENING_VERIFIED_AT=2026-08-21' "${env_file}"
+for expected in \
+  'RECORDS_AUTH_METHOD=email_otp' \
+  'SUPABASE_EMAIL_OTP_ENABLED=true' \
+  'SUPABASE_EMAIL_OTP_LENGTH=6' \
+  'SUPABASE_EMAIL_OTP_EXPIRY_SECONDS=600' \
+  'SUPABASE_MFA_POLICY=optional' \
+  'RECORDS_ENFORCE_MFA=false' \
+  'SUPABASE_CUSTOM_SMTP_ENABLED=true' \
+  'PWNED_PASSWORD_CHECK_ENABLED=false' \
+  'SUPABASE_LEAKED_PASSWORD_PROTECTION_ENABLED=false' \
+  'SUPABASE_PASSWORD_REAUTH_ENABLED=false' \
+  'SUPABASE_CURRENT_PASSWORD_REQUIRED=false'; do
+  key="${expected%%=*}"
+  test "$(grep -c "^${key}=" "${env_file}")" -eq 1
+  grep -Fqx "${expected}" "${env_file}"
+done
 if stat -c '%a' "${env_file}" >/dev/null 2>&1; then
   env_mode="$(stat -c '%a' "${env_file}")"
 else

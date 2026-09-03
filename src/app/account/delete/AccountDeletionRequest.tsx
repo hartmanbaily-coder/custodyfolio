@@ -158,7 +158,7 @@ export function AccountDeletionRequest() {
         )}
         {sessionStatus === "unauthenticated" && (
           <p>
-            Sign in and complete authenticator verification first, then return to this page to delete
+            Sign in with a current email code first, then return to this page to delete
             the account.
           </p>
         )}

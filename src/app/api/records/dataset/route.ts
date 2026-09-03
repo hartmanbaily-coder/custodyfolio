@@ -25,6 +25,9 @@ import {
   compareAndSetRecordsSnapshot,
   nextRecordsSnapshotTimestamp,
 } from "@/lib/records/snapshotStore";
+import { recordGrowthEvent } from "@/lib/marketing/growthEvents";
+import { firstGrowthMilestones } from "@/lib/marketing/growthMilestones";
+import { isNativeIosUserAgent } from "@/lib/billing/config";
 
 export const dynamic = "force-dynamic";
 
@@ -321,6 +324,21 @@ export async function PUT(request: NextRequest) {
       },
       { status: saved.reason === "conflict" ? 409 : 500 }
     );
+  }
+
+  const milestoneEvents = firstGrowthMilestones({
+    before: currentDataset,
+    after: ownedDataset,
+    userId,
+  });
+  for (const eventName of milestoneEvents) {
+    await recordGrowthEvent({
+      supabase,
+      eventName,
+      request,
+      userId,
+      platform: isNativeIosUserAgent(request.headers.get("user-agent")) ? "ios" : "web",
+    });
   }
 
   const response = NextResponse.json(

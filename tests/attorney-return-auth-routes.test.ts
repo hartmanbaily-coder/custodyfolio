@@ -141,13 +141,11 @@ describe("returning attorney authentication", () => {
     expect(providerBody).toEqual(inactiveBody);
   });
 
-  it("treats fresh mailbox proof as the first factor and requires MFA", async () => {
+  it("creates the guest session from fresh mailbox proof without an authenticator step", async () => {
     const response = await acceptReturnSession(sessionRequest());
 
-    expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toMatchObject({
-      mfaRequired: true,
-    });
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ ok: true });
     expect(recordsAttorneyProfileIsAuthorized).toHaveBeenCalledWith({
       userId: "attorney-1",
       email: "counsel@example.test",
@@ -160,7 +158,7 @@ describe("returning attorney authentication", () => {
         refresh_token: "return-refresh-token-long-enough",
       }),
       expect.any(String),
-      "attorney_mfa_pending"
+      "attorney_guest"
     );
   });
 

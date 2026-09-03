@@ -13,6 +13,7 @@ const customerFacingFiles = [
   "src/app/open-source/page.tsx",
   "src/app/contact/page.tsx",
   "src/app/guides/factual-custody-record-checklist/page.tsx",
+  "src/app/guides/weekly/page.tsx",
   "src/app/account/delete/page.tsx",
   "src/app/account/delete/AccountDeletionRequest.tsx",
   "src/components/records/AttorneyAccessPanel.tsx",
@@ -40,7 +41,7 @@ describe("customer facing copy", () => {
   it("preserves the Custody Folio brand statement", () => {
     const site = readFileSync(resolve(process.cwd(), "src/lib/site.ts"), "utf8");
     expect(site).toContain(
-      'recordsTagline = "Keep the facts clear. Keep your records together."'
+      'recordsTagline = "Remove the emotion. Track the data."'
     );
   });
 
@@ -115,6 +116,21 @@ describe("customer facing copy", () => {
     expect(home).toContain("Consumer Health Data Privacy Policy");
   });
 
+  it("discloses first party measurement and optional feedback limits", () => {
+    const privacy = readFileSync(
+      resolve(process.cwd(), "src/app/privacy/page.tsx"),
+      "utf8"
+    );
+
+    expect(privacy).toContain("fixed event name");
+    expect(privacy).toContain("does not include names, email addresses");
+    expect(privacy).toContain("groups representing fewer than five people");
+    expect(privacy).toContain("expire no later than 180 days");
+    expect(privacy).toContain("contact count limited to one");
+    expect(privacy).toContain("same service cookie");
+    expect(privacy).toContain("for up to 30 days");
+  });
+
   it("provides a direct trial signup path and factual public checklist", () => {
     const home = readFileSync(resolve(process.cwd(), "src/app/page.tsx"), "utf8");
     const checklist = readFileSync(
@@ -128,15 +144,74 @@ describe("customer facing copy", () => {
       resolve(process.cwd(), "src/components/records/RecordsApp.tsx"),
       "utf8"
     );
+    const tracker = readFileSync(
+      resolve(process.cwd(), "src/components/marketing/MarketingTracker.tsx"),
+      "utf8"
+    );
+    const weekly = readFileSync(
+      resolve(process.cwd(), "src/app/guides/weekly/page.tsx"),
+      "utf8"
+    );
+    const sitemap = readFileSync(
+      resolve(process.cwd(), "src/app/sitemap.ts"),
+      "utf8"
+    );
 
-    expect(home).toContain('href="/records?mode=signup"');
+    expect(home).toContain("<TrackedSignupLink");
+    expect(tracker).toContain('href="/records?mode=signup"');
     expect(home).toContain("Read the free checklist");
+    expect(home).toContain("Custody Folio | Private Custody Records");
+    expect(home).toContain("No other parent account is required");
+    expect(home).toContain("You may subscribe during the trial if you choose");
+    expect(home).toContain(
+      "Keep supporting files connected to the record they belong with"
+    );
+    expect(home).toContain("reports for personal review or an attorney conversation");
+    expect(home).not.toContain("court useful");
     expect(records).toContain("recordsSignupRoute(");
     expect(checklist).toContain("The factual custody record checklist");
     expect(checklist).toContain("This guide provides general organization information");
-    expect([home, checklist].join("\n")).not.toMatch(
+    expect(checklist).toContain(
+      'href="/guides/weekly?utm_source=checklist&utm_medium=organic&utm_campaign=checklist"'
+    );
+    expect(weekly).toContain("How to Organize Custody Records Each Week");
+    expect(weekly).toContain("A five minute weekly routine for clearer custody records");
+    expect(weekly).toContain("<MarketingPageView contentCode=\"factual_checklist\"");
+    expect(weekly).toContain("<TrackedSignupLink");
+    expect(weekly).toContain("Start 30 days free");
+    expect(weekly).toContain("It is not legal");
+    expect(weekly).toContain("provide legal advice, verify allegations");
+    expect(weekly).toContain("guarantee admissibility");
+    expect(sitemap).toContain('"/guides/weekly"');
+    expect(tracker).toContain('contentCode = "homepage"');
+    expect(tracker).toContain(
+      'sendMarketingEvent("marketing_page_viewed", contentCode)'
+    );
+    expect([home, checklist, weekly].join("\n")).not.toMatch(
       /win custody|beat your ex|court approved|legally admissible|guaranteed evidence|tamper proof/i
     );
+  });
+
+  it("offers one optional feedback contact only after a saved record", () => {
+    const records = readFileSync(
+      resolve(process.cwd(), "src/components/records/RecordsApp.tsx"),
+      "utf8"
+    );
+    const invitation = readFileSync(
+      resolve(
+        process.cwd(),
+        "src/components/records/CustomerFeedbackInvite.tsx"
+      ),
+      "utf8"
+    );
+
+    expect(records).toContain(
+      'recordsStorageMode === "supabase" && selectedRecordCount >= 1'
+    );
+    expect(invitation).toContain("Yes, contact me once");
+    expect(invitation).toContain("Participation is optional");
+    expect(invitation).toContain("No message was sent by this action");
+    expect(invitation).toContain("not the contents of your records");
   });
 
   it("does not expose the retired product name in export filenames", () => {
@@ -215,18 +290,18 @@ describe("customer facing copy", () => {
     expect(attorneyAccess).toContain("Consumer Health Data Privacy Policy");
   });
 
-  it("tells invited attorneys that the private invitation is a single-link flow", () => {
+  it("tells invited attorneys how the passwordless email-code flow works", () => {
     const attorneyAccept = readFileSync(
       resolve(process.cwd(), "src/components/records/AttorneyAccept.tsx"),
       "utf8"
     );
     expect(attorneyAccept).toContain("This private invitation is bound to the attorney email");
-    expect(attorneyAccept).toContain("mailbox through a separate secure email");
-    expect(attorneyAccept).toContain("Email secure account link");
+    expect(attorneyAccept).toContain("mailbox is verified with a one-time code");
+    expect(attorneyAccept).toContain("Email me a sign-in code");
     expect(attorneyAccept).toContain("Before you begin");
     expect(attorneyAccept).toContain("Use the exact email address the client invited");
-    expect(attorneyAccept).toContain("Set up your authenticator");
-    expect(attorneyAccept).not.toContain("Check Inbox and Junk");
+    expect(attorneyAccept).toContain("6-digit, one-time code");
+    expect(attorneyAccept).not.toContain("Set up your authenticator");
   });
 
   it("keeps recurring exchange setup out of the primary exchange logging flow", () => {

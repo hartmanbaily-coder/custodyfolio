@@ -199,7 +199,7 @@ test("records login and report workflow", async ({ page }) => {
   await expect(rangeEndDay.locator('[data-exchange-time-marker="18:00"]')).toHaveCount(1);
   await rangeEndDay.click();
   await expect(page.getByLabel("Child will be with")).toHaveValue("Alternate caregiver");
-  await expect(page.getByLabel("Exchange day")).toHaveValue("start");
+  await expect(page.getByLabel("Exchange day")).toHaveValue("end");
   await expect(page.getByLabel("Exchange time")).toHaveValue("18:00");
 
   await page.getByTestId("calendar-color-tools").locator("summary").click();
@@ -682,17 +682,24 @@ test("mobile screenshot exhibit builder preserves order and generates a protecte
 test("home overview counters use structured records in the selected range", async ({
   page,
 }) => {
-  const { today } = localDateParts();
+  const { monthKey } = localDateParts();
+  const [today] = threeDayRangeWithoutSeededExchange(monthKey);
 
   await page.goto("/records");
   await enterDemoWorkspace(page);
+  await revealDateRangeControls(page);
+  await page.getByLabel("Date range preset").selectOption("custom");
+  await page.getByLabel("From date").fill(today);
+  await page.getByLabel("To date").fill(today);
+  const done = page.getByRole("button", { name: "Done", exact: true });
+  if (await done.isVisible()) await done.click();
 
   await page.getByRole("button", { name: "Parenting time", exact: true }).click();
   const exchangeForm = page.locator("form").filter({
     has: page.getByRole("button", { name: "Save exchange outcome" }),
   });
-  await expect(exchangeForm.getByLabel("Scheduled exchange date")).toHaveValue(today);
-  await expect(exchangeForm.getByLabel("Actual date")).toHaveValue(today);
+  await exchangeForm.getByLabel("Scheduled exchange date").fill(today);
+  await exchangeForm.getByLabel("Actual date").fill(today);
   await exchangeForm.getByLabel("Actual time").fill("18:15");
   await exchangeForm.getByRole("button", { name: "Save exchange outcome" }).click();
   await expect(page.getByRole("status")).toContainText(
@@ -708,7 +715,7 @@ test("home overview counters use structured records in the selected range", asyn
 
   await page.getByRole("button", { name: "Notes & events", exact: true }).click();
   const faceTimeForm = page.getByTestId("facetime-outcome-form");
-  await expect(faceTimeForm.getByLabel("Date", { exact: true })).toHaveValue(today);
+  await faceTimeForm.getByLabel("Date", { exact: true }).fill(today);
   await faceTimeForm.getByLabel("Communication outcome").selectOption("attempted_unanswered");
   await faceTimeForm
     .getByLabel("A message or notice came after the call attempt.")
@@ -1054,7 +1061,24 @@ test("an attorney invitation starts mailbox-verified account access", async ({ p
       contentType: "application/json",
       body: JSON.stringify({
         ok: true,
-        message: "Invitation verified. New accounts must open a secure link sent to the invited email; existing accounts may sign in below.",
+        message: "Invitation verified. Enter the invited attorney email below.",
+      }),
+    });
+  });
+  await page.route("**/api/records/auth/email-code/request", async (route) => {
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().postDataJSON()).toEqual({
+      email: "counsel@example.test",
+      adultConfirmed: true,
+      legalAccepted: true,
+      workspace: "attorney",
+    });
+    await route.fulfill({
+      status: 202,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        message: "If that email can access Custody Folio, a 6-digit sign-in code will arrive shortly. Check Inbox and Junk.",
       }),
     });
   });
@@ -1063,11 +1087,17 @@ test("an attorney invitation starts mailbox-verified account access", async ({ p
   await expect(page.getByRole("heading", { name: "Open a read-only shared matter" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Before you begin" })).toBeVisible();
   await expect(page.getByText("Use the exact email address the client invited.", { exact: false })).toBeVisible();
-  await expect(page.getByText("Have an authenticator app ready.", { exact: false })).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("secure link sent to the invited email");
-  await expect(page.getByRole("button", { name: "Create account", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Email secure account link" })).toBeVisible();
+  await expect(page.getByText("no password or authenticator app is required.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Request a code.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Enter the code here.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("Enter the invited attorney email below");
+  await page.getByLabel("Invited attorney email").fill("counsel@example.test");
+  await page.getByRole("checkbox", { name: /I am the adult attorney invited/ }).check();
+  await page.getByRole("checkbox", { name: /I agree to the Terms of Use/ }).check();
+  await page.getByRole("button", { name: "Email me a sign-in code" }).click();
+  await expect(page.getByRole("status")).toContainText("a 6-digit sign-in code will arrive shortly");
+  await expect(page.getByLabel("6-digit email code")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open attorney portal" })).toBeVisible();
   await expect(page).toHaveURL(/\/attorney\/accept$/);
   expect(await page.evaluate(() => window.sessionStorage.getItem("l2f.attorney.access")))
     .toBeNull();
@@ -1279,8 +1309,10 @@ test("mobile create flows stay visible across every record tab and reload with a
   const exchangeLogForm = page.locator("form").filter({
     has: page.getByRole("button", { name: "Save exchange outcome" }),
   });
-  await exchangeLogForm.getByLabel("Scheduled exchange date").fill("2026-08-14");
-  await exchangeLogForm.getByLabel("Actual date").fill("2026-08-14");
+  await exchangeLogForm
+    .getByLabel("Scheduled exchange date")
+    .fill(currentCalendar.today);
+  await exchangeLogForm.getByLabel("Actual date").fill(currentCalendar.today);
   await exchangeLogForm.getByRole("button", { name: "Save exchange outcome" }).click();
   await expect(page.getByRole("status")).toContainText("Exchange outcome saved. It appears below");
   const exchangeChart = page.getByTestId("exchange-timing-chart");
@@ -1292,7 +1324,7 @@ test("mobile create flows stay visible across every record tab and reload with a
   const loggedExchanges = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Logged exchanges", exact: true }),
   });
-  await expect(loggedExchanges).toContainText("2026-08-14");
+  await expect(loggedExchanges).toContainText(currentCalendar.today);
 
   const fileName = "persistence-audit-file.txt";
   await openWorkspaceView(page, /^Files & evidence/);
@@ -1366,7 +1398,7 @@ test("mobile create flows stay visible across every record tab and reload with a
   await expect(page.getByText(exchangeRuleName, { exact: true })).toBeVisible();
   await openWorkspaceView(page, "Parenting time");
   await expectPhoneWidth();
-  await expect(loggedExchanges).toContainText("2026-08-14");
+  await expect(loggedExchanges).toContainText(currentCalendar.today);
   await expect(page.getByTestId("exchange-timing-chart")).toHaveAttribute("data-exchange-count", "1");
   await openWorkspaceView(page, /^Files & evidence/);
   await expectPhoneWidth();

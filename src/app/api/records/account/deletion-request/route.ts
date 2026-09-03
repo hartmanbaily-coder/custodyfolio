@@ -19,6 +19,7 @@ import {
   prepareBillingForAccountDeletion,
   redactBillingIdentityForAccountDeletion,
 } from "@/lib/billing/accountDeletion";
+import { deleteGrowthEventsForUser } from "@/lib/marketing/growthEvents";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if ("error" in context) {
     return (
       context.error ||
-      deletionError("Sign in and complete authenticator verification before deleting your account.", 401)
+      deletionError("Sign in with a current email code before deleting your account.", 401)
     );
   }
 
@@ -171,6 +172,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       userId: context.userId,
       status: 503,
       detail: "Evidence and sessions were removed, but billing identity minimization failed before Auth deletion.",
+    });
+    const response = deletionError(
+      "Your files and active sessions were removed, but the account could not be fully deleted. Contact support to complete deletion."
+    );
+    clearRecordsSessionCookies(response);
+    return response;
+  }
+
+  const growthDeletion = await deleteGrowthEventsForUser({
+    supabase: context.supabase,
+    userId: context.userId,
+  });
+  if (!growthDeletion.ok) {
+    await recordSecurityEvent({
+      type: "account_deletion_growth_measurement_failed",
+      severity: "critical",
+      request,
+      userId: context.userId,
+      status: 503,
+      detail: "Evidence and sessions were removed, but pseudonymous growth measurement deletion failed before Auth deletion.",
     });
     const response = deletionError(
       "Your files and active sessions were removed, but the account could not be fully deleted. Contact support to complete deletion."

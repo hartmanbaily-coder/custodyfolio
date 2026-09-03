@@ -15,6 +15,11 @@ import {
   readTextBodyWithLimit,
   RequestBodyTooLargeError,
 } from "@/lib/security/requestBody";
+import {
+  growthAnalyticsEnabled,
+  recordGrowthEvent,
+  subscriptionGrowthEventNames,
+} from "@/lib/marketing/growthEvents";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -252,6 +257,34 @@ export async function POST(request: NextRequest) {
       billingAccountId,
       subscription,
     });
+    if (growthAnalyticsEnabled()) {
+      try {
+        const account = await supabase
+          .from("custody_folio_billing_accounts")
+          .select("user_id")
+          .eq("id", billingAccountId)
+          .maybeSingle();
+        if (!account.error && account.data?.user_id) {
+          for (const growthEventName of subscriptionGrowthEventNames({
+            status: subscription.status,
+            cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+            providerEventType: event.type,
+          })) {
+            await recordGrowthEvent({
+              supabase,
+              eventName: growthEventName,
+              userId: account.data.user_id,
+              platform: "web",
+              planInterval: subscription.planInterval,
+              occurredAt,
+              dedupeSeed: `stripe:${event.id}`,
+            });
+          }
+        }
+      } catch {
+        // Growth measurement never changes verified provider processing.
+      }
+    }
     return NextResponse.json({ received: true });
   } catch {
     return NextResponse.json(

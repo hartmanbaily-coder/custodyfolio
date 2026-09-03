@@ -47,15 +47,8 @@ const sections: PolicySection[] = [
   {
     title: "Resend",
     body: [
-      "Delivers authentication messages such as account confirmation, recovery, and security-related email on behalf of Supabase Auth.",
+      "Delivers one-time sign-in codes, account confirmations, invitations, and security-related email on behalf of Supabase Auth.",
       "May process the recipient email address, message content, delivery status, IP and device information used for email delivery and abuse prevention. Custody record contents are not intentionally included.",
-    ],
-  },
-  {
-    title: "Have I Been Pwned",
-    body: [
-      "Provides optional compromised-password screening when the production control is enabled.",
-      "Receives only the first five characters of a SHA-1 password hash through its range API. It does not receive the password, email address, complete hash, or custody records.",
     ],
   },
   {

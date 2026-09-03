@@ -124,8 +124,12 @@ const readyEnv = {
   ATTORNEY_PORTAL_SECRET: "abcdefghijklmnopqrstuvwxyz123456",
   ATTORNEY_INVITE_OWNER_SHARE_ENABLED: "false",
   ATTORNEY_INVITE_DEV_DELIVERY: "false",
-  SUPABASE_MFA_POLICY: "required",
-  RECORDS_ENFORCE_MFA: "true",
+  RECORDS_AUTH_METHOD: "email_otp",
+  SUPABASE_EMAIL_OTP_ENABLED: "true",
+  SUPABASE_EMAIL_OTP_LENGTH: "6",
+  SUPABASE_EMAIL_OTP_EXPIRY_SECONDS: "600",
+  SUPABASE_MFA_POLICY: "optional",
+  RECORDS_ENFORCE_MFA: "false",
   SUPABASE_CUSTOM_SMTP_ENABLED: "true",
   SUPABASE_AUTH_REDIRECTS_VERIFIED_AT: "2026-06-10",
   SUPABASE_LEAKED_PASSWORD_PROTECTION_ENABLED: "true",
@@ -187,6 +191,81 @@ describe("production readiness", () => {
     expect(report.blockers.map((item) => item.id)).toContain("records-storage-mode");
     expect(report.blockers.map((item) => item.id)).toContain("auth-secret");
     expect(report.blockers.map((item) => item.id)).toContain("malware-provider");
+  });
+
+  it("keeps growth measurement disabled by default", () => {
+    const report = evaluateProductionReadiness(
+      readyEnv,
+      "2026-06-15T00:00:00.000Z"
+    );
+    const analytics = report.checks.find(
+      (item) => item.id === "marketing-analytics-privacy"
+    );
+
+    expect(analytics?.ready).toBe(true);
+  });
+
+  it("requires a strong secret and approved retention before growth measurement", () => {
+    const weakSecret = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        MARKETING_ANALYTICS_ENABLED: "true",
+        MARKETING_ANALYTICS_SECRET: "short",
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+    const missingRetention = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        MARKETING_ANALYTICS_ENABLED: "true",
+        MARKETING_ANALYTICS_SECRET: "01234567890123456789012345678901",
+        DATA_RETENTION_POLICY_APPROVED: "false",
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+
+    expect(weakSecret.blockers.map((item) => item.id)).toContain(
+      "marketing-analytics-privacy"
+    );
+    expect(missingRetention.blockers.map((item) => item.id)).toContain(
+      "marketing-analytics-privacy"
+    );
+  });
+
+  it("requires recent schema verification before measurement or feedback activation", () => {
+    const analytics = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        MARKETING_ANALYTICS_ENABLED: "true",
+        MARKETING_ANALYTICS_SECRET: "01234567890123456789012345678901",
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+    const feedback = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        CUSTOMER_FEEDBACK_INVITE_ENABLED: "true",
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+    const verified = evaluateProductionReadiness(
+      {
+        ...readyEnv,
+        CUSTOMER_FEEDBACK_INVITE_ENABLED: "true",
+        CUSTOMER_GROWTH_SCHEMA_VERIFIED_AT: "2026-06-10",
+      },
+      "2026-06-15T00:00:00.000Z"
+    );
+
+    expect(analytics.blockers.map((item) => item.id)).toContain(
+      "customer-growth-schema"
+    );
+    expect(feedback.blockers.map((item) => item.id)).toContain(
+      "customer-growth-schema"
+    );
+    expect(verified.blockers.map((item) => item.id)).not.toContain(
+      "customer-growth-schema"
+    );
   });
 
   it("allows attorney access when its policy and operational controls are enabled", () => {
@@ -475,9 +554,12 @@ describe("production readiness", () => {
       expect.arrayContaining([
         "supabase-url",
         "supabase-production-project",
-        "records-mfa-enforced",
+        "records-auth-method",
+        "supabase-email-otp",
+        "legacy-mfa-disabled",
         "supabase-custom-smtp",
         "supabase-auth-redirects",
+        "customer-growth-schema",
         "records-evidence-bucket",
         "offsite-storage-backup",
         "supabase-auth-hardening-verified",
@@ -597,8 +679,12 @@ describe("production readiness", () => {
     const report = evaluateProductionReadiness(
       {
         ...readyEnv,
-        SUPABASE_MFA_POLICY: "optional",
-        RECORDS_ENFORCE_MFA: "false",
+        RECORDS_AUTH_METHOD: "password",
+        SUPABASE_EMAIL_OTP_ENABLED: "false",
+        SUPABASE_EMAIL_OTP_LENGTH: "8",
+        SUPABASE_EMAIL_OTP_EXPIRY_SECONDS: "3600",
+        SUPABASE_MFA_POLICY: "required",
+        RECORDS_ENFORCE_MFA: "true",
         SUPABASE_CUSTOM_SMTP_ENABLED: "false",
         SUPABASE_AUTH_REDIRECTS_VERIFIED_AT: "2026-01-01",
         SUPABASE_LEAKED_PASSWORD_PROTECTION_ENABLED: "false",
@@ -623,11 +709,12 @@ describe("production readiness", () => {
     expect(report.ready).toBe(false);
     expect(report.blockers.map((item) => item.id)).toEqual(
       expect.arrayContaining([
-        "supabase-mfa-policy",
-        "records-mfa-enforced",
+        "records-auth-method",
+        "supabase-email-otp",
+        "legacy-mfa-disabled",
         "supabase-custom-smtp",
         "supabase-auth-redirects",
-        "supabase-leaked-passwords",
+        "supabase-email-otp-expiry",
         "supabase-auth-hardening-verified",
         "malware-scanner-tested",
         "edge-rate-limits",
