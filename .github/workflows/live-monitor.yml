@@ -117,11 +117,15 @@ jobs:
               adultConfirmed: true,
             }),
           });
-          if (![400, 401].includes(fakeLoginResponse.status)) {
-            fail(`Fake login returned HTTP ${fakeLoginResponse.status}; expected handled 400 or 401.`);
+          if (fakeLoginResponse.status !== 410) {
+            fail(`Retired password login returned HTTP ${fakeLoginResponse.status}; expected 410.`);
           }
           if (!fakeLoginResponse.headers.get("content-type")?.includes("application/json")) {
-            fail("Fake login did not return JSON content-type.");
+            fail("Retired password login did not return JSON content-type.");
+          }
+          const retiredPasswordLogin = await fakeLoginResponse.json().catch(() => ({}));
+          if (retiredPasswordLogin.code !== "password_sign_in_retired") {
+            fail("Retired password login did not return code password_sign_in_retired.");
           }
 
           const readinessResponse = await get(`${baseUrl}/api/records/readiness`);
