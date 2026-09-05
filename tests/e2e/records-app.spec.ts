@@ -197,9 +197,14 @@ test("records login and report workflow", async ({ page }) => {
   await expect(rangeStartDay.locator('[data-exchange-time-marker="18:00"]')).toHaveCount(0);
   await expect(rangeMiddleDay.locator('[data-exchange-time-marker="18:00"]')).toHaveCount(0);
   await expect(rangeEndDay.locator('[data-exchange-time-marker="18:00"]')).toHaveCount(1);
+  // Select another day first so reopening the end day always loads its saved
+  // single-day assignment, even when today happens to be the range end.
+  await rangeStartDay.click();
   await rangeEndDay.click();
   await expect(page.getByLabel("Child will be with")).toHaveValue("Alternate caregiver");
-  await expect(page.getByLabel("Exchange day")).toHaveValue("end");
+  await expect(page.getByLabel("Start date", { exact: true })).toHaveValue(rangeEndDate);
+  await expect(page.getByLabel("End date", { exact: true })).toHaveValue(rangeEndDate);
+  await expect(page.getByLabel("Exchange day")).toHaveValue("start");
   await expect(page.getByLabel("Exchange time")).toHaveValue("18:00");
 
   await page.getByTestId("calendar-color-tools").locator("summary").click();
