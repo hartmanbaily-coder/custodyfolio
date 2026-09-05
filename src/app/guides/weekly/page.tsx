@@ -1,4 +1,5 @@
 
+import Link from "next/link";
 import PublicHeader from "@/components/marketing/PublicHeader";
 import PolicyFooter from "@/components/PolicyFooter";
 import {
@@ -146,6 +147,10 @@ export default function WeeklyCustodyRecordRoutinePage() {
             </section>
           ))}
         </div>
+
+        <p className="mt-8 text-base leading-7 text-slate-700">
+          Unsure what a factual entry looks like? <Link href="/guides/how-to-write-factual-custody-notes" className="font-medium text-teal-800 underline underline-offset-4">See three before-and-after custody note examples</Link> and a simple entry template.
+        </p>
 
         <section className="mt-10 rounded-2xl bg-slate-950 p-6 text-white sm:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-300">

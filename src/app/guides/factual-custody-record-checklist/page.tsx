@@ -96,6 +96,10 @@ export default function FactualCustodyRecordChecklistPage() {
           ))}
         </div>
 
+        <p className="mt-8 text-base leading-7 text-slate-700">
+          Want to see the difference between a reaction and a factual entry? <Link href="/guides/how-to-write-factual-custody-notes" className="font-medium text-teal-800 underline underline-offset-4">Read the custody note examples and entry template</Link>.
+        </p>
+
         <section className="mt-10 rounded-2xl bg-slate-950 p-6 text-white sm:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-300">
             The five minute weekly review
