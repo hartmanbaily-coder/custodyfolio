@@ -18,15 +18,15 @@ type PolicyFooterProps = {
 
 function PolicyLinks({ mobile = false }: { mobile?: boolean }) {
   return (
-    <nav className={mobile ? "grid grid-cols-2 gap-2 text-sm" : "mt-4 flex flex-wrap gap-2 text-sm"}>
+    <nav aria-label="Policies and support" className={mobile ? "grid grid-cols-2 gap-2 text-sm" : "mt-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm"}>
       {publicPolicyLinks.map((item) => (
         <Link
           key={item.href}
           href={item.href}
-          className={`border border-slate-200 bg-white font-medium text-slate-700 transition hover:border-teal-500 hover:text-teal-800 ${
+          className={`font-medium text-slate-600 underline decoration-slate-300 underline-offset-4 transition hover:text-teal-800 ${
             mobile
-              ? "flex min-h-11 items-center rounded-md px-3 py-2"
-              : "rounded-md px-3 py-2"
+              ? "flex min-h-11 items-center py-2"
+              : "inline-flex min-h-10 items-center py-2"
           }`}
         >
           {item.label}
@@ -60,7 +60,7 @@ function PolicyDetails({ notice, recordsNote }: Pick<PolicyFooterProps, "notice"
 
       <p>
         Support:{" "}
-        <a href={supportMailto} className="font-mono font-semibold text-teal-700 underline underline-offset-2">
+        <a href={supportMailto} className="break-words font-semibold text-teal-700 underline underline-offset-2">
           {supportEmail}
         </a>
       </p>

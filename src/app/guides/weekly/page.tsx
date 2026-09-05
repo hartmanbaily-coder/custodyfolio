@@ -1,5 +1,5 @@
-import Link from "next/link";
 
+import PublicHeader from "@/components/marketing/PublicHeader";
 import PolicyFooter from "@/components/PolicyFooter";
 import {
   MarketingPageView,
@@ -7,7 +7,6 @@ import {
 } from "@/components/marketing/MarketingTracker";
 import {
   pageMetadata,
-  recordsTagline,
   siteName,
 } from "@/lib/site";
 
@@ -98,45 +97,21 @@ export default function WeeklyCustodyRecordRoutinePage() {
     <main className="min-h-screen bg-[#fffdf9] text-slate-950">
       <MarketingPageView contentCode="factual_checklist" />
 
-      <header className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:px-8">
-        <Link href="/" className="min-w-0">
-          <span className="block text-sm font-semibold text-slate-950">
-            {siteName}
-          </span>
-          <span className="block text-xs text-slate-500">
-            {recordsTagline}
-          </span>
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/records"
-            className="rounded-md px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
-          >
-            Sign in
-          </Link>
-          <TrackedSignupLink
-            contentCode="factual_checklist"
-            className="rounded-md bg-slate-950 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-          >
-            Start free
-          </TrackedSignupLink>
-        </div>
-      </header>
+      <PublicHeader />
 
       <article className="mx-auto max-w-3xl px-4 pb-16 pt-10 sm:px-6 lg:px-8">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
           Free organization guide
         </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-6xl">
+        <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
           A five minute weekly routine for clearer custody records
         </h1>
         <p className="mt-5 text-xl leading-8 text-slate-600">
           Custody details can quickly become scattered across calendars, notes,
-          receipts, screenshots, files, and memory. A short weekly routine can
-          make those details easier to find and review later.
+          receipts, screenshots, files, and memory. A regular review helps you find missing details while you still remember them.
         </p>
         <p className="mt-4 text-base leading-7 text-slate-600">
-          The goal is not to create a perfect record. The goal is to keep dates,
+          Keep dates,
           direct observations, amounts, and original sources connected while the
           details are still fresh.
         </p>
@@ -151,7 +126,7 @@ export default function WeeklyCustodyRecordRoutinePage() {
           {routineSteps.map((step, index) => (
             <section
               key={step.title}
-              className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
+              className="border-t border-slate-200 py-6"
             >
               <div className="flex items-start gap-4">
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-teal-50 text-sm font-bold text-teal-800">

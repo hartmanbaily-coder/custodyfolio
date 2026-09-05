@@ -1585,7 +1585,7 @@ function PasswordlessLoginScreen({
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">Private records workspace</p>
             <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950 sm:text-6xl">{siteName}</h1>
             <p className="mt-4 max-w-2xl text-lg leading-7 text-slate-600 sm:text-xl sm:leading-8">
-              Turn custody notes, exchanges, files, and reports into a clear record you can actually use.
+              Keep dated notes and supporting files together, then create a report for your next attorney meeting.
             </p>
             <p className="mt-5 max-w-2xl text-sm leading-6 text-slate-500">
               The iOS app also protects a restored session with Face ID, Touch ID, or the device passcode.
@@ -2096,11 +2096,11 @@ function LoginScreen({
               {siteName}
             </h1>
             <p className="mt-4 max-w-2xl text-lg leading-7 text-slate-600 sm:text-xl sm:leading-8">
-              Turn custody notes, exchanges, files, and reports into a clear record you can actually use.
+              Keep dated notes and supporting files together, then create a report for your next attorney meeting.
             </p>
 
             <p className="mt-5 max-w-2xl text-sm leading-6 text-slate-500">
-              Built for adult recordkeeping. Records stay private in your account, and you choose what to export.
+              No other parent account is required. You choose which records to export or share.
             </p>
           </section>
 
