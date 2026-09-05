@@ -29,8 +29,11 @@ async function main() {
   );
   const to = dateEnvironment("GROWTH_WINDOW_END", new Date().toISOString());
   const excludedUserIds = parseGrowthExcludedUserIds(
-    process.env.GROWTH_EXCLUDED_USER_IDS
+    requiredEnvironment("GROWTH_EXCLUDED_USER_IDS")
   );
+  if (excludedUserIds.length === 0) {
+    throw new Error("At least one verified internal account exclusion is required.");
+  }
   const parameters = buildGrowthScorecardRpcParameters({
     from,
     to,
