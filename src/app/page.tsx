@@ -57,6 +57,7 @@ export default function HomePage() {
             <a href="/demo/custody-folio-sample-report.pdf" className="inline-flex min-h-12 items-center text-sm font-semibold text-teal-700 underline underline-offset-4">
               See a sample report (PDF)
             </a>
+            <Link href="/demo" className="inline-flex min-h-12 items-center text-sm font-semibold text-teal-700 underline underline-offset-4">Watch the walkthrough</Link>
           </div>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600">
             No card required. You may subscribe during the trial if you choose. Custody Folio helps organize records and does not provide legal advice.

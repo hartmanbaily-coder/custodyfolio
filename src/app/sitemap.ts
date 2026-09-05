@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 
 const publicPaths = [
   "",
+  "/demo",
   "/guides/factual-custody-record-checklist",
   "/guides/weekly",
   "/privacy",
@@ -22,7 +23,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return publicPaths.map((path) => ({
     url: `https://custodyfolio.com${path || "/"}`,
     lastModified:
-      path === "/guides/weekly"
+      path === "/demo"
+        ? new Date("2026-09-05T00:00:00.000Z")
+        : path === "/guides/weekly"
         ? weeklyArticleLastModified
         : defaultLastModified,
     changeFrequency: path === "" ? "weekly" : "monthly",

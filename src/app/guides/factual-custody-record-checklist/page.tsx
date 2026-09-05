@@ -74,6 +74,8 @@ export default function FactualCustodyRecordChecklistPage() {
           This guide provides general organization information. It is not legal advice, and it does not determine whether a record proves a fact or may be used in a legal proceeding.
         </div>
 
+        <a href="/demo/custody-folio-starter-kit.pdf" className="mt-6 inline-flex min-h-12 items-center rounded-md bg-teal-700 px-5 text-sm font-semibold text-white hover:bg-teal-800">Download the starter kit with a fillable note page (PDF)</a>
+
         <div className="mt-10 space-y-4">
           {checklistSections.map((section, index) => (
             <section key={section.title} className="border-t border-slate-200 py-6">

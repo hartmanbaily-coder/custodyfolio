@@ -15,7 +15,7 @@ export default function PublicHeader() {
           </span>
         </Link>
         <nav aria-label="Main navigation" className="order-3 flex w-full flex-wrap items-center gap-x-4 gap-y-1 text-sm font-medium md:order-none md:w-auto">
-          <Link href="/#how-it-works" className="inline-flex min-h-11 items-center text-slate-600 hover:text-teal-700">How it works</Link>
+          <Link href="/demo" className="inline-flex min-h-11 items-center text-slate-600 hover:text-teal-700">Watch demo</Link>
           <Link href="/guides/factual-custody-record-checklist" className="inline-flex min-h-11 items-center text-slate-600 hover:text-teal-700">Guides</Link>
           <Link href="/contact" className="inline-flex min-h-11 items-center text-slate-600 hover:text-teal-700">Support</Link>
           <Link href="/records" className="ml-auto inline-flex min-h-11 items-center text-slate-700 hover:text-teal-700 md:ml-0">Sign in</Link>
