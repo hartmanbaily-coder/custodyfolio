@@ -111,6 +111,13 @@ body {
   opacity: 0;
 }
 
+/* Keep the native picker above the visible date without covering its label. */
+html.dark .records-workspace input.range-date-input {
+  background-color: transparent !important;
+  color: transparent !important;
+  color-scheme: dark;
+}
+
 @media (max-width: 639px) {
   .records-workspace :where(input[type="date"], input[type="time"], input[type="datetime-local"]) {
     inline-size: 100%;

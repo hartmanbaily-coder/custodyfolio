@@ -105,7 +105,7 @@ test("records login and report workflow", async ({ page }) => {
 
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "A calmer way to keep custody records organized." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Remove the emotion. Track the data." })).toBeVisible();
   const startFree = page.getByRole("link", { name: "Start 30 days free" }).first();
   await expect(startFree).toHaveAttribute("href", "/records?mode=signup");
   const signIn = page.getByRole("link", { name: "Sign in", exact: true });
@@ -197,9 +197,14 @@ test("records login and report workflow", async ({ page }) => {
   await expect(rangeStartDay.locator('[data-exchange-time-marker="18:00"]')).toHaveCount(0);
   await expect(rangeMiddleDay.locator('[data-exchange-time-marker="18:00"]')).toHaveCount(0);
   await expect(rangeEndDay.locator('[data-exchange-time-marker="18:00"]')).toHaveCount(1);
+  // Select another day first so reopening the end day always loads its saved
+  // single-day assignment, even when today happens to be the range end.
+  await rangeStartDay.click();
   await rangeEndDay.click();
   await expect(page.getByLabel("Child will be with")).toHaveValue("Alternate caregiver");
-  await expect(page.getByLabel("Exchange day")).toHaveValue("end");
+  await expect(page.getByLabel("Start date", { exact: true })).toHaveValue(rangeEndDate);
+  await expect(page.getByLabel("End date", { exact: true })).toHaveValue(rangeEndDate);
+  await expect(page.getByLabel("Exchange day")).toHaveValue("start");
   await expect(page.getByLabel("Exchange time")).toHaveValue("18:00");
 
   await page.getByTestId("calendar-color-tools").locator("summary").click();
@@ -1157,6 +1162,7 @@ test("attorney health-data consent uses a clearly visible checkbox", async ({ pa
 });
 
 test("date-range values are visibly centered inside their controls", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
   await page.setViewportSize({ width: 402, height: 874 });
   await page.goto("/records");
   await enterDemoWorkspace(page);
@@ -1166,6 +1172,8 @@ test("date-range values are visibly centered inside their controls", async ({ pa
     const input = page.getByLabel(label);
     await expect(input).toBeVisible();
     await expect(input).toHaveClass(/range-date-input/);
+    await expect(input).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(input).toHaveCSS("color-scheme", "dark");
     const control = input.locator("..");
     const visibleValue = control.getByTestId("range-date-value");
     await expect(visibleValue).toHaveText(/^\d{2}\/\d{2}\/\d{4}$/);
@@ -1884,7 +1892,7 @@ test("records account recovery and deletion paths are reachable", async ({ page 
 
   await page.getByRole("link", { name: "Return to home page" }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole("heading", { name: "A calmer way to keep custody records organized." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Remove the emotion. Track the data." })).toBeVisible();
   await Promise.all([
     page.waitForURL(/\/records$/, { timeout: 15_000 }),
     page.getByRole("link", { name: "Sign in", exact: true }).click(),

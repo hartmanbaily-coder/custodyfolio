@@ -1,12 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
 
+import PublicHeader from "@/components/marketing/PublicHeader";
 import PolicyFooter from "@/components/PolicyFooter";
 import {
   MarketingPageView,
   TrackedSignupLink,
 } from "@/components/marketing/MarketingTracker";
-import { pageMetadata, recordsTagline, siteDescription, siteName } from "@/lib/site";
+import { pageMetadata, recordsTagline, siteDescription } from "@/lib/site";
 
 export const metadata = {
   ...pageMetadata({
@@ -17,104 +18,45 @@ export const metadata = {
   title: { absolute: "Custody Folio | Private Custody Records" },
 };
 
-const quickActions = [
-  { label: "Add a record", contentCode: "quick_add_record" },
-  { label: "Review your timeline", contentCode: "quick_review_timeline" },
-  { label: "Prepare or share", contentCode: "quick_prepare_or_share" },
-];
-
 const workflowSteps = [
   {
-    title: "Track",
+    title: "Record what happened",
     detail: "Add parenting time, communication, notes, expenses, and other dated events.",
   },
   {
-    title: "Attach",
+    title: "Keep the context",
     detail: "Keep supporting files connected to the record they belong with.",
   },
   {
-    title: "Review and report",
-    detail: "Review one clear timeline and create reports for personal review or an attorney conversation.",
+    title: "Prepare for your next meeting",
+    detail: "Create PDF and timeline reports for personal review or an attorney conversation. Check the details before sharing.",
   },
-];
-
-const previewRows = [
-  { date: "Jul 03", title: "Parenting time update", status: "Saved" },
-  { date: "Jul 05", title: "Communication note", status: "Saved" },
-  { date: "Jul 08", title: "Supporting file", status: "Attached" },
 ];
 
 export default function HomePage() {
   return (
     <main className="min-h-screen overflow-hidden bg-[#fffdf9] text-slate-950">
       <MarketingPageView />
-      <header className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:px-8">
-        <Link href="/" className="flex min-w-0 items-center gap-3">
-          <Image
-            src="/app-icons/icon-192.png"
-            alt=""
-            width={40}
-            height={40}
-            priority
-            className="h-10 w-10 shrink-0 rounded-md bg-slate-950 shadow-sm"
-          />
-          <span className="min-w-0">
-            <span className="block text-sm font-semibold tracking-tight text-slate-950">
-              {siteName}
-            </span>
-            <span className="block text-xs leading-4 text-slate-500">
-              {recordsTagline}
-            </span>
-          </span>
-        </Link>
+      <PublicHeader />
 
-        <nav className="hidden items-center gap-1 text-sm font-medium md:flex">
-          <Link href="/records" className="rounded-md px-4 py-2 text-slate-700 transition hover:bg-slate-100 hover:text-slate-950">
-            Sign in
-          </Link>
-          <TrackedSignupLink contentCode="header_desktop" className="rounded-md bg-slate-950 px-4 py-2 text-white shadow-sm transition hover:bg-slate-800">
-            Start 30 days free
-          </TrackedSignupLink>
-        </nav>
-
-        <TrackedSignupLink contentCode="header_mobile" className="rounded-md bg-slate-950 px-3 py-2 text-sm font-semibold text-white shadow-sm md:hidden">
-          Start free
-        </TrackedSignupLink>
-      </header>
-
-      <section className="mx-auto grid min-h-[calc(100vh-88px)] max-w-7xl content-center gap-10 px-4 pb-10 pt-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_500px] lg:px-8">
+      <section className="mx-auto grid max-w-7xl content-center gap-10 px-4 pb-14 pt-10 sm:px-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:px-8">
         <div className="flex max-w-3xl flex-col justify-center">
           <h1 className="text-5xl font-semibold tracking-tight text-slate-950 sm:text-6xl lg:text-7xl">
-            A calmer way to keep custody records organized.
+            {recordsTagline}
           </h1>
           <p className="mt-5 max-w-2xl text-xl leading-8 text-slate-600">
-            Keep parenting time, expenses, dated notes, and files together in one private timeline. No other parent account is required.
+            Organize custody notes, pictures, and important events into clear PDFs and timeline reports for your next attorney meeting or custody proceeding.
           </p>
-
-          <div className="mt-8 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <div className="flex min-h-12 flex-1 items-center gap-3 rounded-lg bg-slate-50 px-4 text-left text-sm text-slate-500">
-                <SearchIcon />
-                <span>What would you like to add?</span>
-              </div>
-              <TrackedSignupLink
-                contentCode="hero"
-                className="inline-flex min-h-12 items-center justify-center rounded-lg bg-teal-700 px-5 text-sm font-semibold text-white transition hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-200"
-              >
-                Start 30 days free
-              </TrackedSignupLink>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2 px-1 pb-1">
-              {quickActions.map((action) => (
-                <TrackedSignupLink
-                  key={action.label}
-                  contentCode={action.contentCode}
-                  className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-teal-500 hover:text-slate-950"
-                >
-                  {action.label}
-                </TrackedSignupLink>
-              ))}
-            </div>
+          <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
+            Keep your own records, at your own pace. No other parent account is required.
+          </p>
+          <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3">
+            <TrackedSignupLink contentCode="hero" className="inline-flex min-h-12 items-center justify-center rounded-md bg-teal-700 px-6 text-base font-semibold text-white transition hover:bg-teal-800">
+              Start 30 days free
+            </TrackedSignupLink>
+            <a href="/demo/custody-folio-sample-report.pdf" className="inline-flex min-h-12 items-center text-sm font-semibold text-teal-700 underline underline-offset-4">
+              See a sample report (PDF)
+            </a>
           </div>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600">
             No card required. You may subscribe during the trial if you choose. Custody Folio helps organize records and does not provide legal advice.
@@ -128,57 +70,17 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="relative">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)]">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-950">Parenting plan records</p>
-                <p className="mt-1 text-xs text-slate-500">Current month</p>
-              </div>
-              <div className="rounded-md bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-800">
-                9 timeline records
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              <MetricPreview label="Recent" value="9" tone="teal" />
-              <MetricPreview label="Parenting" value="4" tone="amber" />
-              <MetricPreview label="Files" value="12" tone="slate" />
-            </div>
-
-            <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-slate-950">Case timeline</p>
-                <p className="text-xs font-medium text-slate-500">Case overview</p>
-              </div>
-              <div className="mt-3 space-y-2">
-                {previewRows.map((row) => (
-                  <div key={`${row.date}-${row.title}`} className="rounded-lg border border-slate-200 bg-white p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{row.date}</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-950">{row.title}</p>
-                      </div>
-                      <span className="rounded bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
-                        {row.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">Report ready</p>
-              <p className="mt-1 text-sm leading-6 text-amber-950">
-                Export a readable summary with charts, records, and supporting file index.
-              </p>
-            </div>
-          </div>
-        </div>
+        <figure className="mx-auto w-full max-w-md self-center">
+          <a href="/demo/custody-folio-sample-report.pdf" className="block rounded-md border border-slate-200 bg-white p-3 shadow-[0_12px_40px_rgba(15,23,42,0.10)]" aria-label="Open the fictional sample timeline report PDF">
+            <Image src="/demo/report-preview.png" alt="A Custody Folio timeline report with three fictional dated records" width={1237} height={1600} priority className="h-auto w-full" />
+          </a>
+          <figcaption className="mt-3 text-center text-sm leading-6 text-slate-500">
+            An actual PDF export, using fictional records. Open it to read the details.
+          </figcaption>
+        </figure>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-4 px-4 pb-12 sm:px-6 md:grid-cols-3 lg:px-8">
+      <section id="how-it-works" aria-label="How Custody Folio works" className="mx-auto grid scroll-mt-8 max-w-7xl gap-4 px-4 pb-12 sm:px-6 md:grid-cols-3 lg:px-8">
         {workflowSteps.map((step) => (
           <div key={step.title} className="border-t border-slate-200 bg-white/60 px-1 py-5">
             <p className="text-lg font-semibold tracking-tight text-slate-950">{step.title}</p>
@@ -225,45 +127,17 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="mx-auto max-w-7xl border-t border-slate-200 px-4 py-12 sm:px-6 lg:px-8">
+        <div className="max-w-2xl">
+          <h2 className="text-2xl font-semibold tracking-tight">Built from personal experience</h2>
+          <p className="mt-4 text-base leading-7 text-slate-600">
+            Custody Folio grew out of firsthand experience with custody litigation and the work of keeping records organized. The aim is practical: make it easier to record what happened, find it later, and prepare something readable.
+          </p>
+          <Link href="/contact" className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-teal-700 underline underline-offset-4">Questions or feedback? Get in touch.</Link>
+        </div>
+      </section>
+
       <PolicyFooter />
     </main>
-  );
-}
-
-function MetricPreview({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: "teal" | "amber" | "slate";
-}) {
-  const toneClass =
-    tone === "teal"
-      ? "border-l-teal-600 text-teal-700"
-      : tone === "amber"
-        ? "border-l-amber-500 text-amber-700"
-        : "border-l-slate-500 text-slate-700";
-
-  return (
-    <div className={`rounded-lg border border-l-4 border-slate-200 bg-white p-3 ${toneClass}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tracking-tight">{value}</p>
-    </div>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" viewBox="0 0 16 16" fill="none">
-      <path
-        d="m11.2 11.2 2.3 2.3M12.3 7.1a5.2 5.2 0 1 1-10.4 0 5.2 5.2 0 0 1 10.4 0Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.7"
-      />
-    </svg>
   );
 }

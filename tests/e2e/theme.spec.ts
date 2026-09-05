@@ -86,7 +86,7 @@ test("public checklist is discoverable and points directly to account creation",
     "https://custodyfolio.com/guides/factual-custody-record-checklist"
   );
   await expect(
-    page.getByRole("link", { name: "Start 30 days free" })
+    page.getByRole("link", { name: "Start 30 days free", exact: true }).first()
   ).toHaveAttribute("href", "/records?mode=signup");
 
   const weeklyRoutine = page.getByRole("link", {
@@ -108,6 +108,6 @@ test("public checklist is discoverable and points directly to account creation",
     "https://custodyfolio.com/guides/weekly"
   );
   await expect(
-    page.getByRole("link", { name: "Start 30 days free" })
+    page.getByRole("link", { name: "Start 30 days free", exact: true }).first()
   ).toHaveAttribute("href", "/records?mode=signup");
 });

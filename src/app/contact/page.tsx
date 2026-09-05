@@ -64,40 +64,41 @@ export default function ContactPage() {
   return (
     <PolicyPage
       title="Contact"
-      description="Use this page to reach support for account, privacy, security, accessibility, file, import, export, and product issues."
+      description="Need help with Custody Folio? Choose the address below for product support, a privacy request, or a security concern."
       sections={sections}
-    >
-      <section className="rounded-lg border border-slate-200 bg-white p-6 text-sm leading-6 text-slate-600">
-        <h2 className="text-base font-semibold text-slate-950">Contact Emails</h2>
+      introduction={
+      <section className="mb-10 max-w-3xl border-l-2 border-teal-600 bg-white px-5 py-4 text-base leading-7 text-slate-600">
+        <h2 className="text-base font-semibold text-slate-950">Contact the team</h2>
         <p className="mt-2">
           Product and account support:{" "}
-          <a href={supportMailto} className="font-mono font-semibold text-emerald-700 underline underline-offset-2">
+          <a href={supportMailto} className="break-words font-semibold text-teal-700 underline underline-offset-2">
             {supportEmail}
           </a>
           .
         </p>
         <p className="mt-2">
           Privacy and data requests:{" "}
-          <a href={privacyMailto} className="font-mono font-semibold text-emerald-700 underline underline-offset-2">
+          <a href={privacyMailto} className="break-words font-semibold text-teal-700 underline underline-offset-2">
             {privacyEmail}
           </a>
           .
         </p>
         <p className="mt-2">
           Security reports:{" "}
-          <a href={securityMailto} className="font-mono font-semibold text-emerald-700 underline underline-offset-2">
+          <a href={securityMailto} className="break-words font-semibold text-teal-700 underline underline-offset-2">
             {securityEmail}
           </a>
           .
         </p>
         <p className="mt-3">
           For account deletion, go directly to{" "}
-          <Link href={accountDeletionPath} className="font-semibold text-emerald-700 underline underline-offset-2">
+          <Link href={accountDeletionPath} className="font-semibold text-teal-700 underline underline-offset-2">
             Delete Account
           </Link>
           .
         </p>
       </section>
-    </PolicyPage>
+      }
+    />
   );
 }

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const siteName = "Custody Folio";
 export const recordsTagline = "Remove the emotion. Track the data.";
 export const siteDescription =
-  "Privately organize custody events, parenting time, expenses, notes, and files in one clear timeline. No other parent account is required.";
+  "Organize custody notes, pictures, and dated events into PDFs and timeline reports for an attorney meeting or custody proceeding. No other parent account is required.";
 export const legalDisclaimer =
   "This tool helps organize records and does not provide legal advice. Consult a qualified attorney about your situation.";
 export const supportEmail = "support@custodyfolio.com";

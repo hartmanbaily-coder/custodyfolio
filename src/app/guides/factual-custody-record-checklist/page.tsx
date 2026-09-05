@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import PublicHeader from "@/components/marketing/PublicHeader";
 import PolicyFooter from "@/components/PolicyFooter";
 import { pageMetadata } from "@/lib/site";
 
@@ -49,32 +50,20 @@ const checklistSections = [
   {
     title: "Protect sensitive information",
     detail:
-      "Use a private account and strong unique password. Confirm who can access information before sharing it, and keep case details out of public posts and marketing surveys.",
+      "Use a private email account, protect one-time sign-in codes, and secure your device. Confirm who can access information before sharing it, and keep case details out of public posts and marketing surveys.",
   },
 ];
 
 export default function FactualCustodyRecordChecklistPage() {
   return (
     <main className="min-h-screen bg-[#fffdf9] text-slate-950">
-      <header className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:px-8">
-        <Link href="/" className="text-sm font-semibold text-slate-950">
-          Custody Folio
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link href="/records" className="rounded-md px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">
-            Sign in
-          </Link>
-          <Link href="/records?mode=signup" className="rounded-md bg-slate-950 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">
-            Start free
-          </Link>
-        </div>
-      </header>
+      <PublicHeader />
 
       <article className="mx-auto max-w-3xl px-4 pb-16 pt-10 sm:px-6 lg:px-8">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">
           Free organization guide
         </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-6xl">
+        <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
           The factual custody record checklist
         </h1>
         <p className="mt-5 text-xl leading-8 text-slate-600">
@@ -87,7 +76,7 @@ export default function FactualCustodyRecordChecklistPage() {
 
         <div className="mt-10 space-y-4">
           {checklistSections.map((section, index) => (
-            <section key={section.title} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <section key={section.title} className="border-t border-slate-200 py-6">
               <div className="flex items-start gap-4">
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-teal-50 text-sm font-bold text-teal-800">
                   {index + 1}
